@@ -43,6 +43,24 @@ Each commit is exactly **one logical change**.
 
 If you find yourself writing "and" in a commit message, consider splitting it into two commits.
 
+## Never Rewrite History
+
+Git history is append-only. We always add to it, never rewrite it.
+
+**Never do any of the following:**
+- `git commit --amend` — make a new commit instead
+- `git rebase` (interactive or otherwise) — merge instead
+- `git push --force` or `git push --force-with-lease` — if the push is rejected, resolve it with a merge
+- `git reset --hard` to a previous commit — use `git revert` to undo changes
+- `git filter-branch` or `git rebase --onto` — history stays as-is
+
+**Why:** Rewriting history destroys the audit trail, breaks other people's branches, and makes it impossible to trust that what you see is what actually happened. In a protocol built on cryptographic proof of origin, immutable history isn't just a preference — it's a principle.
+
+**If you made a mistake in a commit:**
+- Wrong code? Make a new commit that fixes it.
+- Bad commit message? Let it stand — the next commit's message can provide context.
+- Committed to the wrong branch? Cherry-pick to the right branch, revert on the wrong one.
+
 ## Gitflow Branching Model
 
 We follow [Gitflow](https://nvie.com/posts/a-successful-branching-model/) where possible.
