@@ -19,42 +19,56 @@ The XL1 wallet is a Chrome browser extension for interacting with the XYO Layer 
 
 ---
 
-## Transaction Signing Flow
+## Submitting Transactions
 
-When a dApp needs to submit a transaction to the XL1 chain:
+The gateway from `useConnectAccount()` provides high-level methods that handle transaction construction, wallet signing, and broadcasting. You do not need to manually build `TransactionBoundWitness` objects or call sign/broadcast separately.
 
-### 1. Construct the Transaction
-The dApp builds a `TransactionBoundWitness` with the desired payloads (see [Chain](chain.md) for the data model):
+### Adding application data to the chain
 
-```ts
-// Transaction includes: chain, from, nbf, exp, fees, and payloads
-const tx: [TransactionBoundWitness, Payload[]] = [transactionBw, payloads]
-```
-
-### 2. Request Wallet Signature
-The dApp sends a signing request to the wallet via PostMessage RPC:
+For custom application payloads (game results, attestations, etc.), use `addPayloadsToChain`:
 
 ```ts
-// The wallet handles xyoSigner_signTransaction
-const signedTx = await provider.signTransaction(tx)
+const { gateway } = useConnectAccount()
+
+// Application payloads go in offChain — onChain is for AllowedBlockPayload system types
+const [txHash, signedTx] = await gateway.addPayloadsToChain([], payloads)
 ```
 
-### 3. Wallet Signs
-The wallet extension:
-- Displays the transaction details to the user for approval
-- Signs with the user's account key
-- Returns a `SignedHydratedTransactionWithHashMeta`
+This single call:
+1. Builds a `TransactionBoundWitness` with fees, block range, and chain ID
+2. Triggers the wallet extension popup for user approval
+3. Signs with the user's account key
+4. Broadcasts to the XL1 network
+5. Returns `[Hash, SignedHydratedTransactionWithHashMeta]`
 
-### 4. Broadcast
-The signed transaction is broadcast to the network:
+**On-chain vs off-chain payloads:**
+- `onChain: AllowedBlockPayload[]` — predefined XL1 system payload types only (e.g., `StepComplete`). Custom application payloads will not typecheck here.
+- `offChain: Payload[]` — application data of any schema. These are attached to the transaction and recorded on chain, but are not system-level block payloads.
+
+### Token transfers
+
+For sending XL1 tokens:
 
 ```ts
-// Via xyoRunner_broadcastTransaction
-const txHash = await provider.broadcastTransaction(signedTx)
+const txHash = await gateway.send(toAddress, amount)
+const txHash = await gateway.sendMany({ [addr1]: amount1, [addr2]: amount2 })
 ```
 
-### 5. Inclusion
-The transaction enters the mempool and is included in the next block by a block producer.
+### Pre-built transactions
+
+For full control over transaction construction, build the transaction first and then submit:
+
+```ts
+const [txHash, signedTx] = await gateway.addTransactionToChain(unsignedTx, offChainPayloads)
+```
+
+### Transaction confirmation
+
+After submission, confirm inclusion in a block:
+
+```ts
+const confirmedTx = await gateway.confirmSubmittedTransaction(txHash)
+```
 
 ---
 
