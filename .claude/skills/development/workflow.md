@@ -88,7 +88,12 @@ A feature is not complete until **all of the following are true**:
 - The production build and dev server often use different tools (e.g., Vite uses Rollup for `build` but esbuild for `dev`) — passing one does not guarantee the other
 - This is a fast smoke test: start the server, confirm no crash, then stop it
 
-### 6. No Regressions
+### 6. No Placeholders or Mocks in Delivered Code
+- Every user-visible action must do what it claims. If the UI says "Recorded on XL1 Blockchain", the code must actually submit a transaction — not call `console.log` with a TODO comment.
+- Do not stub integrations with placeholder implementations (e.g., `Account.random()` instead of a real wallet connection, a no-op function behind a "Submit" button). If the real integration isn't wired up yet, the UI should not present it as functional.
+- If something genuinely cannot be implemented yet (missing API, blocked dependency), disable the UI element or show an explicit "not yet available" state — never fake success.
+
+### 7. No Regressions
 - Existing functionality still works, not just the new code
 - If the change touches shared utilities or interfaces, verify downstream consumers
 - If unsure whether something regressed, run the full test suite — don't assume
