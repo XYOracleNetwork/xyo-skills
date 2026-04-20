@@ -4,9 +4,9 @@
 
 The standard ESLint configuration for XY Labs projects. Uses the modern [flat config format](https://eslint.org/docs/latest/use/configure/configuration-files) (ESLint 9.x).
 
-- **Package:** `@xylabs/eslint-config-flat`
-- **Install:** `pnpm add -D @xylabs/eslint-config-flat eslint`
-- **Format:** Flat config (`eslint.config.mjs` or `eslint.config.js`)
+- **Package:** `@xylabs/eslint-config-flat` (non-React) or `@xylabs/eslint-config-react-flat` (React projects)
+- **Install:** `pnpm add -D @xylabs/eslint-config-flat eslint` (or `@xylabs/eslint-config-react-flat` for React)
+- **Format:** Flat config (`eslint.config.ts`, `eslint.config.mjs`, or `eslint.config.js`)
 
 Do **not** use `@xylabs/eslint-config` (legacy format) for new projects.
 
@@ -24,46 +24,64 @@ The config bundles and configures these concerns:
 
 ## Setup
 
-### New Project
+### New Project (Non-React)
 
-Create `eslint.config.mjs` in your project root:
+Create `eslint.config.ts` in your project root:
 
-```js
-import { defaultConfigs } from '@xylabs/eslint-config-flat'
+```ts
+import { config as xylabsConfig } from '@xylabs/eslint-config-flat'
+import type { Linter } from 'eslint'
 
-export default [
-  ...defaultConfigs,
+const config: Linter.Config[] = [
+  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+  ...xylabsConfig,
 ]
+
+export default config
 ```
+
+### New Project (React)
+
+```ts
+import { recommendedConfig as xylabsConfig } from '@xylabs/eslint-config-react-flat'
+import type { Linter } from 'eslint'
+
+const config: Linter.Config[] = [
+  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+  ...xylabsConfig,
+]
+
+export default config
+```
+
+### Available Exports
+
+| Package | Export | Description |
+|---------|--------|-------------|
+| `@xylabs/eslint-config-flat` | `config` | Standard config for TS libraries |
+| `@xylabs/eslint-config-flat` | `recommendedConfig` | Recommended config with type-checked rules |
+| `@xylabs/eslint-config-react-flat` | `recommendedConfig` | React-aware config |
 
 ### Extending or Overriding Rules
 
-Add overrides after the default configs:
+Add overrides after the base config:
 
-```js
-import { defaultConfigs } from '@xylabs/eslint-config-flat'
+```ts
+import { config as xylabsConfig } from '@xylabs/eslint-config-flat'
+import type { Linter } from 'eslint'
 
-export default [
-  ...defaultConfigs,
+const config: Linter.Config[] = [
+  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+  ...xylabsConfig,
   {
-    files: ['**/*.ts', '**/*.tsx'],
     rules: {
       // Override specific rules with justification
       '@typescript-eslint/no-floating-promises': 'warn',
     },
   },
 ]
-```
 
-### Ignoring Paths
-
-```js
-import { defaultConfigs } from '@xylabs/eslint-config-flat'
-
-export default [
-  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
-  ...defaultConfigs,
-]
+export default config
 ```
 
 ## Running the Linter
