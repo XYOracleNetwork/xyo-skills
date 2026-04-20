@@ -70,30 +70,35 @@ If the wallet extension is not installed, show a prompt directing the user to in
 
 ### Gateway Provider
 
-The `GatewayProvider` establishes the connection between your React app and the XL1 chain:
+The `GatewayProvider` establishes the connection between your React app and the XL1 chain. It **requires** `InPageGatewaysProvider` as a parent — without it the app will silently crash to a blank page.
 
 ```tsx
-import { GatewayProvider } from '@xyo-network/react-chain-provider'
+import { GatewayProvider, InPageGatewaysProvider } from '@xyo-network/react-chain-provider'
 
 function App() {
   return (
-    <GatewayProvider>
-      <YourDApp />
-    </GatewayProvider>
+    <InPageGatewaysProvider>
+      <GatewayProvider>
+        <YourDApp />
+      </GatewayProvider>
+    </InPageGatewaysProvider>
   )
 }
 ```
 
 ### Connecting to the Wallet
 
-Use `useGatewayFromWallet()` to connect your dApp to the user's browser wallet:
+Use `useConnectAccount()` to connect your dApp to the user's browser wallet and obtain their address:
 
 ```tsx
-import { useGatewayFromWallet } from '@xyo-network/react-chain-provider'
+import { useConnectAccount } from '@xyo-network/react-chain-provider'
 
 function ConnectWallet() {
-  const { gateway, connect } = useGatewayFromWallet()
-  // gateway provides access to all viewer/runner methods
+  const { address, connectSigner, gateway, timedout } = useConnectAccount()
+  // address: connected wallet address (undefined until connected)
+  // connectSigner: call to trigger wallet popup
+  // gateway: XyoGatewayRunner for chain operations (undefined/null/instance)
+  // timedout: true if wallet extension was not detected
 }
 ```
 
@@ -115,15 +120,17 @@ function ConnectWallet() {
 A typical XL1 dApp structure with React:
 
 ```tsx
-import { GatewayProvider } from '@xyo-network/react-chain-provider'
+import { GatewayProvider, InPageGatewaysProvider } from '@xyo-network/react-chain-provider'
 
 function App() {
   return (
-    <GatewayProvider>
-      <GameBoard />      {/* Your game UI */}
-      <WalletConnect />  {/* Wallet connection */}
-      <GameHistory />    {/* Query past games from chain */}
-    </GatewayProvider>
+    <InPageGatewaysProvider>
+      <GatewayProvider>
+        <GameBoard />      {/* Your game UI */}
+        <WalletConnect />  {/* Wallet connection */}
+        <GameHistory />    {/* Query past games from chain */}
+      </GatewayProvider>
+    </InPageGatewaysProvider>
   )
 }
 ```
