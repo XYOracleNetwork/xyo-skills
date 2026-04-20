@@ -22,7 +22,7 @@ import { BlockBoundWitnessZod, SimpleBlockViewer, BlockViewerMoniker } from '@xy
 import { ... } from '@xyo-network/chain-sdk'
 
 // React dApp — gateway provider and wallet connection
-import { GatewayProvider, useGatewayFromWallet } from '@xyo-network/react-chain-provider'
+import { GatewayProvider, InPageGatewaysProvider, useConnectAccount } from '@xyo-network/react-chain-provider'
 
 // Avoid — sub-package imports
 import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model'
