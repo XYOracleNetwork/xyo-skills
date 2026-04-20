@@ -42,7 +42,25 @@ Tests should exercise the **public API** of a module, not its internals.
 
 This makes tests resilient to refactoring — the implementation can change without breaking tests as long as the behavior is preserved.
 
+## Mocking: Minimal and Intentional
+
+Mocks are a tool, not a default. Writing a test that mocks everything it touches proves nothing — it only tests that your mocks behave the way you told them to.
+
+**When mocks are appropriate:**
+- External services (network calls, third-party APIs) that are slow, flaky, or have side effects
+- System boundaries you don't control (file system, clock, randomness) when determinism matters
+- Expensive resources that would make the test suite impractically slow
+
+**When mocks are not appropriate:**
+- Internal modules and utilities — test with the real implementation
+- Data transformations and pure logic — there's nothing to mock
+- Just to make a test easier to write — if it's hard to test without mocks, that's feedback about the design
+
+If you find yourself mocking more than one or two things in a test, step back. Either the test is too broad, or the code under test has too many dependencies and should be refactored.
+
 ## Coverage Strategy
+
+**100% coverage is an anti-goal.** Chasing a number leads to low-value tests that exist only to satisfy a metric.
 
 Focus on **critical paths** being covered rather than hitting a percentage target.
 
