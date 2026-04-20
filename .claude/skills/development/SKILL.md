@@ -1,6 +1,6 @@
 ---
 name: development
-description: Core development standards for TypeScript, Git workflow, and testing principles. Activates when writing TypeScript code, performing git operations, or designing tests.
+description: Core development standards for TypeScript, Git workflow, testing principles, and development workflow. Activates when writing code, running builds, performing git operations, or completing features.
 user-invocable: false
 ---
 
@@ -18,3 +18,6 @@ Read when creating commits, branches, or preparing changes for review. Covers co
 
 ### [Testing Principles](testing.md)
 Read when writing tests, discussing test strategy, or evaluating coverage. Covers framework-agnostic testing principles. Note: specific test frameworks and tooling are defined in the XY Toolchain skill (Layer 2).
+
+### [Development Workflow](workflow.md)
+Read before running any build, lint, or test command, and before declaring any task complete. Covers native toolchain discovery (use the repo's commands, not ad-hoc one-offs) and the definition of done checklist.
