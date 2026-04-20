@@ -21,7 +21,7 @@ The XL1 wallet is a Chrome browser extension for interacting with the XYO Layer 
 
 ## Submitting Transactions
 
-The gateway from `useConnectAccount()` provides high-level methods that handle transaction construction, wallet signing, and broadcasting. You do not need to manually build `TransactionBoundWitness` objects or call sign/broadcast separately.
+**The gateway is the single point of entry for all chain interactions in application code.** It abstracts transaction construction, wallet signing, and broadcasting into single method calls. Do not use low-level RPC constructs (`TransactionBoundWitness`, `xyoSigner_signTransaction`, `xyoRunner_broadcastTransaction`) directly — those are internal to the gateway implementation. Application code should always go through the gateway's high-level methods.
 
 ### Adding application data to the chain
 
@@ -78,9 +78,9 @@ The React SDK provides a component library for building XL1 dApp UIs.
 
 ### When to use the browser wallet
 
-Any React dApp that records data on XL1 **must** use `GatewayProvider` and `useGatewayFromWallet()` for wallet connection and transaction signing. Do not use `Account.random()` for user-facing wallet connections — that is for tests and non-interactive scripts only.
+Any React dApp that records data on XL1 **must** use `GatewayProvider` and `useConnectAccount()` for wallet connection and chain interactions. The gateway returned by `useConnectAccount()` is the only interface application code should use for submitting transactions — do not construct transactions manually or call RPC methods directly.
 
-If the wallet extension is not installed, show a prompt directing the user to install it from the Chrome Web Store. Do not silently fall back to a random account — the user should know they need the wallet to interact with the chain.
+Do not use `Account.random()` for user-facing wallet connections — that is for tests and non-interactive scripts only. If the wallet extension is not installed, show a prompt directing the user to install it from the Chrome Web Store. Do not silently fall back to a random account.
 
 ### Gateway Provider
 
