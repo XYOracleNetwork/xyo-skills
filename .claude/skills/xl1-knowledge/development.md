@@ -1,12 +1,38 @@
 # Development on XL1
 
 **Key npm packages:**
+- `@xyo-network/xl1-sdk` — **Barrel package**: re-exports all XL1 packages below
 - `@xyo-network/xl1-protocol-sdk` — Config, caching, signing, transaction building, Simple* implementations
 - `@xyo-network/xl1-rpc` — JSON-RPC layer (type definitions, engine, schema maps)
 - `@xyo-network/xl1-providers` — Browser/Node/Neutral provider implementations
-- `@xyo-network/xl1-sdk` — Aggregate SDK (re-exports all of the above)
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
+
+### XL1 Barrel Package Hierarchy
+
+```
+@xyo-network/xl1-sdk              ← Top-level: re-exports everything
+├── @xyo-network/xl1-protocol     ← All protocol types and interfaces
+│   ├── @xyo-network/xl1-protocol-model    (Zod schemas, branded types, data structures)
+│   ├── @xyo-network/xl1-protocol-lib      (viewer/runner interface definitions)
+│   ├── @xyo-network/xl1-validation        (composable validators)
+│   ├── @xyo-network/xl1-schema            (JSON schema validation)
+│   └── @xyo-network/xl1-network-model     (network API definitions)
+├── @xyo-network/xl1-protocol-sdk ← SDK implementations
+├── @xyo-network/xl1-rpc          ← JSON-RPC layer
+├── @xyo-network/xl1-providers    ← Provider implementations
+└── @xyo-network/xl1-wrappers     ← Value wrappers
+```
+
+**Prefer barrel imports** (see [Layer 1 convention](../development/typescript.md) and [XYO barrel packages](../xyo-knowledge/best-practices.md)):
+
+```ts
+// Good — barrel import
+import { BlockBoundWitnessZod, TransactionBoundWitnessZod } from '@xyo-network/xl1-sdk'
+
+// Avoid — granular sub-package
+import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model'
+```
 
 ---
 

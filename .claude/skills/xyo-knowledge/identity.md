@@ -1,10 +1,7 @@
 # Identity & Signing
 
-**Key npm packages:**
-- `@xyo-network/account` — Account class (key pair, signing, verification)
-- `@xyo-network/account-model` — AccountInstance interface
-- `@xyo-network/wallet` — HDWallet with BIP39/BIP44 derivation
-- `@xyo-network/wallet-model` — WalletInstance interface
+**Key npm packages (prefer barrel imports):**
+- `@xyo-network/crypto` — Barrel: account, account-model, wallet, wallet-model, elliptic, key-model
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
 
@@ -24,7 +21,7 @@ An **Account** is a key pair (secp256k1 elliptic curve) used for signing and ide
 ### Creation
 
 ```ts
-import { Account } from '@xyo-network/account'
+import { Account } from '@xyo-network/crypto'
 
 // Random account (testing)
 const account = await Account.random()
@@ -59,7 +56,7 @@ A **Wallet** extends Account with hierarchical deterministic (HD) key derivation
 ### Creation
 
 ```ts
-import { HDWallet } from '@xyo-network/account'
+import { HDWallet } from '@xyo-network/crypto'
 
 // Random mnemonic wallet
 const wallet = await HDWallet.random()

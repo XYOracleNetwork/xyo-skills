@@ -53,9 +53,34 @@ This is not a blanket rule. Apply it when it makes contracts clearer:
 
 Don't add `readonly` reflexively to everything — use it where it tells the reader something meaningful.
 
+## ESM Only
+
+Always use ES modules. No CommonJS.
+
+- Use `import` / `export` — never `require()` or `module.exports`
+- Set `"type": "module"` in `package.json`
+- Use `.js` extensions in relative import paths (TypeScript resolves `.ts` → `.js`)
+
+## Imports: Barrel Packages and Tree Shaking
+
+**Prefer barrel (aggregate) package imports** over deep/granular sub-package imports. Barrel packages re-export their sub-packages, giving you a single import source and enabling bundler tree shaking.
+
+```ts
+// Good — barrel package import
+import { Payload, PayloadBuilder } from '@xyo-network/payload'
+
+// Avoid — granular sub-package imports
+import { Payload } from '@xyo-network/payload-model'
+import { PayloadBuilder } from '@xyo-network/payload-builder'
+```
+
+The barrel package approach is cleaner, more maintainable, and lets the bundler eliminate unused exports. See the XYO and XL1 knowledge skills for the specific barrel packages available in each ecosystem.
+
+**Import ordering:**
+- External packages first, then internal modules, separated by a blank line
+
 ## Other Conventions
 
 - **Prefer union types** over enums: `type Status = 'active' | 'inactive'` rather than `enum Status { Active, Inactive }`
 - **Naming**: PascalCase for types and interfaces, camelCase for variables and functions
 - **Null handling**: prefer optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks
-- **Imports**: external packages first, then internal modules, separated by a blank line

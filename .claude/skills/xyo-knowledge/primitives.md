@@ -1,10 +1,8 @@
 # Protocol Primitives
 
-**Key npm packages:**
-- `@xyo-network/payload-model` — Payload types, Schema, meta types, type guards
-- `@xyo-network/payload-builder` — PayloadBuilder class
-- `@xyo-network/boundwitness-model` — BoundWitness types, signed/unsigned variants
-- `@xyo-network/boundwitness-builder` — BoundWitnessBuilder class
+**Key npm packages (prefer barrel imports):**
+- `@xyo-network/payload` — Barrel: payload-model, payload-builder, payload-validator, payload-wrapper, huri
+- `@xyo-network/boundwitness` — Barrel: boundwitness-model, boundwitness-builder, boundwitness-validator, boundwitness-wrapper
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
 
@@ -24,7 +22,7 @@ type MovePayload = Payload<{ move: 'rock' | 'paper' | 'scissors' }, 'network.xyo
 The `schema` field is a branded string created via `asSchema()`:
 
 ```ts
-import { asSchema } from '@xyo-network/payload-model'
+import { asSchema } from '@xyo-network/payload'
 
 const MoveSchema = asSchema('network.xyo.rps.move', true)
 ```
@@ -53,7 +51,7 @@ Type helpers for working with meta:
 Use `PayloadBuilder` to construct payloads — don't create raw object literals:
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/payload-builder'
+import { PayloadBuilder } from '@xyo-network/payload'
 
 const payload = new PayloadBuilder({ schema: MoveSchema })
   .fields({ move: 'rock' })
@@ -77,7 +75,7 @@ Static meta manipulation:
 Schemas act as TypeScript discriminated union tags. Use type guards for narrowing:
 
 ```ts
-import { isPayloadOfSchemaType } from '@xyo-network/payload-model'
+import { isPayloadOfSchemaType } from '@xyo-network/payload'
 
 const isMove = isPayloadOfSchemaType<MovePayload>('network.xyo.rps.move')
 
@@ -88,7 +86,7 @@ const moves = allPayloads.filter(isMove) // typed as MovePayload[]
 For runtime validation with Zod:
 
 ```ts
-import { isPayloadOfZodType } from '@xyo-network/payload-model'
+import { isPayloadOfZodType } from '@xyo-network/payload'
 
 const isMove = isPayloadOfZodType<MovePayload>(MovePayloadZod, 'network.xyo.rps.move')
 ```
@@ -130,8 +128,8 @@ These arrays are always parallel:
 Always use the builder — never construct bound witness fields manually:
 
 ```ts
-import { BoundWitnessBuilder } from '@xyo-network/boundwitness-builder'
-import { Account } from '@xyo-network/account'
+import { BoundWitnessBuilder } from '@xyo-network/boundwitness'
+import { Account } from '@xyo-network/crypto'
 
 const account = await Account.random()
 
