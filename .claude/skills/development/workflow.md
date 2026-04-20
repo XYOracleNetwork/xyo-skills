@@ -32,6 +32,8 @@ Before executing commands in a repo, check these in order:
    - `vitest.config.*` / `jest.config.*` — don't assume test setup
    - These files are authoritative. Don't override them with CLI flags unless intentionally fixing something.
 
+5. **Dependency versions** — when adding new dependencies, always use `pnpm add <package>` (or the repo's package manager equivalent) to resolve the latest published version. Do not manually write version numbers in package.json from memory — they may be significantly outdated. If a specific version is required for peer dependency compatibility, pin to that version explicitly (e.g., `pnpm add @mui/material@~7.3.9`).
+
 ### Repo Conventions
 
 Beyond scripts and config files, observe how the existing codebase does things:
