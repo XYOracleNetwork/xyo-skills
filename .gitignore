@@ -70,6 +70,9 @@ web_modules/
 .env.*
 !.env.example
 
+# npm credentials — NEVER commit these
+.npmrc
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

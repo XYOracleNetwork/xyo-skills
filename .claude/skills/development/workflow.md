@@ -42,6 +42,14 @@ Beyond scripts and config files, observe how the existing codebase does things:
 
 When in doubt, read existing code first and follow its lead.
 
+### Credential Safety
+
+Never commit secrets or authentication tokens to the repository:
+- `.npmrc` — may contain npm auth tokens after `npm login`. Always add it to `.gitignore`.
+- `.env`, `.env.*` — may contain API keys and secrets. Always gitignored.
+- Never log, echo, or display auth tokens in command output.
+- When setting up a new project, verify `.gitignore` includes `.npmrc` and `.env` before the first commit.
+
 ### The Rule
 
 If the repo has a way to do it, use the repo's way. Ad-hoc commands are for exploration only — never for producing a deliverable.
