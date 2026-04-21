@@ -24,6 +24,25 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 ---
 
+## Networks
+
+XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is what you pass to `useConnectAccount(gatewayName)` and `GatewayProvider`. The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
+
+| Network | Gateway Name | Gateway RPC | Datalake | Explorer |
+|---------|-------------|-------------|----------|----------|
+| **Mainnet** | `'mainnet'` | `https://api.chain.xyo.network/rpc` | `https://api.archivist.xyo.network/dataLake` | `https://explore.xyo.network` |
+| **Sequence** (beta) | `'sequence'` | `https://beta.api.chain.xyo.network/rpc` | `https://beta.api.archivist.xyo.network/dataLake` | `https://beta.explore.xyo.network` |
+| **Local** | `'local'` | `http://localhost:8080/rpc` | `http://localhost:8080/dataLake` | `http://localhost:3000` |
+
+**When to use each:**
+- **Mainnet** — production deployments. Real XL1 tokens, real transactions.
+- **Sequence** — testing and staging. Use this for development against a live network without affecting production. This is the default for beta/staging deployments.
+- **Local** — local development with a locally running gateway (`xl1 start api`). No network dependency.
+
+For dApp development, start with **Sequence** (beta) to test against a live chain, then switch to **Mainnet** for production.
+
+---
+
 ## RPC Method Namespaces
 
 Methods follow the pattern `<namespace>_<methodName>`:
