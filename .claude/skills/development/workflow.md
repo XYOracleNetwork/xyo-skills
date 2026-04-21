@@ -32,6 +32,8 @@ Before executing commands in a repo, check these in order:
    - `vitest.config.*` / `jest.config.*` — don't assume test setup
    - These files are authoritative. Don't override them with CLI flags unless intentionally fixing something.
 
+5. **Dependency versions** — when adding new dependencies, always use `pnpm add <package>` (or the repo's package manager equivalent) to resolve the latest published version. Do not manually write version numbers in package.json from memory — they may be significantly outdated. If a specific version is required for peer dependency compatibility, pin to that version explicitly (e.g., `pnpm add @mui/material@~7.3.9`).
+
 ### Repo Conventions
 
 Beyond scripts and config files, observe how the existing codebase does things:
@@ -41,6 +43,14 @@ Beyond scripts and config files, observe how the existing codebase does things:
 - If there are existing examples of what you're building (a similar component, endpoint, or utility), use them as a template rather than inventing a new pattern.
 
 When in doubt, read existing code first and follow its lead.
+
+### Credential Safety
+
+Never commit secrets or authentication tokens to the repository:
+- `.npmrc` — may contain npm auth tokens after `npm login`. Always add it to `.gitignore`.
+- `.env`, `.env.*` — may contain API keys and secrets. Always gitignored.
+- Never log, echo, or display auth tokens in command output.
+- When setting up a new project, verify `.gitignore` includes `.npmrc` and `.env` before the first commit.
 
 ### The Rule
 
@@ -71,8 +81,19 @@ A feature is not complete until **all of the following are true**:
 - Dependencies are installed via the repo's package manager — don't forget to actually run `pnpm install` (or equivalent)
 - No phantom dependencies — if your code imports it, it must be in `package.json` (don't rely on transitive installs)
 - Version ranges follow the repo's existing conventions (pinned, caret, tilde)
+- All peer dependency warnings are resolved — install the required peers at the versions the package expects, not just the latest. Note: `pnpm install` suppresses warnings when the lockfile is already up to date. After adding or changing dependencies, run `pnpm install --resolution-only` to force a fresh resolution check that surfaces all peer dependency warnings.
 
-### 5. No Regressions
+### 5. Dev Server Starts (apps only)
+- If the project is an application with a dev server (`pnpm dev` or equivalent), start it and confirm it launches without errors
+- The production build and dev server often use different tools (e.g., Vite uses Rollup for `build` but esbuild for `dev`) — passing one does not guarantee the other
+- This is a fast smoke test: start the server, confirm no crash, then stop it
+
+### 6. No Placeholders or Mocks in Delivered Code
+- Every user-visible action must do what it claims. If the UI says "Recorded on XL1 Blockchain", the code must actually submit a transaction — not call `console.log` with a TODO comment.
+- Do not stub integrations with placeholder implementations (e.g., `Account.random()` instead of a real wallet connection, a no-op function behind a "Submit" button). If the real integration isn't wired up yet, the UI should not present it as functional.
+- If something genuinely cannot be implemented yet (missing API, blocked dependency), disable the UI element or show an explicit "not yet available" state — never fake success.
+
+### 7. No Regressions
 - Existing functionality still works, not just the new code
 - If the change touches shared utilities or interfaces, verify downstream consumers
 - If unsure whether something regressed, run the full test suite — don't assume

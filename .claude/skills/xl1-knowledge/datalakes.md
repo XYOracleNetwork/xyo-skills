@@ -13,6 +13,14 @@ Datalakes are the structured data storage layer for the XL1 chain. They provide 
 
 Datalakes build on XYO's **Archivist** module abstraction (see [XYO Knowledge — Modules](../xyo-knowledge/modules.md)). The chain's finalized data is served through a module identified as `Chain:Finalized`, accessible via the gateway's `/chain` endpoint.
 
+### Off-chain payload storage
+
+When a dApp submits a transaction via `gateway.addPayloadsToChain(onChain, offChain)`, the gateway automatically persists the off-chain payloads to the datalake. There is no separate submission step — off-chain payloads are immediately queryable from the datalake after the transaction is broadcast.
+
+This is the primary mechanism for storing application data on XL1. Custom payloads (game results, attestations, etc.) go in the `offChain` parameter because they are not `AllowedBlockPayload` system types. The transaction's `BoundWitness` references them by hash, and the datalake stores the actual payload data.
+
+When querying transactions later, the gateway's `ViewerWithDataLake` transparently resolves off-chain payloads from the datalake — so the application gets complete hydrated transactions without needing to query the datalake separately.
+
 ---
 
 ## DataLake Viewer

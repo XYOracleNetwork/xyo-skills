@@ -81,6 +81,35 @@ Many XY projects are monorepos using workspaces.
 - pnpm: `pnpm --filter <package> build`
 - Each workspace package should have its own tsconfig, ESLint config, and package.json scripts
 
+## Vite Setup for XYO/XL1 dApps
+
+When building a browser dApp with Vite that uses XYO or XL1 packages, use these two plugins:
+
+```ts
+// vite.config.ts
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+import topLevelAwait from 'vite-plugin-top-level-await'
+import tsconfigPaths from 'vite-tsconfig-paths'
+
+export default defineConfig({
+  plugins: [react(), topLevelAwait(), tsconfigPaths()],
+})
+```
+
+Install them:
+```sh
+pnpm add -D vite-plugin-top-level-await vite-tsconfig-paths
+```
+
+**Why these plugins:**
+- `vite-plugin-top-level-await` — XYO SDK dependencies (e.g., `@bitauth/libauth`) use top-level `await`. This plugin handles it for the dev server without requiring build target changes.
+- `vite-tsconfig-paths` — ensures Vite resolves paths consistently with the TypeScript config, which matters for the SDK's multi-target builds.
+
+**Browser compatibility:** XYO/XL1 SDK packages ship browser-specific builds via the `"browser"` condition in their `package.json` exports field. Vite automatically resolves these, so the consuming app typically does not need Node.js polyfills (`buffer`, `events`, `stream`, etc.). The `@xylabs/*` toolchain packages provide browser-safe alternatives internally (e.g., `@xylabs/buffer`).
+
+If you see errors about missing Node.js built-ins, strongly prefer fixing the root cause (check Vite version, plugin setup, and that the browser export condition is being resolved) before adding polyfill aliases as a last resort.
+
 ## Troubleshooting
 
 ### Build fails with compilation errors
@@ -92,6 +121,13 @@ Many XY projects are monorepos using workspaces.
 - Ensure ESLint config exists (see [eslint.md](eslint.md))
 - Check that source files match the glob patterns in the ESLint config
 - Run `package-lint-verbose` for detailed output
+
+### npm install fails with 404 or 403 for `@xyo-network/*` or `@xylabs/*` packages
+- Some XYO/XY packages require npm authentication to install. If `pnpm install` fails with `ERR_PNPM_FETCH_404` or `ERR_PNPM_FETCH_403` for `@xyo-network/*` or `@xylabs/*` packages, the user likely needs to log in to npm.
+- Ask the user to run `npm login` (or `npm login --scope=@xyo-network` for scoped access).
+- After login, retry `pnpm install`.
+- **Never** commit the resulting `.npmrc` file — it contains auth tokens. Ensure `.npmrc` is in `.gitignore` (see [Development Workflow](../development/workflow.md) credential safety section).
+- If the error persists after login, the package may genuinely not exist or the user may lack access to the organization. Confirm the exact package name and version before escalating.
 
 ### Package manager conflicts
 - If you see dependency resolution errors, make sure you're using the correct package manager for the project

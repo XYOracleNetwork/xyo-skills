@@ -7,6 +7,7 @@
 | sdk-xyo-client-js | `@xyo-network/sdk-js` | XYO protocol (payloads, BW, modules, accounts) |
 | xl1-protocol | `@xyo-network/xl1-sdk` | XL1 protocol (blocks, transactions, viewers, RPC) |
 | xyo-chain | `@xyo-network/chain-sdk` | XL1 runtime (services, drivers, chain operations) |
+| react-chain | `@xyo-network/react-chain-provider` | React dApp integration (gateway, wallet, hooks) |
 
 **Always import from the root barrel.** Tree shaking eliminates unused exports.
 
@@ -19,6 +20,9 @@ import { BlockBoundWitnessZod, SimpleBlockViewer, BlockViewerMoniker } from '@xy
 
 // XL1 chain runtime (services, drivers)
 import { ... } from '@xyo-network/chain-sdk'
+
+// React dApp — gateway provider, wallet connection, and gateway access
+import { GatewayProvider, InPageGatewaysProvider, ConnectAccountsStack, useProvidedGateway } from '@xyo-network/react-chain-provider'
 
 // Avoid — sub-package imports
 import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model'
@@ -46,10 +50,10 @@ export type Foo = z.infer<typeof FooZod>
 // 3. Type guard (returns boolean)
 export const isFoo = zodIsFactory(FooZod)
 
-// 4. Asserting cast (throws on failure)
+// 4. Asserting parse (throws on failure)
 export const asFoo = zodAsFactory(FooZod, 'asFoo')
 
-// 5. Non-validating cast (returns undefined on failure)
+// 5. Safe parse (returns undefined on failure)
 export const toFoo = zodToFactory(FooZod, 'toFoo')
 ```
 

@@ -19,42 +19,56 @@ The XL1 wallet is a Chrome browser extension for interacting with the XYO Layer 
 
 ---
 
-## Transaction Signing Flow
+## Submitting Transactions
 
-When a dApp needs to submit a transaction to the XL1 chain:
+**The gateway is the single point of entry for all chain interactions in application code.** It abstracts transaction construction, wallet signing, and broadcasting into single method calls. Do not use low-level RPC constructs (`TransactionBoundWitness`, `xyoSigner_signTransaction`, `xyoRunner_broadcastTransaction`) directly — those are internal to the gateway implementation. Application code should always go through the gateway's high-level methods.
 
-### 1. Construct the Transaction
-The dApp builds a `TransactionBoundWitness` with the desired payloads (see [Chain](chain.md) for the data model):
+### Adding application data to the chain
 
-```ts
-// Transaction includes: chain, from, nbf, exp, fees, and payloads
-const tx: [TransactionBoundWitness, Payload[]] = [transactionBw, payloads]
-```
-
-### 2. Request Wallet Signature
-The dApp sends a signing request to the wallet via PostMessage RPC:
+For custom application payloads (game results, attestations, etc.), use `addPayloadsToChain` on the gateway from `useProvidedGateway()`:
 
 ```ts
-// The wallet handles xyoSigner_signTransaction
-const signedTx = await provider.signTransaction(tx)
+const { defaultGateway } = useProvidedGateway()
+
+// Application payloads go in offChain — onChain is for AllowedBlockPayload system types
+const [txHash, signedTx] = await defaultGateway.addPayloadsToChain([], payloads)
 ```
 
-### 3. Wallet Signs
-The wallet extension:
-- Displays the transaction details to the user for approval
-- Signs with the user's account key
-- Returns a `SignedHydratedTransactionWithHashMeta`
+This single call:
+1. Builds a `TransactionBoundWitness` with fees, block range, and chain ID
+2. Triggers the wallet extension popup for user approval
+3. Signs with the user's account key
+4. Broadcasts to the XL1 network
+5. Returns `[Hash, SignedHydratedTransactionWithHashMeta]`
 
-### 4. Broadcast
-The signed transaction is broadcast to the network:
+**On-chain vs off-chain payloads:**
+- `onChain: AllowedBlockPayload[]` — predefined XL1 system payload types only (e.g., `StepComplete`). Custom application payloads will not typecheck here.
+- `offChain: Payload[]` — application data of any schema. These are attached to the transaction and recorded on chain, but are not system-level block payloads.
+
+### Token transfers
+
+For sending XL1 tokens:
 
 ```ts
-// Via xyoRunner_broadcastTransaction
-const txHash = await provider.broadcastTransaction(signedTx)
+const txHash = await gateway.send(toAddress, amount)
+const txHash = await gateway.sendMany({ [addr1]: amount1, [addr2]: amount2 })
 ```
 
-### 5. Inclusion
-The transaction enters the mempool and is included in the next block by a block producer.
+### Pre-built transactions
+
+For full control over transaction construction, build the transaction first and then submit:
+
+```ts
+const [txHash, signedTx] = await gateway.addTransactionToChain(unsignedTx, offChainPayloads)
+```
+
+### Transaction confirmation
+
+After submission, confirm inclusion in a block:
+
+```ts
+const confirmedTx = await gateway.confirmSubmittedTransaction(txHash)
+```
 
 ---
 
@@ -62,32 +76,79 @@ The transaction enters the mempool and is included in the next block by a block 
 
 The React SDK provides a component library for building XL1 dApp UIs.
 
+### When to use the browser wallet
+
+Any React dApp that records data on XL1 **must** use `GatewayProvider` for chain interactions. Do not construct transactions manually or call RPC methods directly.
+
+Do not use `Account.random()` for user-facing wallet connections — that is for tests and non-interactive scripts only. If the wallet extension is not installed, show a prompt directing the user to install it from the Chrome Web Store. Do not silently fall back to a random account.
+
+### Singleton Architecture
+
+From the dApp's perspective, the **gateway**, **wallet**, and **connected account** are all singletons:
+
+- **Gateway** — `GatewayProvider` merges the wallet gateway and in-page gateway into a single `defaultGateway`. All components read it from context via `useProvidedGateway()`.
+- **Account** — The connected wallet address is a single value. Lift it into app-level state via `ConnectAccountsStack`'s `onAccountConnected` callback and pass it down as props.
+
+**Do not call `useConnectAccount()` in multiple components.** Each call creates its own isolated local state — calling `connectSigner()` in one instance does not update the address in other instances. This is the most common source of "connected but not working" bugs.
+
 ### Gateway Provider
 
-The `GatewayProvider` establishes the connection between your React app and the XL1 chain:
+The `GatewayProvider` establishes the connection between your React app and the XL1 chain. Two requirements:
+
+1. **`InPageGatewaysProvider` must be an ancestor** — without it the app will silently crash to a blank page.
+2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Internally, `GatewayProvider` uses this name to look up both the wallet gateway (via `useGatewayFromWallet(gatewayName)`) and the in-page fallback gateway (via `allGateways[gatewayName]`). When `gatewayName` is omitted, both lookups return `undefined`.
 
 ```tsx
-import { GatewayProvider } from '@xyo-network/react-chain-provider'
+import { GatewayProvider, InPageGatewaysProvider } from '@xyo-network/react-chain-provider'
+import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   return (
-    <GatewayProvider>
-      <YourDApp />
-    </GatewayProvider>
+    <InPageGatewaysProvider>
+      <GatewayProvider gatewayName={MainNetwork.id}>
+        <YourDApp />
+      </GatewayProvider>
+    </InPageGatewaysProvider>
   )
 }
 ```
 
-### Connecting to the Wallet
+### Wallet Connection
 
-Use `useGatewayFromWallet()` to connect your dApp to the user's browser wallet:
+Use `ConnectAccountsStack` for wallet connection UI. It handles wallet detection, timeout, error display, and the "install wallet" prompt automatically:
 
 ```tsx
-import { useGatewayFromWallet } from '@xyo-network/react-chain-provider'
+import { ConnectAccountsStack } from '@xyo-network/react-chain-provider'
 
-function ConnectWallet() {
-  const { gateway, connect } = useGatewayFromWallet()
-  // gateway provides access to all viewer/runner methods
+<ConnectAccountsStack
+  timeout={5000}
+  onAccountConnected={(address) => setAddress(address)}
+/>
+```
+
+Lift the connected address into app-level state and pass it to child components as a prop — do not re-derive it from `useConnectAccount()` elsewhere.
+
+### Accessing the Gateway
+
+Use `useProvidedGateway()` to read the singleton gateway from `GatewayProvider` context. This reflects the wallet gateway once connected, falling back to the in-page gateway:
+
+```tsx
+import { useProvidedGateway } from '@xyo-network/react-chain-provider'
+
+function MyComponent() {
+  const { defaultGateway } = useProvidedGateway()
+  // defaultGateway: XyoGateway | XyoGatewayRunner | undefined | null
+  // - XyoGatewayRunner (has addPayloadsToChain, send, etc.) when wallet is connected
+  // - XyoGateway (read-only) when only in-page gateway is available
+  // - undefined/null while loading or if no gateway is available
+}
+```
+
+Check for write capability before submitting transactions:
+
+```ts
+if (defaultGateway && 'addPayloadsToChain' in defaultGateway) {
+  const [txHash] = await defaultGateway.addPayloadsToChain([], payloads)
 }
 ```
 
@@ -106,20 +167,26 @@ function ConnectWallet() {
 
 ### Building a dApp UI
 
-A typical XL1 dApp structure with React:
+A typical XL1 dApp structure:
 
 ```tsx
-import { GatewayProvider } from '@xyo-network/react-chain-provider'
+import { GatewayProvider, InPageGatewaysProvider, ConnectAccountsStack } from '@xyo-network/react-chain-provider'
+import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { useState } from 'react'
 
 function App() {
+  const [address, setAddress] = useState<string>()
+
   return (
-    <GatewayProvider>
-      <GameBoard />      {/* Your game UI */}
-      <WalletConnect />  {/* Wallet connection */}
-      <GameHistory />    {/* Query past games from chain */}
-    </GatewayProvider>
+    <InPageGatewaysProvider>
+      <GatewayProvider gatewayName={MainNetwork.id}>
+        <ConnectAccountsStack onAccountConnected={setAddress} />
+        <GameBoard address={address} />
+        <GameHistory address={address} />
+      </GatewayProvider>
+    </InPageGatewaysProvider>
   )
 }
 ```
 
-The gateway provider gives all child components access to the chain via React context. Components can query blocks, submit transactions, and react to chain events through the provider's viewer/runner methods.
+Child components use `useProvidedGateway()` for chain operations and receive the connected address as a prop. The gateway provider gives all children access to the chain via React context.
