@@ -320,7 +320,7 @@ function buildMarketState(
 
 ## React Integration
 
-Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets without connecting a wallet. Gate commit/reveal actions behind wallet connection:
+Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets without connecting a wallet. Gate commit/reveal actions behind wallet connection. The parent app must use `GatewayProvider` (with `InPageGatewaysProvider` ancestor) — not `WalletGatewayProvider` — for read-only browsing to work without a wallet:
 
 ```tsx
 import { useProvidedGateway } from '@xyo-network/react-chain-client'

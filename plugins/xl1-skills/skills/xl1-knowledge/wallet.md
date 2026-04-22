@@ -1,7 +1,7 @@
 # Browser Wallet
 
 **Key npm packages:**
-- `@xyo-network/react-chain-client` — Client hooks and utilities and WalletWalletGatewayProvider context for React dApps
+- `@xyo-network/react-chain-client` — Gateway providers, wallet connection, and client hooks for React dApps
 - `@xyo-network/react-chain-transaction` — Transaction-specific components
 - `@xyo-network/react-chain-stake` — Staking components
 - `@xyo-network/react-chain-boundwitness` — BoundWitness components
@@ -77,7 +77,7 @@ The React SDK provides a component library for building XL1 dApp UIs.
 
 ### When to use the browser wallet
 
-Any React dApp that records data on XL1 **must** use `WalletGatewayProvider` for chain interactions. Do not construct transactions manually or call RPC methods directly.
+Any React dApp that records data on XL1 **must** use a gateway provider (`WalletGatewayProvider` or `GatewayProvider`) for chain interactions. Do not construct transactions manually or call RPC methods directly.
 
 Do not use `Account.random()` for user-facing wallet connections — that is for tests and non-interactive scripts only. If the wallet extension is not installed, show a prompt directing the user to install it from the Chrome Web Store. Do not silently fall back to a random account.
 
@@ -85,9 +85,9 @@ Do not use `Account.random()` for user-facing wallet connections — that is for
 
 From the dApp's perspective, the **gateway**, **wallet**, and **connected account** are all singletons:
 
-- **Gateway** — Exposed via GatewayContext - All components read it from context via `useProvidedGateway()`.
-  1. `InPageGatewayProvider` which merges the wallet gateway and in-page gateway into a single `defaultGateway`. 
-  1. `WalletGatewayProvider` which only exposes the gateway from the wallet.
+- **Gateway** — Exposed via `GatewayContext`. All components read it from context via `useProvidedGateway()`. Two providers publish to this context (both from `@xyo-network/react-chain-client`):
+  1. `GatewayProvider` — **hybrid**: merges wallet gateway + in-page gateway into a single `defaultGateway`. Wallet wins when present; in-page is fallback. Requires `InPageGatewaysProvider` ancestor. Use this when your app should work read-only without a wallet.
+  2. `WalletGatewayProvider` — **wallet-only**: exposes only the wallet gateway. No in-page fallback (`inPageGateway` is always `null`). Use this for apps that strictly require a wallet.
 - **Account** — The connected wallet address is a single value. Lift it into app-level state via `ConnectAccountsStack`'s `onAccountConnected` callback and pass it down as props.
 
 **Do not call `useConnectAccount()` in multiple components.** Each call creates its own isolated local state — calling `connectSigner()` in one instance does not update the address in other instances. This is the most common source of "connected but not working" bugs.
@@ -96,8 +96,8 @@ From the dApp's perspective, the **gateway**, **wallet**, and **connected accoun
 
 A `GatewayContext` establishes the connection between your React app and the XL1 chain. Two requirements:
 
-1. **`WalletGatewaysProvider` or `InPageGatewayProvider` must be an ancestor** — without it the app will silently crash to a blank page because no gateway is exposed to the app.
-2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Internally, `WalletGatewayProvider` and `GatewayProvider` uses this name to look up both the wallet gateway (via `useGatewayFromWallet(gatewayName)`).  `InPageGatewayProvider` provides fallback gateway (via `allGateways[gatewayName]`). When `gatewayName` is omitted, both lookups return `undefined`.
+1. **A gateway provider must be an ancestor** — either `WalletGatewayProvider` (wallet-only) or `GatewayProvider` (hybrid, requires `InPageGatewaysProvider` ancestor). Without one, the app has no gateway and `useProvidedGateway()` will throw.
+2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Both providers use this name to look up the wallet gateway via `useGatewayFromWallet(gatewayName)`. `GatewayProvider` additionally resolves the in-page fallback gateway from `InPageGatewaysProvider`. When `gatewayName` is omitted, lookups return `undefined`.
 
 ```tsx
 import { WalletGatewayProvider } from '@xyo-network/react-chain-client'
@@ -129,7 +129,7 @@ Lift the connected address into app-level state and pass it to child components 
 
 ### Accessing the Gateway
 
-Use `useProvidedGateway()` to read the singleton gateway from `WalletGatewayProvider` context. This reflects the wallet gateway once connected, falling back to the in-page gateway:
+Use `useProvidedGateway()` to read the singleton gateway from context. It works with both `WalletGatewayProvider` and `GatewayProvider`. When using `GatewayProvider`, the in-page gateway is the fallback when the wallet is not connected:
 
 ```tsx
 import { useProvidedGateway } from '@xyo-network/react-chain-client'
@@ -155,7 +155,7 @@ if (defaultGateway && 'addPayloadsToChain' in defaultGateway) {
 
 | Package | Purpose |
 |---------|---------|
-| `@xyo-network/react-chain-client` | WalletGateway provider context, Wallet connection, Core client hooks and utilities |
+| `@xyo-network/react-chain-client` | Gateway providers (`WalletGatewayProvider`, `GatewayProvider`), wallet connection (`ConnectAccountsStack`), core client hooks (`useProvidedGateway`, etc.) |
 | `@xyo-network/react-chain-blockchain` | Chain state context |
 | `@xyo-network/react-chain-network` | Network context |
 | `@xyo-network/react-chain-transaction` | Transaction components and hooks |
