@@ -73,7 +73,7 @@ export const toMovePayload = zodToFactory(MovePayloadZod, 'toMovePayload')
 
 ## Step 2: Submit Application Data
 
-Application data goes in the `offChain` parameter of `addPayloadsToChain`. The gateway persists it to the datalake automatically:
+Application data goes in the `offChain` parameter of `addPayloadsToChain`, but **the wallet does not persist off-chain payloads to the datalake automatically**. The dApp must insert payloads into the datalake before submitting the transaction:
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
@@ -82,13 +82,18 @@ const movePayload = new PayloadBuilder({ schema: MoveSchema })
   .fields({ gameId: 'abc123', move: 'rock' })
   .build()
 
-// offChain payloads are persisted to the datalake and referenced by hash in the transaction
+// 1. Insert into the datalake first — this makes the payload queryable
+await datalake.insert([movePayload])
+
+// 2. Then submit the transaction — the BoundWitness references the payload by hash
 const [txHash, signedTx] = await gateway.addPayloadsToChain([], [movePayload])
 ```
 
-After this call, the payload is:
+After both steps, the payload is:
 - **Referenced by hash** in the on-chain transaction's BoundWitness
 - **Stored in the datalake** and queryable by schema or hash
+
+If you skip the datalake insert, the transaction still records on-chain but the payload data is lost — only the hash remains.
 
 ---
 

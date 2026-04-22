@@ -144,6 +144,9 @@ async function createMarket(
     })
     .build()
 
+  // Insert into datalake first — the wallet does not do this automatically
+  await datalake.insert([marketPayload])
+
   const [txHash] = await gateway.addPayloadsToChain([], [marketPayload])
   return { marketId, txHash }
 }
@@ -173,6 +176,7 @@ async function commitPrediction(
     })
     .build()
 
+  await datalake.insert([commitPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
 
   // Store salt locally — needed for reveal phase
@@ -202,6 +206,7 @@ async function revealPrediction(
     .fields({ marketId, prediction, salt })
     .build()
 
+  await datalake.insert([revealPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [revealPayload])
   return txHash
 }
@@ -257,6 +262,7 @@ async function settleMarket(
     .fields({ marketId, outcome, winners, losers })
     .build()
 
+  await datalake.insert([settlementPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [settlementPayload])
   return txHash
 }

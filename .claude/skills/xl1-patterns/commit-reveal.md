@@ -127,6 +127,9 @@ async function submitCommit(
     })
     .build()
 
+  // Insert into datalake first — the wallet does not do this automatically
+  await datalake.insert([commitPayload])
+
   const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
 
   // CRITICAL: The salt must be stored locally and kept secret until reveal.
@@ -136,6 +139,8 @@ async function submitCommit(
 ```
 
 **Security invariant:** The `salt` and `choice` must never be submitted on-chain during the commit phase. Store them locally (e.g., `localStorage`, React state, or in-memory). If the user closes the browser, they lose the ability to reveal — this is an acceptable trade-off for trustlessness. Applications that need durability should persist the salt to encrypted local storage.
+
+**Datalake note:** The browser wallet does not persist off-chain payloads to the datalake. The dApp must insert the commit payload into the datalake before submitting the transaction — otherwise the commit data is lost and only the hash reference remains on-chain. See [In-Page Data Lakes](in-page-datalakes.md) for the full pattern.
 
 ---
 
@@ -156,6 +161,7 @@ async function submitReveal(
     .fields({ topic, choice, salt })
     .build()
 
+  await datalake.insert([revealPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [revealPayload])
   return txHash
 }

@@ -221,6 +221,28 @@ This gives visitors immediate value (browsing data) while requiring authenticati
 
 ---
 
+## Writing Payloads: Datalake First, Then Transaction
+
+The browser wallet's `addPayloadsToChain` does **not** persist off-chain payloads to the datalake. If the dApp only submits the transaction, the payload data is lost — only the hash reference remains on-chain. The dApp must insert payloads into the datalake before submitting the transaction:
+
+```tsx
+async function submitWithDatalake(
+  gateway: XyoGatewayRunner,
+  payloads: Payload[],
+) {
+  // 1. Insert payloads into the datalake — makes them queryable immediately
+  await datalake.insert(payloads)
+
+  // 2. Submit the transaction — BoundWitness references payloads by hash
+  const [txHash] = await gateway.addPayloadsToChain([], payloads)
+  return txHash
+}
+```
+
+This ensures read-only components (powered by the in-page gateway) can find the payloads via schema-filtered datalake queries. Without the datalake insert, the game history, leaderboards, and other read views would be empty.
+
+---
+
 ## Displaying Hashes and Addresses
 
 Hashes (64 chars) and addresses (40 chars) are too long to display in full in most UI contexts. **Always** follow these two rules:
