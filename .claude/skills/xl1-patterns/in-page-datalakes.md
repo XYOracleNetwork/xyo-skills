@@ -3,7 +3,7 @@
 Read this pattern when your React dApp needs read-only access to chain data without requiring the user to connect their wallet first. This is the foundation for building explorer views, leaderboards, game history, and any UI that displays chain data to unauthenticated visitors.
 
 **Builds on:**
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `GatewayProvider`, `useProvidedGateway()`
+- [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — RPC methods, networks, transports
 - [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling patterns
@@ -58,15 +58,14 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 The provider hierarchy is the same as any XL1 dApp — `InPageGatewaysProvider` is already required by `GatewayProvider`. The in-page gateway works without any additional configuration:
 
 ```tsx
-import { GatewayProvider, InPageGatewaysProvider, ConnectAccountsStack } from '@xyo-network/react-chain-provider'
+import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <WalletGatewayProvider gatewayName={MainNetwork.id}>
         {/* These components can read chain data immediately */}
         <GameHistory />
         <Leaderboard />
@@ -74,8 +73,7 @@ function App() {
         {/* Wallet connection only needed for writes */}
         <ConnectAccountsStack onAccountConnected={setAddress} />
         {address && <GameBoard address={address} />}
-      </GatewayProvider>
-    </InPageGatewaysProvider>
+      </WalletGatewayProvider>
   )
 }
 ```
@@ -87,7 +85,7 @@ function App() {
 Components that only read chain data work immediately — no wallet prompt:
 
 ```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-provider'
+import { useProvidedGateway } from '@xyo-network/react-chain-client'
 
 function GameHistory() {
   const { defaultGateway } = useProvidedGateway()
@@ -200,24 +198,23 @@ function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
-        {/* Always visible — read-only, powered by in-page gateway */}
-        <Header />
-        <GameHistory />
-        <Leaderboard />
+    <WalletGatewayProvider gatewayName={MainNetwork.id}>
+      {/* Always visible — read-only, powered by in-page gateway */}
+      <Header />
+      <GameHistory />
+      <Leaderboard />
 
-        {/* Write-gated — only rendered after wallet connection */}
-        {address
-          ? <ActiveGame address={address} />
-          : <ConnectAccountsStack onAccountConnected={setAddress} />}
-      </GatewayProvider>
-    </InPageGatewaysProvider>
+      {/* Always render — handles both unconnected and connected states */}
+      <ConnectAccountsStack onAccountConnected={setAddress} />
+
+      {/* Write-gated — only rendered after wallet connection */}
+      {address && <ActiveGame address={address} />}
+    </WalletGatewayProvider>
   )
 }
 ```
 
-This gives visitors immediate value (browsing data) while requiring authentication only for state-changing actions.
+This gives visitors immediate value (browsing data) while requiring authentication only for state-changing actions. Note that `ConnectAccountsStack` is always rendered — it manages its own display for both the connection prompt and the post-connection state, so do not conditionally swap it for a custom connected UI.
 
 ---
 

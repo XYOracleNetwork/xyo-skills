@@ -26,7 +26,7 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 ## Networks
 
-XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is what you pass to `useConnectAccount(gatewayName)` and `GatewayProvider`. The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
+XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is what you pass to `useConnectAccount(gatewayName)` and `WalletGatewayProvider` if the XL1 wallet is required or `InPageGatewayProvider` for sites that don't require the XL1 wallet but might have an improved experience if it is present. The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
 
 | Network | Gateway Name | Gateway RPC | Datalake | Explorer |
 |---------|-------------|-------------|----------|----------|
