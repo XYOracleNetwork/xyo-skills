@@ -1,8 +1,7 @@
 # Browser Wallet
 
 **Key npm packages:**
-- `@xyo-network/react-chain-provider` — GatewayProvider context for React dApps
-- `@xyo-network/react-chain-client` — Client hooks and utilities
+- `@xyo-network/react-chain-client` — Client hooks and utilities and WalletWalletGatewayProvider context for React dApps
 - `@xyo-network/react-chain-transaction` — Transaction-specific components
 - `@xyo-network/react-chain-stake` — Staking components
 - `@xyo-network/react-chain-boundwitness` — BoundWitness components
@@ -78,7 +77,7 @@ The React SDK provides a component library for building XL1 dApp UIs.
 
 ### When to use the browser wallet
 
-Any React dApp that records data on XL1 **must** use `GatewayProvider` for chain interactions. Do not construct transactions manually or call RPC methods directly.
+Any React dApp that records data on XL1 **must** use `WalletGatewayProvider` for chain interactions. Do not construct transactions manually or call RPC methods directly.
 
 Do not use `Account.random()` for user-facing wallet connections — that is for tests and non-interactive scripts only. If the wallet extension is not installed, show a prompt directing the user to install it from the Chrome Web Store. Do not silently fall back to a random account.
 
@@ -86,29 +85,27 @@ Do not use `Account.random()` for user-facing wallet connections — that is for
 
 From the dApp's perspective, the **gateway**, **wallet**, and **connected account** are all singletons:
 
-- **Gateway** — `GatewayProvider` merges the wallet gateway and in-page gateway into a single `defaultGateway`. All components read it from context via `useProvidedGateway()`.
+- **Gateway** — `WalletGatewayProvider` merges the wallet gateway and in-page gateway into a single `defaultGateway`. All components read it from context via `useProvidedGateway()`.
 - **Account** — The connected wallet address is a single value. Lift it into app-level state via `ConnectAccountsStack`'s `onAccountConnected` callback and pass it down as props.
 
 **Do not call `useConnectAccount()` in multiple components.** Each call creates its own isolated local state — calling `connectSigner()` in one instance does not update the address in other instances. This is the most common source of "connected but not working" bugs.
 
 ### Gateway Provider
 
-The `GatewayProvider` establishes the connection between your React app and the XL1 chain. Two requirements:
+The `WalletGatewayProvider` establishes the connection between your React app and the XL1 chain. Two requirements:
 
 1. **`InPageGatewaysProvider` must be an ancestor** — without it the app will silently crash to a blank page.
-2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Internally, `GatewayProvider` uses this name to look up both the wallet gateway (via `useGatewayFromWallet(gatewayName)`) and the in-page fallback gateway (via `allGateways[gatewayName]`). When `gatewayName` is omitted, both lookups return `undefined`.
+2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Internally, `WalletGatewayProvider` uses this name to look up both the wallet gateway (via `useGatewayFromWallet(gatewayName)`) and the in-page fallback gateway (via `allGateways[gatewayName]`). When `gatewayName` is omitted, both lookups return `undefined`.
 
 ```tsx
-import { GatewayProvider, InPageGatewaysProvider } from '@xyo-network/react-chain-provider'
+import { WalletGatewayProvider } from '@xyo-network/react-chain-client'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <WalletGatewayProvider gatewayName={MainNetwork.id}>
         <YourDApp />
-      </GatewayProvider>
-    </InPageGatewaysProvider>
+      </WalletGatewayProvider>
   )
 }
 ```
@@ -118,7 +115,7 @@ function App() {
 Use `ConnectAccountsStack` for wallet connection UI. It handles wallet detection, timeout, error display, and the "install wallet" prompt automatically:
 
 ```tsx
-import { ConnectAccountsStack } from '@xyo-network/react-chain-provider'
+import { ConnectAccountsStack } from '@xyo-network/react-chain-client'
 
 <ConnectAccountsStack
   timeout={5000}
@@ -130,10 +127,10 @@ Lift the connected address into app-level state and pass it to child components 
 
 ### Accessing the Gateway
 
-Use `useProvidedGateway()` to read the singleton gateway from `GatewayProvider` context. This reflects the wallet gateway once connected, falling back to the in-page gateway:
+Use `useProvidedGateway()` to read the singleton gateway from `WalletGatewayProvider` context. This reflects the wallet gateway once connected, falling back to the in-page gateway:
 
 ```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-provider'
+import { useProvidedGateway } from '@xyo-network/react-chain-client'
 
 function MyComponent() {
   const { defaultGateway } = useProvidedGateway()
@@ -156,8 +153,7 @@ if (defaultGateway && 'addPayloadsToChain' in defaultGateway) {
 
 | Package | Purpose |
 |---------|---------|
-| `@xyo-network/react-chain-client` | Core client hooks and utilities |
-| `@xyo-network/react-chain-provider` | Gateway provider context, wallet connection |
+| `@xyo-network/react-chain-client` | WalletGateway provider context, Wallet connection, Core client hooks and utilities |
 | `@xyo-network/react-chain-blockchain` | Chain state context |
 | `@xyo-network/react-chain-network` | Network context |
 | `@xyo-network/react-chain-transaction` | Transaction components and hooks |
@@ -170,7 +166,7 @@ if (defaultGateway && 'addPayloadsToChain' in defaultGateway) {
 A typical XL1 dApp structure:
 
 ```tsx
-import { GatewayProvider, InPageGatewaysProvider, ConnectAccountsStack } from '@xyo-network/react-chain-provider'
+import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 import { useState } from 'react'
 
@@ -178,13 +174,11 @@ function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <WalletGatewayProvider gatewayName={MainNetwork.id}>
         <ConnectAccountsStack onAccountConnected={setAddress} />
         <GameBoard address={address} />
         <GameHistory address={address} />
-      </GatewayProvider>
-    </InPageGatewaysProvider>
+      </WalletGatewayProvider>
   )
 }
 ```

@@ -321,7 +321,7 @@ function buildMarketState(
 Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets without connecting a wallet. Gate commit/reveal actions behind wallet connection:
 
 ```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-provider'
+import { useProvidedGateway } from '@xyo-network/react-chain-client'
 
 function MarketPage({ marketId }: { marketId: string }) {
   const { defaultGateway } = useProvidedGateway()

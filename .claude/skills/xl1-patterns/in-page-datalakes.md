@@ -58,15 +58,14 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 The provider hierarchy is the same as any XL1 dApp — `InPageGatewaysProvider` is already required by `GatewayProvider`. The in-page gateway works without any additional configuration:
 
 ```tsx
-import { GatewayProvider, InPageGatewaysProvider, ConnectAccountsStack } from '@xyo-network/react-chain-provider'
+import { GatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <WalletGatewayProvider gatewayName={MainNetwork.id}>
         {/* These components can read chain data immediately */}
         <GameHistory />
         <Leaderboard />
@@ -74,8 +73,7 @@ function App() {
         {/* Wallet connection only needed for writes */}
         <ConnectAccountsStack onAccountConnected={setAddress} />
         {address && <GameBoard address={address} />}
-      </GatewayProvider>
-    </InPageGatewaysProvider>
+      </WalletGatewayProvider>
   )
 }
 ```
@@ -87,7 +85,7 @@ function App() {
 Components that only read chain data work immediately — no wallet prompt:
 
 ```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-provider'
+import { useProvidedGateway } from '@xyo-network/react-chain-client'
 
 function GameHistory() {
   const { defaultGateway } = useProvidedGateway()
