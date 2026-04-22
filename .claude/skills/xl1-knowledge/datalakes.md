@@ -13,13 +13,43 @@ Datalakes are the structured data storage layer for the XL1 chain. They provide 
 
 Datalakes build on XYO's **Archivist** module abstraction (see [XYO Knowledge — Modules](../xyo-knowledge/modules.md)). The chain's finalized data is served through a module identified as `Chain:Finalized`, accessible via the gateway's `/chain` endpoint.
 
+### Datalake HTTP Endpoints
+
+Each network exposes its datalake as a standalone HTTP archivist endpoint, separate from the gateway RPC:
+
+| Network | Datalake URL |
+|---------|-------------|
+| **Mainnet** | `https://api.archivist.xyo.network/dataLake` |
+| **Sequence** (beta) | `https://beta.api.archivist.xyo.network/dataLake` |
+| **Local** | `http://localhost:8080/dataLake` |
+
+**The datalake is not a property on the gateway JS object.** Use `RestDataLakeRunner` (writes) and `RestDataLakeViewer` (reads) from `@xyo-network/xl1-sdk` — not `defaultGateway.datalake` (which does not exist). The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services.
+
+```ts
+import { RestDataLakeRunner, RestDataLakeViewer } from '@xyo-network/xl1-sdk'
+
+// Write: insert payloads into the datalake
+const runner = new RestDataLakeRunner({ endpoint: 'https://api.archivist.xyo.network/dataLake' })
+await runner.insert(payloads)
+
+// Read: query payloads by schema
+const viewer = new RestDataLakeViewer({ endpoint: 'https://api.archivist.xyo.network/dataLake', allowedSchemas })
+const results = await viewer.next()
+```
+
 ### Off-chain payload storage
 
-When a dApp submits a transaction via `gateway.addPayloadsToChain(onChain, offChain)`, the gateway automatically persists the off-chain payloads to the datalake. There is no separate submission step — off-chain payloads are immediately queryable from the datalake after the transaction is broadcast.
+The **dApp is responsible for persisting off-chain payloads to the datalake.** The browser wallet's `addPayloadsToChain(onChain, offChain)` submits a transaction whose BoundWitness references off-chain payloads by hash, but does **not** automatically store those payloads in a datalake. If the dApp doesn't persist them separately, the payload data is lost — only the hashes remain on-chain.
 
-This is the primary mechanism for storing application data on XL1. Custom payloads (game results, attestations, etc.) go in the `offChain` parameter because they are not `AllowedBlockPayload` system types. The transaction's `BoundWitness` references them by hash, and the datalake stores the actual payload data.
+The correct flow for application data:
 
-When querying transactions later, the gateway's `ViewerWithDataLake` transparently resolves off-chain payloads from the datalake — so the application gets complete hydrated transactions without needing to query the datalake separately.
+1. **Build** the application payloads (game state, attestations, etc.)
+2. **Insert** them into the datalake via its archivist `insert` interface
+3. **Submit** the transaction via `addPayloadsToChain` — the transaction's BoundWitness references the payloads by hash, linking on-chain proof to off-chain data
+
+Custom payloads go in the `offChain` parameter because they are not `AllowedBlockPayload` system types. The datalake stores the actual payload data, and the chain stores the cryptographic reference.
+
+When querying transactions later, the gateway's `ViewerWithDataLake` can transparently resolve off-chain payloads from the datalake — but only if the dApp stored them there in the first place.
 
 ---
 

@@ -11,13 +11,14 @@ This repo is a test bed for a 4-tier Claude Code skill stack targeting XL1 block
 Skills live in `.claude/skills/` and use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
 ```
+Layer 5: xl1-patterns/     — Prescriptive design patterns (commit-reveal, indexing, prediction markets)
 Layer 4: xl1-knowledge/    — XL1 chain, datalakes, gateway, wallet, dev patterns
 Layer 3: xyo-knowledge/    — XYO payloads, bound witnesses, modules, identity
 Layer 2: xy-toolchain/     — @xylabs/toolchain, ESLint, TypeScript config, Vitest
 Layer 1: development/      — TypeScript, Git, testing, workflow conventions
 ```
 
-When working on XL1 blockchain features, start with Layer 4's SKILL.md — it will point you to the right sub-files and reference lower layers as needed.
+When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers. When working on XL1 infrastructure or need reference docs, start with Layer 4.
 
 ## Key Conventions (from the skills)
 
@@ -31,4 +32,4 @@ When working on XL1 blockchain features, start with Layer 4's SKILL.md — it wi
 
 The prompt used to test these skills (from README):
 
-> Build me a rock paper scissors game where I can compete against other players. Each game's moves and outcomes should be recorded on the XL1 Blockchain. Include a UI for playing games and viewing past results.
+> Build me a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.

@@ -43,7 +43,7 @@ This single call:
 
 **On-chain vs off-chain payloads:**
 - `onChain: AllowedBlockPayload[]` — predefined XL1 system payload types only (e.g., `StepComplete`). Custom application payloads will not typecheck here.
-- `offChain: Payload[]` — application data of any schema. These are attached to the transaction and recorded on chain, but are not system-level block payloads.
+- `offChain: Payload[]` — application data of any schema. The transaction's BoundWitness references these payloads by hash, but **the wallet does not persist them to a datalake**. The dApp must store off-chain payloads in the datalake separately — see [Datalakes](datalakes.md) for the correct insert-then-submit flow.
 
 ### Token transfers
 
