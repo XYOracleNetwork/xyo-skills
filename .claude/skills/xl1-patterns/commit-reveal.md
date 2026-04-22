@@ -98,6 +98,8 @@ async function createCommitment(choice: string, salt: string): Promise<string> {
 
 /**
  * Generate a cryptographically random salt.
+ * Note: crypto.getRandomValues is the correct native API here —
+ * the SDK does not wrap generic random value generation.
  */
 function generateSalt(): string {
   const bytes = new Uint8Array(32)
@@ -117,7 +119,7 @@ async function submitCommit(
   const salt = generateSalt()
   const commitment = await createCommitment(choice, salt)
 
-  const currentBlock = await rpc.call('blockViewer_currentBlockNumber', [])
+  const currentBlock = await gateway.call('blockViewer_currentBlockNumber', [])
 
   const commitPayload = new PayloadBuilder({ schema: CommitSchema })
     .fields({
@@ -127,8 +129,9 @@ async function submitCommit(
     })
     .build()
 
-  // Insert into datalake first — the wallet does not do this automatically
-  await datalake.insert([commitPayload])
+  // Insert into the dApp's datalake first — the wallet does not do this automatically.
+  // Use RestDataLakeRunner from @xyo-network/xl1-sdk (see Datalakes skill).
+  await datalakeRunner.insert([commitPayload])
 
   const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
 
@@ -161,7 +164,7 @@ async function submitReveal(
     .fields({ topic, choice, salt })
     .build()
 
-  await datalake.insert([revealPayload])
+  await datalakeRunner.insert([revealPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [revealPayload])
   return txHash
 }
@@ -227,10 +230,10 @@ interface CommitRevealConfig {
 }
 
 async function checkDeadline(
-  rpc: RpcClient,
+  gateway: ReturnType<typeof useProvidedGateway>['defaultGateway'],
   deadline: number,
 ): Promise<'active' | 'expired'> {
-  const current = await rpc.call('blockViewer_currentBlockNumber', [])
+  const current = await gateway.call('blockViewer_currentBlockNumber', [])
   return current >= deadline ? 'expired' : 'active'
 }
 ```

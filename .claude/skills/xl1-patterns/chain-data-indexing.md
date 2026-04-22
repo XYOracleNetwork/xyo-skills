@@ -73,20 +73,25 @@ export const toMovePayload = zodToFactory(MovePayloadZod, 'toMovePayload')
 
 ## Step 2: Submit Application Data
 
-Application data goes in the `offChain` parameter of `addPayloadsToChain`, but **the wallet does not persist off-chain payloads to the datalake automatically**. The dApp must insert payloads into the datalake before submitting the transaction:
+Application data goes in the `offChain` parameter of `addPayloadsToChain`, but **the wallet does not persist off-chain payloads to the dApp's datalake automatically** (see [Datalakes — Two Independent Datalake Clients](../xl1-knowledge/datalakes.md)). The dApp must insert payloads into its own datalake before submitting the transaction:
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { RestDataLakeRunner } from '@xyo-network/xl1-sdk'
+
+const datalakeRunner = new RestDataLakeRunner({
+  endpoint: 'https://api.archivist.xyo.network/dataLake',
+})
 
 const movePayload = new PayloadBuilder({ schema: MoveSchema })
   .fields({ gameId: 'abc123', move: 'rock' })
   .build()
 
-// 1. Insert into the datalake first — this makes the payload queryable
-await datalake.insert([movePayload])
+// 1. Insert into the dApp's datalake first — this makes the payload queryable
+await datalakeRunner.insert([movePayload])
 
 // 2. Then submit the transaction — the BoundWitness references the payload by hash
-const [txHash, signedTx] = await gateway.addPayloadsToChain([], [movePayload])
+const [txHash, signedTx] = await defaultGateway.addPayloadsToChain([], [movePayload])
 ```
 
 After both steps, the payload is:
@@ -101,11 +106,11 @@ If you skip the datalake insert, the transaction still records on-chain but the 
 
 ### Via RPC Viewer — Transaction-Centric Queries
 
-Use `transactionViewer_*` methods when you need full transaction context (who signed, when, block number):
+Use `transactionViewer_*` methods via `defaultGateway` from `useProvidedGateway()` when you need full transaction context (who signed, when, block number):
 
 ```ts
-// Get a specific transaction by hash
-const tx = await rpc.call('transactionViewer_byHash', [txHash])
+// Get a specific transaction by hash — use defaultGateway, not a bare rpc variable
+const tx = await defaultGateway.call('transactionViewer_byHash', [txHash])
 // tx is SignedHydratedTransactionWithHashMeta | null
 // tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
 ```
@@ -134,7 +139,7 @@ For multi-player dApps, combine this with a local payload store for immediate UI
 When you already have a hash (from a transaction's `payload_hashes`), retrieve the payload directly:
 
 ```ts
-const payloads = await rpc.call('blockViewer_payloadsByHash', [hashes])
+const payloads = await defaultGateway.call('blockViewer_payloadsByHash', [hashes])
 ```
 
 ---
@@ -170,12 +175,14 @@ function buildGameState(payloads: Payload[]): GameState {
 XL1 does not provide push-based subscriptions. Poll for new data by tracking the last-seen block number:
 
 ```ts
+// Use defaultGateway from useProvidedGateway() — not a bare rpc variable.
+// The gateway is the SDK's RPC client with the correct transport and provenance.
 async function pollForNewData(
-  rpc: RpcClient,
+  gateway: ReturnType<typeof useProvidedGateway>['defaultGateway'],
   lastSeenBlock: number,
   schemas: Schema[],
 ): Promise<{ payloads: Payload[]; latestBlock: number }> {
-  const currentBlock = await rpc.call('blockViewer_currentBlockNumber', [])
+  const currentBlock = await gateway.call('blockViewer_currentBlockNumber', [])
 
   if (currentBlock <= lastSeenBlock) {
     return { payloads: [], latestBlock: lastSeenBlock }
@@ -184,7 +191,7 @@ async function pollForNewData(
   // Query blocks from lastSeenBlock+1 to currentBlock
   const newPayloads: Payload[] = []
   for (let block = lastSeenBlock + 1; block <= currentBlock; block++) {
-    const hydrated = await rpc.call('blockViewer_blockByNumber', [block])
+    const hydrated = await gateway.call('blockViewer_blockByNumber', [block])
     if (hydrated) {
       const [, payloads] = hydrated
       const matching = payloads.filter(p => schemas.includes(p.schema as Schema))

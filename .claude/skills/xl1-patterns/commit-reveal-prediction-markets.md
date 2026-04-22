@@ -127,6 +127,7 @@ async function createMarket(
   options: string[],
   currentBlock: number,
 ): Promise<{ marketId: string; txHash: Hash }> {
+  // crypto.randomUUID is the correct native API — the SDK does not wrap UUID generation
   const marketId = crypto.randomUUID()
 
   // Deadlines: commit window of ~100 blocks, reveal window of ~100 blocks after that
@@ -144,8 +145,9 @@ async function createMarket(
     })
     .build()
 
-  // Insert into datalake first — the wallet does not do this automatically
-  await datalake.insert([marketPayload])
+  // Insert into the dApp's datalake first — the wallet does not do this automatically.
+  // datalakeRunner is a RestDataLakeRunner from @xyo-network/xl1-sdk.
+  await datalakeRunner.insert([marketPayload])
 
   const [txHash] = await gateway.addPayloadsToChain([], [marketPayload])
   return { marketId, txHash }
@@ -176,7 +178,7 @@ async function commitPrediction(
     })
     .build()
 
-  await datalake.insert([commitPayload])
+  await datalakeRunner.insert([commitPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
 
   // Store salt locally — needed for reveal phase
@@ -206,7 +208,7 @@ async function revealPrediction(
     .fields({ marketId, prediction, salt })
     .build()
 
-  await datalake.insert([revealPayload])
+  await datalakeRunner.insert([revealPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [revealPayload])
   return txHash
 }
@@ -262,7 +264,7 @@ async function settleMarket(
     .fields({ marketId, outcome, winners, losers })
     .build()
 
-  await datalake.insert([settlementPayload])
+  await datalakeRunner.insert([settlementPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [settlementPayload])
   return txHash
 }
