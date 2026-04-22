@@ -69,7 +69,6 @@ function App() {
         <GameHistory />
         <Leaderboard />
 
-        {/* Wallet connection only needed for chain transactions */}
         <ConnectAccountsStack onAccountConnected={setAddress} />
         {address && <GameBoard address={address} />}
       </WalletGatewayProvider>

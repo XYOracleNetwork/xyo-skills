@@ -119,7 +119,6 @@ Use `ConnectAccountsStack` for wallet connection UI. It handles the **full conne
 ```tsx
 import { ConnectAccountsStack } from '@xyo-network/react-chain-client'
 
-{/* Always render — do NOT conditionally swap this for a custom connected UI */}
 <ConnectAccountsStack
   timeout={5000}
   onAccountConnected={(address) => setAddress(address)}
