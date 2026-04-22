@@ -3,7 +3,7 @@
 Read this pattern when your React dApp needs read-only access to chain data without requiring the user to connect their wallet first. This is the foundation for building explorer views, leaderboards, game history, and any UI that displays chain data to unauthenticated visitors.
 
 **Builds on:**
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `GatewayProvider`, `useProvidedGateway()`
+- [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — RPC methods, networks, transports
 - [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling patterns
@@ -58,7 +58,7 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 The provider hierarchy is the same as any XL1 dApp — `InPageGatewaysProvider` is already required by `GatewayProvider`. The in-page gateway works without any additional configuration:
 
 ```tsx
-import { GatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
+import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
@@ -198,20 +198,18 @@ function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
-        {/* Always visible — read-only, powered by in-page gateway */}
-        <Header />
-        <GameHistory />
-        <Leaderboard />
+    <WalletGatewayProvider gatewayName={MainNetwork.id}>
+      {/* Always visible — read-only, powered by in-page gateway */}
+      <Header />
+      <GameHistory />
+      <Leaderboard />
 
-        {/* Always render — handles both unconnected and connected states */}
-        <ConnectAccountsStack onAccountConnected={setAddress} />
+      {/* Always render — handles both unconnected and connected states */}
+      <ConnectAccountsStack onAccountConnected={setAddress} />
 
-        {/* Write-gated — only rendered after wallet connection */}
-        {address && <ActiveGame address={address} />}
-      </GatewayProvider>
-    </InPageGatewaysProvider>
+      {/* Write-gated — only rendered after wallet connection */}
+      {address && <ActiveGame address={address} />}
+    </WalletGatewayProvider>
   )
 }
 ```

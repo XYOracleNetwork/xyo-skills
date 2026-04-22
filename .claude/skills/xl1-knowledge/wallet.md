@@ -85,17 +85,19 @@ Do not use `Account.random()` for user-facing wallet connections — that is for
 
 From the dApp's perspective, the **gateway**, **wallet**, and **connected account** are all singletons:
 
-- **Gateway** — `WalletGatewayProvider` merges the wallet gateway and in-page gateway into a single `defaultGateway`. All components read it from context via `useProvidedGateway()`.
+- **Gateway** — Exposed via GatewayContext - All components read it from context via `useProvidedGateway()`.
+  1. `InPageGatewayProvider` which merges the wallet gateway and in-page gateway into a single `defaultGateway`. 
+  1. `WalletGatewayProvider` which only exposes the gateway from the wallet.
 - **Account** — The connected wallet address is a single value. Lift it into app-level state via `ConnectAccountsStack`'s `onAccountConnected` callback and pass it down as props.
 
 **Do not call `useConnectAccount()` in multiple components.** Each call creates its own isolated local state — calling `connectSigner()` in one instance does not update the address in other instances. This is the most common source of "connected but not working" bugs.
 
-### Gateway Provider
+### Gateway Context
 
-The `WalletGatewayProvider` establishes the connection between your React app and the XL1 chain. Two requirements:
+A `GatewayContext` establishes the connection between your React app and the XL1 chain. Two requirements:
 
-1. **`InPageGatewaysProvider` must be an ancestor** — without it the app will silently crash to a blank page.
-2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Internally, `WalletGatewayProvider` uses this name to look up both the wallet gateway (via `useGatewayFromWallet(gatewayName)`) and the in-page fallback gateway (via `allGateways[gatewayName]`). When `gatewayName` is omitted, both lookups return `undefined`.
+1. **`WalletGatewaysProvider` or `InPageGatewayProvider` must be an ancestor** — without it the app will silently crash to a blank page because no gateway is exposed to the app.
+2. **`gatewayName` is required** — without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `"mainnet"`). Internally, `WalletGatewayProvider` and `GatewayProvider` uses this name to look up both the wallet gateway (via `useGatewayFromWallet(gatewayName)`).  `InPageGatewayProvider` provides fallback gateway (via `allGateways[gatewayName]`). When `gatewayName` is omitted, both lookups return `undefined`.
 
 ```tsx
 import { WalletGatewayProvider } from '@xyo-network/react-chain-client'
