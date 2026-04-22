@@ -112,11 +112,12 @@ function App() {
 
 ### Wallet Connection
 
-Use `ConnectAccountsStack` for wallet connection UI. It handles wallet detection, timeout, error display, and the "install wallet" prompt automatically:
+Use `ConnectAccountsStack` for wallet connection UI. It handles the **full connection lifecycle** automatically: wallet detection, timeout, error display, the "install wallet" prompt, **and the post-connection state** (displaying the connected account). Do not build a separate "Connected: 0x..." UI — `ConnectAccountsStack` already renders it. Always render `ConnectAccountsStack` unconditionally; it adapts its display based on the current connection state:
 
 ```tsx
 import { ConnectAccountsStack } from '@xyo-network/react-chain-client'
 
+{/* Always render — do NOT conditionally swap this for a custom connected UI */}
 <ConnectAccountsStack
   timeout={5000}
   onAccountConnected={(address) => setAddress(address)}
@@ -183,4 +184,4 @@ function App() {
 }
 ```
 
-Child components use `useProvidedGateway()` for chain operations and receive the connected address as a prop. The gateway provider gives all children access to the chain via React context.
+Note that `ConnectAccountsStack` is rendered unconditionally — it manages its own display for both the unconnected and connected states. Child components use `useProvidedGateway()` for chain operations and receive the connected address as a prop. The gateway provider gives all children access to the chain via React context.

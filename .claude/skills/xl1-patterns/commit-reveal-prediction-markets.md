@@ -348,8 +348,8 @@ function MarketPage({ marketId }: { marketId: string }) {
         <SettlementResults settlement={market.settlement!} />
       )}
 
-      {/* Write-gated */}
-      {!address && <ConnectAccountsStack onAccountConnected={setAddress} />}
+      {/* Always render — handles both unconnected and connected states */}
+      <ConnectAccountsStack onAccountConnected={setAddress} />
 
       {canWrite && address && market.phase === 'commit' && (
         <CommitForm

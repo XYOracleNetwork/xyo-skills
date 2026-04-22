@@ -205,17 +205,18 @@ function App() {
         <GameHistory />
         <Leaderboard />
 
+        {/* Always render — handles both unconnected and connected states */}
+        <ConnectAccountsStack onAccountConnected={setAddress} />
+
         {/* Write-gated — only rendered after wallet connection */}
-        {address
-          ? <ActiveGame address={address} />
-          : <ConnectAccountsStack onAccountConnected={setAddress} />}
+        {address && <ActiveGame address={address} />}
       </GatewayProvider>
     </InPageGatewaysProvider>
   )
 }
 ```
 
-This gives visitors immediate value (browsing data) while requiring authentication only for state-changing actions.
+This gives visitors immediate value (browsing data) while requiring authentication only for state-changing actions. Note that `ConnectAccountsStack` is always rendered — it manages its own display for both the connection prompt and the post-connection state, so do not conditionally swap it for a custom connected UI.
 
 ---
 
