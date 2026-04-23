@@ -112,6 +112,8 @@ export type MarketSettlementPayload = z.infer<typeof MarketSettlementPayloadZod>
 export const isMarketSettlementPayload = zodIsFactory(MarketSettlementPayloadZod)
 ```
 
+> Examples below use `asMarketPayload(... .build(), true)` etc. to narrow `PayloadBuilder.build()`'s result to the specific Zod-inferred type at runtime. See [PayloadBuilder — Narrowing the built payload](../xyo-knowledge/primitives.md#payloadbuilder) for the full rationale.
+
 ---
 
 ## Phase 1: Create Market
@@ -134,16 +136,19 @@ async function createMarket(
   const commitDeadline = currentBlock + 100
   const revealDeadline = commitDeadline + 100
 
-  const marketPayload = new PayloadBuilder({ schema: MarketSchema })
-    .fields({
-      marketId,
-      question,
-      options,
-      commitDeadline,
-      revealDeadline,
-      minParticipants: 2,
-    })
-    .build()
+  const marketPayload: MarketPayload = asMarketPayload(
+    new PayloadBuilder({ schema: MarketSchema })
+      .fields({
+        marketId,
+        question,
+        options,
+        commitDeadline,
+        revealDeadline,
+        minParticipants: 2,
+      })
+      .build(),
+    true,
+  )
 
   // Insert into the dApp's datalake first — the wallet does not do this automatically.
   // datalakeRunner is a RestDataLakeRunner from @xyo-network/xl1-sdk.
@@ -170,13 +175,16 @@ async function commitPrediction(
   const salt = generateSalt()
   const commitment = await createCommitment(prediction, salt)
 
-  const commitPayload = new PayloadBuilder({ schema: MarketCommitSchema })
-    .fields({
-      marketId,
-      commitment,
-      commitBlock: currentBlock,
-    })
-    .build()
+  const commitPayload: MarketCommitPayload = asMarketCommitPayload(
+    new PayloadBuilder({ schema: MarketCommitSchema })
+      .fields({
+        marketId,
+        commitment,
+        commitBlock: currentBlock,
+      })
+      .build(),
+    true,
+  )
 
   await datalakeRunner.insert([commitPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
@@ -204,9 +212,12 @@ async function revealPrediction(
   prediction: string,
   salt: string,
 ): Promise<Hash> {
-  const revealPayload = new PayloadBuilder({ schema: MarketRevealSchema })
-    .fields({ marketId, prediction, salt })
-    .build()
+  const revealPayload: MarketRevealPayload = asMarketRevealPayload(
+    new PayloadBuilder({ schema: MarketRevealSchema })
+      .fields({ marketId, prediction, salt })
+      .build(),
+    true,
+  )
 
   await datalakeRunner.insert([revealPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [revealPayload])
@@ -260,9 +271,12 @@ async function settleMarket(
       .map(([address]) => address),
   ]
 
-  const settlementPayload = new PayloadBuilder({ schema: MarketSettlementSchema })
-    .fields({ marketId, outcome, winners, losers })
-    .build()
+  const settlementPayload: MarketSettlementPayload = asMarketSettlementPayload(
+    new PayloadBuilder({ schema: MarketSettlementSchema })
+      .fields({ marketId, outcome, winners, losers })
+      .build(),
+    true,
+  )
 
   await datalakeRunner.insert([settlementPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [settlementPayload])

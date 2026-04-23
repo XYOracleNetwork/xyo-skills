@@ -73,6 +73,8 @@ export const toRevealPayload = zodToFactory(RevealPayloadZod, 'toRevealPayload')
 
 **Naming note:** These schemas use the generic `network.xyo.commit` / `network.xyo.reveal` namespace. For application-specific commits, use your app's namespace (e.g., `network.xyo.rps.commit`).
 
+> The `asCommitPayload(... .build(), true)` pattern used throughout this file narrows `PayloadBuilder.build()`'s result to the specific Zod-inferred type at runtime. See [PayloadBuilder — Narrowing the built payload](../xyo-knowledge/primitives.md#payloadbuilder) for the full rationale.
+
 ---
 
 ## Phase 1: Commit
@@ -124,13 +126,16 @@ async function submitCommit(
   if (!viewer) throw new Error('Gateway has no viewer attached')
   const currentBlock = Number(await viewer.block.currentBlockNumber())
 
-  const commitPayload = new PayloadBuilder({ schema: CommitSchema })
-    .fields({
-      topic,
-      commitment,
-      commitBlock: currentBlock,
-    })
-    .build()
+  const commitPayload: CommitPayload = asCommitPayload(
+    new PayloadBuilder({ schema: CommitSchema })
+      .fields({
+        topic,
+        commitment,
+        commitBlock: currentBlock,
+      })
+      .build(),
+    true,
+  )
 
   // Insert into the dApp's datalake first — the wallet does not do this automatically.
   // Use RestDataLakeRunner from @xyo-network/xl1-sdk (see Datalakes skill).
@@ -163,9 +168,12 @@ async function submitReveal(
   choice: string,
   salt: string,
 ): Promise<Hash> {
-  const revealPayload = new PayloadBuilder({ schema: RevealSchema })
-    .fields({ topic, choice, salt })
-    .build()
+  const revealPayload: RevealPayload = asRevealPayload(
+    new PayloadBuilder({ schema: RevealSchema })
+      .fields({ topic, choice, salt })
+      .build(),
+    true,
+  )
 
   await datalakeRunner.insert([revealPayload])
   const [txHash] = await gateway.addPayloadsToChain([], [revealPayload])

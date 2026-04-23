@@ -85,9 +85,12 @@ const datalakeRunner = await RestDataLakeRunner.create({
   endpoint: 'https://api.archivist.xyo.network/dataLake',
 } satisfies RestDataLakeRunnerParams)
 
-const movePayload = new PayloadBuilder({ schema: MoveSchema })
-  .fields({ gameId: 'abc123', move: 'rock' })
-  .build()
+const movePayload: MovePayload = asMovePayload(
+  new PayloadBuilder({ schema: MoveSchema })
+    .fields({ gameId: 'abc123', move: 'rock' })
+    .build(),
+  true,
+)
 
 // 1. Insert into the dApp's datalake first — this makes the payload queryable
 await datalakeRunner.insert([movePayload])
