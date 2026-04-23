@@ -84,11 +84,12 @@ A feature is not complete until **all of the following are true**:
 - No phantom dependencies — if your code imports it, it must be in `package.json` (don't rely on transitive installs)
 - Version ranges follow the repo's existing conventions (pinned, caret, tilde)
 - All peer dependency warnings are resolved — install the required peers at the versions the package expects, not just the latest. Note: `pnpm install` suppresses warnings when the lockfile is already up to date. After adding or changing dependencies, run `pnpm install --resolution-only` to force a fresh resolution check that surfaces all peer dependency warnings.
+- **Transitive peer dependencies can cause runtime failures that the compiler and linter miss.** pnpm's strict isolation means peer deps of your dependencies are not automatically available to Vite's bundler. If a dependency uses MUI, emotion, or another framework internally, your app must install those peer deps explicitly. When adding a new dependency, check its `peerDependencies` (and those of its direct dependencies) for packages your app doesn't already provide. A clean `pnpm compile` does not guarantee the app will run — missing peer deps surface as `Could not resolve "..."` errors at runtime.
 
 ### 5. Dev Server Starts (apps only)
 - If the project is an application with a dev server (`pnpm dev` or equivalent), start it and confirm it launches without errors
 - The production build and dev server often use different tools (e.g., Vite uses Rollup for `build` but esbuild for `dev`) — passing one does not guarantee the other
-- This is a fast smoke test: start the server, confirm no crash, then stop it
+- **Open the app in the browser and check the console for errors.** Missing transitive peer dependencies, incorrect polyfills, and other runtime-only failures will not surface from the terminal output alone — they appear as errors in the browser console. If an MCP-connected browser is available, use it to inspect the console. Otherwise, open the dev URL manually and verify no errors appear.
 
 ### 6. No Placeholders or Mocks in Delivered Code
 - Every user-visible action must do what it claims. If the UI says "Recorded on XL1 Blockchain", the code must actually submit a transaction — not call `console.log` with a TODO comment.
