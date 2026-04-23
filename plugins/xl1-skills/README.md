@@ -26,6 +26,34 @@ Skills use progressive loading — each `SKILL.md` is a lightweight router that 
 /plugin install xl1-skills
 ```
 
+## Development & Testing
+
+Load the plugin directly from a local checkout without installing from a marketplace:
+
+```shell
+claude --plugin-dir ./plugins/xl1-skills
+```
+
+Load alongside other plugins:
+
+```shell
+claude --plugin-dir ./plugins/xl1-skills --plugin-dir ../another-plugin
+```
+
+After making changes to skill files, reload without restarting:
+
+```
+/reload-plugins
+```
+
+Verify skills are registered:
+
+```
+/help
+```
+
+Skills appear as `/xl1-skills:<skill-name>` (e.g., `/xl1-skills:development`, `/xl1-skills:xl1-patterns`).
+
 ## Usage
 
 Once installed, Claude automatically activates the relevant skills based on your task. For example:
