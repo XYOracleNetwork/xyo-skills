@@ -1,0 +1,132 @@
+name: Validate Plugins
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-structure:
+    name: Validate Repository Structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate marketplace.json
+        run: |
+          echo "Validating marketplace.json..."
+          jq empty .claude-plugin/marketplace.json
+          echo "✓ Marketplace JSON is valid"
+
+      - name: Check required fields in marketplace
+        run: |
+          echo "Checking required marketplace fields..."
+
+          for field in name owner plugins; do
+            if ! jq -e ".$field" .claude-plugin/marketplace.json > /dev/null; then
+              echo "✗ Missing required field: $field"
+              exit 1
+            fi
+            echo "✓ Field '$field' present"
+          done
+
+          if ! jq -e ".owner.name" .claude-plugin/marketplace.json > /dev/null; then
+            echo "✗ Missing required field: owner.name"
+            exit 1
+          fi
+          echo "✓ Field 'owner.name' present"
+
+          if ! jq -e ".plugins | type == \"array\"" .claude-plugin/marketplace.json > /dev/null; then
+            echo "✗ Field 'plugins' must be an array"
+            exit 1
+          fi
+          echo "✓ Field 'plugins' is an array"
+
+  validate-plugins:
+    name: Validate Individual Plugins
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate each plugin
+        run: |
+          echo "Validating plugin files..."
+
+          plugins=$(jq -r '.plugins[] | select(.source | type == "string") | .source' .claude-plugin/marketplace.json)
+
+          for plugin_path in $plugins; do
+            plugin_name=$(basename "$plugin_path")
+            echo ""
+            echo "Checking plugin: $plugin_name"
+            echo "================================"
+
+            if [ ! -d "$plugin_path" ]; then
+              echo "✗ Directory not found: $plugin_path"
+              exit 1
+            fi
+            echo "✓ Directory exists"
+
+            plugin_json="$plugin_path/.claude-plugin/plugin.json"
+            if [ ! -f "$plugin_json" ]; then
+              echo "✗ plugin.json not found at $plugin_json"
+              exit 1
+            fi
+            echo "✓ plugin.json exists"
+
+            if ! jq empty "$plugin_json" 2>/dev/null; then
+              echo "✗ Invalid JSON in $plugin_json"
+              exit 1
+            fi
+            echo "✓ plugin.json is valid JSON"
+
+            if ! jq -e ".name" "$plugin_json" > /dev/null; then
+              echo "✗ Missing required field: name"
+              exit 1
+            fi
+            echo "✓ Required field 'name' present"
+
+            if [ ! -f "$plugin_path/README.md" ]; then
+              echo "⚠️  Warning: README.md not found (recommended)"
+            else
+              echo "✓ README.md exists"
+            fi
+
+            if [ -d "$plugin_path/skills" ]; then
+              echo "✓ Skills directory exists"
+              skill_count=$(find "$plugin_path/skills" -name "SKILL.md" | wc -l | tr -d ' ')
+              echo "  Found $skill_count skill(s)"
+            fi
+
+            echo "✓ Plugin $plugin_name is valid"
+          done
+
+          echo ""
+          echo "================================"
+          echo "✅ All plugins validated successfully!"
+
+  check-duplicates:
+    name: Check for Duplicate Plugin Names
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for duplicate names
+        run: |
+          echo "Checking for duplicate plugin names..."
+
+          duplicates=$(jq -r '.plugins[].name' .claude-plugin/marketplace.json | sort | uniq -d)
+
+          if [ -n "$duplicates" ]; then
+            echo "✗ Duplicate plugin names found:"
+            echo "$duplicates"
+            exit 1
+          fi
+
+          echo "✓ No duplicate plugin names"

@@ -4,11 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This repo is a test bed for a 4-tier Claude Code skill stack targeting XL1 blockchain development. The skills are the primary artifact — there is no application code yet. The goal is to evaluate whether the skills can guide an agent to produce a working XL1-backed Rock Paper Scissors game from a single prompt.
+This repo is a Claude Code plugin marketplace for XL1 blockchain development skills. It packages a 5-layer skill stack as an installable plugin so any team member can add XL1/XYO knowledge to their Claude Code sessions.
 
-## Skill Architecture
+## Plugin Architecture
 
-Skills live in `.claude/skills/` and use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
+This repo follows the Claude Code plugin marketplace pattern:
+
+- **`.claude-plugin/marketplace.json`** — marketplace manifest (registers all plugins)
+- **`plugins/xl1-stack/`** — the main plugin, with its own `.claude-plugin/plugin.json`
+- **`plugins/xl1-stack/skills/`** — 5 skill layers using progressive loading
+
+Skills use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
 ```
 Layer 5: xl1-patterns/     — Prescriptive design patterns (commit-reveal, indexing, prediction markets)

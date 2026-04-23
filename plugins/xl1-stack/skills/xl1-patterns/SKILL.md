@@ -1,7 +1,6 @@
 ---
 name: xl1-patterns
 description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, and prediction markets. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, or client-side chain queries.
-user-invocable: false
 ---
 
 # XL1 Design Patterns
