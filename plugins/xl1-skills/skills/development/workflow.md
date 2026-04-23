@@ -56,6 +56,8 @@ Never commit secrets or authentication tokens to the repository:
 
 If the repo has a way to do it, use the repo's way. Ad-hoc commands are for exploration only — never for producing a deliverable.
 
+**This applies even when you just created the scripts yourself.** After scaffolding a new project, use the scripts you defined — don't bypass them with raw commands like `npx tsc -b` or `npx eslint .` for "quick checks". The scripts exist to run the correct pipeline; partial raw invocations can miss flags, configs, or pipeline steps and give misleading results.
+
 ## Definition of Done
 
 A feature is not complete until **all of the following are true**:
