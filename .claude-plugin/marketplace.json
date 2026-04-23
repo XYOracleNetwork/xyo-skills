@@ -1,7 +1,7 @@
 {
   "name": "xyo-skills",
   "owner": {
-    "name": "XY Labs",
+    "name": "XYO Network",
     "email": "support@xylabs.com"
   },
   "metadata": {
@@ -11,15 +11,15 @@
   "plugins": [
     {
       "name": "xl1-stack",
-      "description": "Full-stack skills for building dApps on XL1 — XYO primitives, chain ops, toolchain, and design patterns",
+      "description": "Full-stack skills for building dApps on XL1 Blockchain using XYO primitives, chain ops, toolchain, and design patterns",
       "version": "1.0.0",
       "author": {
-        "name": "XY Labs"
+        "name": "XYO Network"
       },
       "source": "./plugins/xl1-stack",
       "category": "developer-tools",
       "tags": ["xl1", "xyo", "blockchain", "dapp", "typescript"],
-      "keywords": ["xl1", "xyo", "blockchain", "dapp", "commit-reveal", "datalake"]
+      "keywords": ["xl1", "xyo", "blockchain", "dapp"]
     }
   ]
 }
