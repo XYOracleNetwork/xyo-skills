@@ -10,12 +10,17 @@ XY Labs publishes three TypeScript config packages. Choose the right one based o
 | `@xylabs/tsconfig-dom` | `@xylabs/tsconfig` | Browser-targeting code that uses DOM APIs |
 | `@xylabs/tsconfig-react` | `@xylabs/tsconfig-dom` | React applications and component libraries |
 
-Install the one you need:
+Each config extends the one above it via `"extends"` in its `tsconfig.json`, but **does not declare the parent as a package dependency**. TypeScript resolves the `"extends"` target from `node_modules` at compile time, so all configs in the chain must be explicitly installed. Install the full inheritance chain for your target:
 
 ```bash
-pnpm add -D @xylabs/tsconfig           # base
-pnpm add -D @xylabs/tsconfig-dom       # browser/DOM
-pnpm add -D @xylabs/tsconfig-react     # React
+# Node.js / backend
+pnpm add -D @xylabs/tsconfig
+
+# Browser / DOM
+pnpm add -D @xylabs/tsconfig @xylabs/tsconfig-dom
+
+# React
+pnpm add -D @xylabs/tsconfig @xylabs/tsconfig-dom @xylabs/tsconfig-react
 ```
 
 All require TypeScript ~5.x as a peer dependency.
