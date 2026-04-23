@@ -25,28 +25,33 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────────┐
-│  WalletGatewayProvider                                    │
-│  (combines in-page + wallet gateways automatically)       │
+┌─ InPageGatewaysProvider ──────────────────────────────────┐
+│  (creates HTTP-based gateways for each network)           │
 │                                                           │
-│  defaultGateway = wallet gateway ?? in-page gateway       │
-│                                                           │
-│  ┌──────────────────────────────────────────────────┐     │
-│  │ Your Components                                  │     │
-│  │                                                  │     │
-│  │ Chain read:      in-page gateway (always)        │     │
-│  │ Chain write:     wallet gateway (wallet req)     │     │
-│  │                                                  │     │
-│  │ dApp datalake:   RestDataLakeRunner/Viewer       │     │
-│  │   read + write   (HTTP, always available)        │     │
-│  │                                                  │     │
-│  │ Wallet datalake: wallet's own config             │     │
-│  │   (independent — may differ from dApp's)         │     │
-│  └──────────────────────────────────────────────────┘     │
+│  ┌─ GatewayProvider ───────────────────────────────────┐  │
+│  │  (merges wallet + in-page into single context)      │  │
+│  │                                                     │  │
+│  │  defaultGateway = wallet gateway ?? in-page gateway │  │
+│  │                                                     │  │
+│  │  ┌──────────────────────────────────────────────┐   │  │
+│  │  │ Your Components                              │   │  │
+│  │  │                                              │   │  │
+│  │  │ Chain read:      in-page gateway (always)    │   │  │
+│  │  │ Chain write:     wallet gateway (wallet req) │   │  │
+│  │  │                                              │   │  │
+│  │  │ dApp datalake:   RestDataLakeRunner/Viewer   │   │  │
+│  │  │   read + write   (HTTP, always available)    │   │  │
+│  │  │                                              │   │  │
+│  │  │ Wallet datalake: wallet's own config         │   │  │
+│  │  │   (independent — may differ from dApp's)     │   │  │
+│  │  └──────────────────────────────────────────────┘   │  │
+│  └─────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────┘
 ```
 
-`WalletGatewayProvider` combines the in-page gateway and wallet gateway into a single provider. It prefers the wallet gateway when connected and falls back to the in-page gateway for read-only chain access.
+`GatewayProvider` (from `@xyo-network/react-chain-client`) combines the in-page gateway and wallet gateway into a single `defaultGateway`. It prefers the wallet when connected and falls back to the in-page gateway for read-only chain access. It requires `InPageGatewaysProvider` as an ancestor to supply the in-page gateways.
+
+**Note:** `WalletGatewayProvider` is a separate, wallet-only provider with no in-page fallback. Use `GatewayProvider` (not `WalletGatewayProvider`) when your app needs read-only access without a wallet.
 
 **Two independent datalake clients:** The wallet and the dApp each have their own datalake configuration. The wallet writes to whatever datalake(s) it is configured for; the dApp writes to its own via `RestDataLakeRunner`/`RestDataLakeViewer` (plain HTTP). These may point to the same endpoint, different endpoints, or either side may have no datalake at all. See [Datalakes — Two Independent Datalake Clients](../xl1-knowledge/datalakes.md) for the full breakdown. The dApp must not assume the wallet's datalake covers its persistence needs.
 
@@ -54,24 +59,27 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 
 ## Setup
 
-The provider hierarchy is the same as any XL1 dApp — `InPageGatewaysProvider` is already required by `GatewayProvider`. The in-page gateway works without any additional configuration:
+`GatewayProvider` requires `InPageGatewaysProvider` as an ancestor — it reads in-page gateways from that context. Both providers are in `@xyo-network/react-chain-client`:
 
 ```tsx
-import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
+import { InPageGatewaysProvider, GatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-      <WalletGatewayProvider gatewayName={MainNetwork.id}>
-        {/* These components can read chain data immediately */}
+    <InPageGatewaysProvider>
+      <GatewayProvider gatewayName={MainNetwork.id}>
+        {/* These components can read chain data immediately — no wallet needed */}
         <GameHistory />
         <Leaderboard />
 
+        {/* Always render — handles connection prompt and connected state */}
         <ConnectAccountsStack onAccountConnected={setAddress} />
         {address && <GameBoard address={address} />}
-      </WalletGatewayProvider>
+      </GatewayProvider>
+    </InPageGatewaysProvider>
   )
 }
 ```
@@ -202,18 +210,20 @@ function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <WalletGatewayProvider gatewayName={MainNetwork.id}>
-      {/* Always visible — chain reads + datalake reads/writes, no wallet */}
-      <Header />
-      <GameHistory />
-      <Leaderboard />
+    <InPageGatewaysProvider>
+      <GatewayProvider gatewayName={MainNetwork.id}>
+        {/* Always visible — chain reads + datalake reads/writes, no wallet */}
+        <Header />
+        <GameHistory />
+        <Leaderboard />
 
-      {/* Always render — handles both unconnected and connected states */}
-      <ConnectAccountsStack onAccountConnected={setAddress} />
+        {/* Always render — handles both unconnected and connected states */}
+        <ConnectAccountsStack onAccountConnected={setAddress} />
 
-      {/* Wallet-gated — only chain transactions need the wallet */}
-      {address && <ActiveGame address={address} />}
-    </WalletGatewayProvider>
+        {/* Wallet-gated — only chain transactions need the wallet */}
+        {address && <ActiveGame address={address} />}
+      </GatewayProvider>
+    </InPageGatewaysProvider>
   )
 }
 ```

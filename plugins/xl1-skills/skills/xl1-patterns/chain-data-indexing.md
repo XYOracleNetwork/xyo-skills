@@ -77,15 +77,20 @@ Application data goes in the `offChain` parameter of `addPayloadsToChain`, but *
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
-import { RestDataLakeRunner } from '@xyo-network/xl1-sdk'
+import { RestDataLakeRunner, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
 
-const datalakeRunner = new RestDataLakeRunner({
+// TODO - where to get basic context?
+const datalakeRunner = await RestDataLakeRunner.create({
+  context,
   endpoint: 'https://api.archivist.xyo.network/dataLake',
-})
+} satisfies RestDataLakeRunnerParams)
 
-const movePayload = new PayloadBuilder({ schema: MoveSchema })
-  .fields({ gameId: 'abc123', move: 'rock' })
-  .build()
+const movePayload: MovePayload = asMovePayload(
+  new PayloadBuilder({ schema: MoveSchema })
+    .fields({ gameId: 'abc123', move: 'rock' })
+    .build(),
+  true,
+)
 
 // 1. Insert into the dApp's datalake first — this makes the payload queryable
 await datalakeRunner.insert([movePayload])
@@ -104,13 +109,26 @@ If you skip the datalake insert, the transaction still records on-chain but the 
 
 ## Step 3: Query by Schema
 
-### Via RPC Viewer — Transaction-Centric Queries
+### Via Viewer API — Transaction-Centric Queries
 
-Use `transactionViewer_*` methods via `defaultGateway` from `useProvidedGateway()` when you need full transaction context (who signed, when, block number):
+**RPC wire methods vs. TypeScript API.** The JSON-RPC wire protocol uses method names like `transactionViewer_byHash` and `blockViewer_currentBlockNumber`. Those strings are the *wire format* — application code should not call them directly. `XyoGateway` (and `XyoGatewayRunner`) **does not expose a `.call(method, params)` entry point**. The typed API is reached via `gateway.connection.viewer.<sub-viewer>.<method>(...)`.
+
+The sub-viewers on `XyoViewer` are:
+
+| Sub-viewer | Key methods |
+|------------|-------------|
+| `connection.viewer.block` | `currentBlockNumber()`, `currentBlock()`, `blockByNumber(n)`, `blockByHash(h)`, `payloadsByHash(hashes)` |
+| `connection.viewer.transaction` | `byHash(h)`, `byBlockNumberAndIndex(n, i)` |
+| `connection.viewer.account.balance` | `accountBalance(addr)`, `accountBalanceHistory(addr)` |
+| `connection.viewer.finalization` | `head()`, `headNumber()`, `headHash()` |
+| `connection.viewer.mempool` | `pendingBlocks()`, `pendingTransactions()` |
+
+`connection.viewer` is typed `XyoViewer | undefined` — the in-page gateway populates it once it finishes resolving, but a wallet-only or runner-only `XyoGateway` may not have a viewer at all. Always guard with `?.` or an `if (!viewer) throw …` at the call site.
+
+Use the transaction sub-viewer when you need full transaction context (who signed, when, block number):
 
 ```ts
-// Get a specific transaction by hash — use defaultGateway, not a bare rpc variable
-const tx = await defaultGateway.call('transactionViewer_byHash', [txHash])
+const tx = await defaultGateway.connection.viewer?.transaction.byHash(txHash)
 // tx is SignedHydratedTransactionWithHashMeta | null
 // tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
 ```
@@ -122,12 +140,13 @@ The gateway's `ViewerWithDataLake` transparently resolves off-chain payloads —
 When you need to find all payloads of a given type regardless of which transaction included them, use `RestDataLakeViewer` from `@xyo-network/xl1-sdk`. The datalake is a standalone HTTP archivist — not a property on the gateway JS object. See [Datalakes — HTTP Endpoints](../xl1-knowledge/datalakes.md) for the endpoint URLs.
 
 ```ts
-import { RestDataLakeViewer } from '@xyo-network/xl1-sdk'
+import { RestDataLakeViewer, type RestDataLakeViewerParams } from '@xyo-network/xl1-sdk'
 
-const viewer = new RestDataLakeViewer({
+const viewer = await RestDataLakeViewer.create({
+  context,
   endpoint: 'https://api.archivist.xyo.network/dataLake',
   allowedSchemas: [MoveSchema],
-})
+} satisfies RestDataLakeViewerParams)
 
 const moves = await viewer.next()
 ```
@@ -139,7 +158,7 @@ For multi-player dApps, combine this with a local payload store for immediate UI
 When you already have a hash (from a transaction's `payload_hashes`), retrieve the payload directly:
 
 ```ts
-const payloads = await defaultGateway.call('blockViewer_payloadsByHash', [hashes])
+const payloads = await defaultGateway.connection.viewer?.block.payloadsByHash(hashes)
 ```
 
 ---
@@ -175,14 +194,19 @@ function buildGameState(payloads: Payload[]): GameState {
 XL1 does not provide push-based subscriptions. Poll for new data by tracking the last-seen block number:
 
 ```ts
+import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
+
 // Use defaultGateway from useProvidedGateway() — not a bare rpc variable.
-// The gateway is the SDK's RPC client with the correct transport and provenance.
+// The gateway is the SDK's typed client; reach RPC viewers via connection.viewer.
 async function pollForNewData(
-  gateway: ReturnType<typeof useProvidedGateway>['defaultGateway'],
+  gateway: XyoGateway | XyoGatewayRunner,
   lastSeenBlock: number,
   schemas: Schema[],
 ): Promise<{ payloads: Payload[]; latestBlock: number }> {
-  const currentBlock = await gateway.call('blockViewer_currentBlockNumber', [])
+  const viewer = gateway.connection.viewer
+  if (!viewer) throw new Error('Gateway has no viewer attached')
+
+  const currentBlock = Number(await viewer.block.currentBlockNumber())
 
   if (currentBlock <= lastSeenBlock) {
     return { payloads: [], latestBlock: lastSeenBlock }
@@ -191,7 +215,7 @@ async function pollForNewData(
   // Query blocks from lastSeenBlock+1 to currentBlock
   const newPayloads: Payload[] = []
   for (let block = lastSeenBlock + 1; block <= currentBlock; block++) {
-    const hydrated = await gateway.call('blockViewer_blockByNumber', [block])
+    const hydrated = await viewer.block.blockByNumber(block)
     if (hydrated) {
       const [, payloads] = hydrated
       const matching = payloads.filter(p => schemas.includes(p.schema as Schema))

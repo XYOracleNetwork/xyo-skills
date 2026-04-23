@@ -67,10 +67,13 @@ When creating a new XY project:
 
 1. Initialize with pnpm: `pnpm init`
 2. Install the toolchain: `pnpm add -D @xylabs/toolchain typescript`
-3. Set up tsconfig (see [typescript.md](typescript.md))
-4. Set up ESLint (see [eslint.md](eslint.md))
-5. Wire up package.json scripts as shown above
-6. Set `"type": "module"` in package.json for ESM
+3. Create a `src/` directory for all application source code
+4. Set up tsconfig with `rootDir: "./src"` (see [typescript.md](typescript.md))
+5. Set up ESLint (see [eslint.md](eslint.md))
+6. Wire up package.json scripts as shown above
+7. Set `"type": "module"` in package.json for ESM
+
+**All application source code goes in `src/`.** Config files (`tsconfig.json`, `eslint.config.ts`, `vite.config.ts`, `vitest.config.ts`) and the Vite entry point (`index.html`) stay at the project root. The `src/` directory is the `rootDir` for TypeScript and the source root for Vite.
 
 ## Monorepo Considerations
 

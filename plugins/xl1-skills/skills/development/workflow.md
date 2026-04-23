@@ -56,6 +56,8 @@ Never commit secrets or authentication tokens to the repository:
 
 If the repo has a way to do it, use the repo's way. Ad-hoc commands are for exploration only — never for producing a deliverable.
 
+**This applies even when you just created the scripts yourself.** After scaffolding a new project, use the scripts you defined — don't bypass them with raw commands like `npx tsc -b` or `npx eslint .` for "quick checks". The scripts exist to run the correct pipeline; partial raw invocations can miss flags, configs, or pipeline steps and give misleading results.
+
 ## Definition of Done
 
 A feature is not complete until **all of the following are true**:
@@ -82,11 +84,18 @@ A feature is not complete until **all of the following are true**:
 - No phantom dependencies — if your code imports it, it must be in `package.json` (don't rely on transitive installs)
 - Version ranges follow the repo's existing conventions (pinned, caret, tilde)
 - All peer dependency warnings are resolved — install the required peers at the versions the package expects, not just the latest. Note: `pnpm install` suppresses warnings when the lockfile is already up to date. After adding or changing dependencies, run `pnpm install --resolution-only` to force a fresh resolution check that surfaces all peer dependency warnings.
+- **Transitive peer dependencies can cause runtime failures that the compiler and linter miss.** pnpm's strict isolation means peer deps of your dependencies are not automatically available to Vite's bundler. If a dependency uses MUI, emotion, or another framework internally, your app must install those peer deps explicitly. When adding a new dependency, check its `peerDependencies` (and those of its direct dependencies) for packages your app doesn't already provide. A clean `pnpm compile` does not guarantee the app will run — missing peer deps surface as `Could not resolve "..."` errors at runtime.
 
-### 5. Dev Server Starts (apps only)
+### 5. Dev Server Starts and App Loads Cleanly (apps only)
 - If the project is an application with a dev server (`pnpm dev` or equivalent), start it and confirm it launches without errors
 - The production build and dev server often use different tools (e.g., Vite uses Rollup for `build` but esbuild for `dev`) — passing one does not guarantee the other
-- This is a fast smoke test: start the server, confirm no crash, then stop it
+- **A dev server that starts is not the same as an app that runs.** Compilation success does not catch runtime errors, missing peer deps surfaced by the browser bundler, import resolution failures, or errors thrown during component mount. You must actually load the page.
+- Use a browser MCP server to verify the running app:
+  - **Claude in Chrome MCP** (`mcp__Claude_in_Chrome__*`) — use `navigate` to open the dev server URL, then `read_console_messages` to check for errors/warnings and `read_network_requests` to check for failed requests (4xx/5xx, unresolved modules).
+  - **Claude Preview MCP** (`mcp__Claude_Preview__*`) — use `preview_start` with the dev URL, then `preview_console_logs` and `preview_network` to inspect the same.
+  - Exercise the feature you just built — click the button, submit the form, navigate the route — and re-check the console. Mount-time errors often only appear after interaction.
+- An app is only "done" when it loads with a clean console and no failed network requests on the golden path.
+- If no browser MCP server is available in this session, **say so explicitly** — do not claim the app works based solely on a successful compile. State: "dev server starts, but I could not verify runtime behavior in a browser."
 
 ### 6. No Placeholders or Mocks in Delivered Code
 - Every user-visible action must do what it claims. If the UI says "Recorded on XL1 Blockchain", the code must actually submit a transaction — not call `console.log` with a TODO comment.

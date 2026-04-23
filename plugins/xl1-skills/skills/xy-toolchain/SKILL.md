@@ -22,3 +22,6 @@ Read when configuring the TypeScript compiler, choosing a tsconfig base, or trou
 
 ### [Testing with Vitest](testing.md)
 Read when setting up tests, configuring Vitest, or integrating tests with the build pipeline. Covers Vitest setup and XY-specific testing conventions.
+
+### [React Application Bootstrap](react-bootstrap.md)
+Read when creating a new React application from scratch. Provides the standard `src/index.tsx` entry point and `src/serviceWorker.ts` template that all XY React apps use. **Must be read before writing any application code in a new React project.**

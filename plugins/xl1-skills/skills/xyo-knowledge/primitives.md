@@ -56,6 +56,28 @@ const payload = new PayloadBuilder({ schema: MoveSchema })
   .build()
 ```
 
+#### Narrowing the built payload
+
+`.build()` is typed to return the generic `Payload<AnyObject>` — it does **not** narrow to `MovePayload` automatically. Two paths fail:
+
+1. `new PayloadBuilder({ schema: MoveSchema }).build() as MovePayload` — TypeScript rejects it because the destination type is too narrow for a one-step assertion.
+2. `new PayloadBuilder<MovePayload>({ schema: MoveSchema }).build()` — the generic slot exists, but `PayloadBuilder<T extends Payload>` requires `T`'s `schema` field to be the branded `Schema` type. A Zod-inferred type with `schema: z.literal('…')` holds a plain string literal, so it fails the `extends Payload` constraint.
+
+Do not reach for `as unknown as MovePayload` — it compiles, but it silences both the type system and the branded-schema guarantee.
+
+The right pattern: pair `PayloadBuilder.build()` with the asserting parser produced by `zodAsFactory` (see [Zod-First Type Pattern](../xl1-knowledge/development.md)):
+
+```ts
+const move: MovePayload = asMovePayload(
+  new PayloadBuilder({ schema: MoveSchema })
+    .fields({ move: 'rock' })
+    .build(),
+  true, // assert mode — throws on validation failure
+)
+```
+
+`asMovePayload` is typed `<T>(value: T, assert): T & MovePayload`, so the return value structurally narrows to `MovePayload` with no cast, and the runtime Zod check guarantees the declared type. Use this pattern wherever you assign `PayloadBuilder.build()`'s result to a typed variable.
+
 Static hash methods:
 - `PayloadBuilder.hash(payload)` — hash excluding storage meta
 - `PayloadBuilder.dataHash(payload)` — hash of data fields only (excludes all meta)

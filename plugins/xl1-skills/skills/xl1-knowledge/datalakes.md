@@ -44,13 +44,25 @@ These two configurations are **independent**. The relationship between them is a
 **Do not assume one covers the other.** The wallet may or may not write to a datalake the dApp can see, and vice versa. If the dApp needs payload data to be available for querying, it must write to its own datalake — regardless of what the wallet does.
 
 ```ts
-import { RestDataLakeRunner, RestDataLakeViewer } from '@xyo-network/xl1-sdk'
+import {
+  RestDataLakeRunner,
+  RestDataLakeViewer,
+  type RestDataLakeRunnerParams,
+  type RestDataLakeViewerParams,
+} from '@xyo-network/xl1-sdk'
 
 // dApp-configured datalake — independent of the wallet's datalake config
-const runner = new RestDataLakeRunner({ endpoint: 'https://api.archivist.xyo.network/dataLake' })
+const runner = await RestDataLakeRunner.create({
+  context,
+  endpoint: 'https://api.archivist.xyo.network/dataLake',
+} satisfies RestDataLakeRunnerParams)
 await runner.insert(payloads)
 
-const viewer = new RestDataLakeViewer({ endpoint: 'https://api.archivist.xyo.network/dataLake', allowedSchemas })
+const viewer = await RestDataLakeViewer.create({
+  context,
+  endpoint: 'https://api.archivist.xyo.network/dataLake',
+  allowedSchemas,
+} satisfies RestDataLakeViewerParams)
 const results = await viewer.next()
 ```
 
