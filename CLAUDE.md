@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This repo is a Claude Code plugin marketplace for XL1 blockchain development skills. It packages a 5-layer skill stack as an installable plugin so any team member can add XL1/XYO knowledge to their Claude Code sessions.
+This repo serves two roles:
+
+1. **Claude Code plugin marketplace** — packages a 5-layer XL1/XYO skill stack as an installable plugin (`plugins/xl1-stack/`)
+2. **Evaluation test bed** — `src/` is where a rock-paper-scissors game gets built to test the skill stack's quality
+
+The skills themselves are the primary artifact. When implementation reveals incorrect or misleading guidance in a skill, update the skill file — not just the application code.
 
 ## Plugin Architecture
 
@@ -26,6 +31,25 @@ Layer 1: development/      — TypeScript, Git, testing, workflow conventions
 
 When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers. When working on XL1 infrastructure or need reference docs, start with Layer 4.
 
+## Development
+
+**Package manager:** pnpm (enforced — never use npm or yarn in this repo)
+
+**Branching:** Gitflow with `develop` as the integration branch. Feature branches use `feature/<description>` off `develop`. Never rewrite git history (no amend, rebase, or force push).
+
+**CI:** The `validate-plugins.yml` workflow runs on push/PR to `main` and `develop`. It validates:
+- `marketplace.json` structure and required fields
+- Each plugin directory exists with a valid `plugin.json`
+- No duplicate plugin names
+
+To validate plugin structure locally:
+```shell
+jq empty .claude-plugin/marketplace.json
+jq empty plugins/xl1-stack/.claude-plugin/plugin.json
+```
+
+Once `src/` has a `package.json`, use the repo's scripts (e.g. `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm dev`) — never raw tool commands.
+
 ## Key Conventions (from the skills)
 
 - **ESM only** — no CommonJS
@@ -36,6 +60,6 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 
 ## Evaluation Prompt
 
-The prompt used to test these skills (from README):
+The prompt used to test the skill stack:
 
 > Build me a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.
