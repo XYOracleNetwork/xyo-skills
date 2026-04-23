@@ -1,18 +1,46 @@
-# Rock Paper Scissors Skill Test
+# XL1 Skills
 
-Test bed for evaluating a 4-tier Claude Code skill stack for XL1 blockchain development.
+Claude Code plugin marketplace for XL1 blockchain and XYO protocol development.
+
+## Quick Install
+
+```shell
+# Add the marketplace
+/plugin marketplace add XYOracleNetwork/xl1-skills
+
+# Install the XL1 skill stack
+/plugin install xl1-skills
+```
+
+## Plugins
+
+### [xl1-skills](plugins/xl1-skills/)
+
+Full-stack skills for building dApps on XL1. Five cascading layers covering design patterns, chain operations, XYO primitives, build tooling, and development conventions.
+
+## Team Setup
+
+Add to your project's `.claude/settings.json` for automatic marketplace availability:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "xl1-skills": {
+      "source": {
+        "source": "github",
+        "repo": "XYOracleNetwork/xl1-skills"
+      }
+    }
+  }
+}
+```
 
 ## Evaluation Prompt
 
-> Build me a rock paper scissors game where I can compete against other players. Each game's moves and outcomes should be recorded on the XL1 Blockchain. Include a UI for playing games and viewing past results.
+This repo also serves as a test bed for evaluating the skill stack. The target prompt:
 
-## Skill Stack
+> Build me a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.
 
-```
-Layer 4: XL1 Knowledge    — chain, datalakes, gateway, wallet, development patterns
-Layer 3: XYO Knowledge    — payloads, bound witnesses, modules, identity, best practices
-Layer 2: XY Toolchain     — @xylabs/toolchain, ESLint, TypeScript config, Vitest
-Layer 1: Development      — TypeScript, Git, testing, workflow conventions
-```
+## License
 
-Skills are in `.claude/skills/` and use progressive loading — each `SKILL.md` routes to sub-files on demand.
+MIT

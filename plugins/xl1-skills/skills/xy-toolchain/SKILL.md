@@ -1,7 +1,6 @@
 ---
 name: xy-toolchain
 description: XY Labs development toolchain (@xylabs packages). Covers @xylabs/toolchain CLI, ESLint flat config, TypeScript config variants, and Vitest. Activates when setting up projects, running builds, configuring linting, or writing tests in XY/XYO/XL1 projects.
-user-invocable: false
 ---
 
 # XY Toolchain

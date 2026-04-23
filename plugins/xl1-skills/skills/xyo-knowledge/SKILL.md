@@ -1,7 +1,6 @@
 ---
 name: xyo-knowledge
 description: XYO Protocol 2.0 domain knowledge. Covers payloads, bound witnesses, schemas, the module system (archivist, diviner, witness, sentinel, node), accounts, wallets, and protocol best practices. Activates when building on XYO or working with @xyo-network packages.
-user-invocable: false
 ---
 
 # XYO Protocol Knowledge

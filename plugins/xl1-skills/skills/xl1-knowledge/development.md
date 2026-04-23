@@ -7,7 +7,7 @@
 | sdk-xyo-client-js | `@xyo-network/sdk-js` | XYO protocol (payloads, BW, modules, accounts) |
 | xl1-protocol | `@xyo-network/xl1-sdk` | XL1 protocol (blocks, transactions, viewers, RPC) |
 | xyo-chain | `@xyo-network/chain-sdk` | XL1 runtime (services, drivers, chain operations) |
-| react-chain | `@xyo-network/react-chain-provider` | React dApp integration (gateway, wallet, hooks) |
+| react-chain | `@xyo-network/react-chain-client` | React dApp integration (gateway, wallet, hooks) |
 
 **Always import from the root barrel.** Tree shaking eliminates unused exports.
 
@@ -22,7 +22,7 @@ import { BlockBoundWitnessZod, SimpleBlockViewer, BlockViewerMoniker } from '@xy
 import { ... } from '@xyo-network/chain-sdk'
 
 // React dApp — gateway provider, wallet connection, and gateway access
-import { GatewayProvider, InPageGatewaysProvider, ConnectAccountsStack, useProvidedGateway } from '@xyo-network/react-chain-provider'
+import { WalletGatewayProvider, ConnectAccountsStack, useProvidedGateway } from '@xyo-network/react-chain-client'
 
 // Avoid — sub-package imports
 import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model'
