@@ -6,6 +6,11 @@
 - `@xyo-network/react-chain-stake` — Staking components
 - `@xyo-network/react-chain-boundwitness` — BoundWitness components
 
+**Required peer dependencies for `@xyo-network/react-chain-client`:**
+The react-chain packages use MUI internally. These peer dependencies must be installed explicitly in your app — pnpm will not hoist them automatically, and the compiler/linter will not catch missing ones. They only surface as `Could not resolve "..."` errors at runtime in the browser.
+
+After installing `@xyo-network/react-chain-client`, immediately read its `package.json` from `node_modules` to find the `peerDependencies` it declares (e.g., `@mui/material`, `@emotion/react`, `@emotion/styled`). Install each one at the latest version that satisfies the range declared in that `peerDependencies` field. Do not blindly install the latest major — if the peer range is `">=6 <8"`, pin to the latest within that range (e.g., `pnpm add @mui/material@">=6 <8"`). Then recursively check the installed packages' own peer dependencies (e.g., `@mui/material` requires `@emotion/*`) and install any that are missing.
+
 ---
 
 ## XL1 Browser Wallet
