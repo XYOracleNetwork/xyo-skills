@@ -6,6 +6,13 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 
 ---
 
+## When to Use Account vs Wallet
+
+- **Account** — simple key pair, sufficient for signing and module identity. Use `Account.random()` or `{ account: 'random' }` in module config for testing.
+- **Wallet** — when you need HD derivation, mnemonic backup, or deterministic key hierarchies. Use with a mnemonic for production recoverability.
+
+---
+
 ## Account
 
 An **Account** is a key pair (secp256k1 elliptic curve) used for signing and identity in XYO.
@@ -91,13 +98,6 @@ Beyond Account's interface, Wallet provides:
 - `mnemonic` — the BIP39 mnemonic if available
 - `neuter()` — returns a public-only wallet (strips private key)
 - `privateKey` / `publicKey` — raw key hex values
-
-### When to Use Wallet vs Account
-
-- **Account** — simple key pair, sufficient for signing and module identity
-- **Wallet** — when you need HD derivation, mnemonic backup, or deterministic key hierarchies
-
-For testing, `Account.random()` or `{ account: 'random' }` in module config is fine. For production, use Wallet with a mnemonic for recoverability.
 
 ---
 

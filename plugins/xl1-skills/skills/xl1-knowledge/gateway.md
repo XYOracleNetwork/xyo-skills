@@ -17,9 +17,6 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 |----------|--------|---------|
 | `/rpc` | POST | JSON-RPC 2.0 — all viewer and runner methods |
 | `/chain` | Various | Archivist middleware for finalized chain data (datalake) |
-| `/startupz` | GET | Startup health probe |
-| `/readyz` | GET | Readiness health probe |
-| `/livez` | GET | Liveness health probe |
 
 ---
 

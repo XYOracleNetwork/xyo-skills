@@ -211,17 +211,9 @@ const context = getTestProviderContext()
 
 This is a sub-path import — an exception to the root barrel rule. `getTestProviderContext` is the current recommended way to create a provider context for standalone datalake clients in dApp code.
 
-### Datalake endpoints by network
+### Datalake endpoints and independence
 
-| Network | Datalake URL |
-|---------|-------------|
-| **Mainnet** | `https://api.archivist.xyo.network/dataLake` |
-| **Sequence** (beta) | `https://beta.api.archivist.xyo.network/dataLake` |
-| **Local** | `http://localhost:8080/dataLake` |
-
-### Why the datalake is independent
-
-The browser wallet and the dApp are independent datalake clients. The wallet writes to whatever datalake(s) it is configured for; the dApp writes to its own via `RestDataLakeRunner`. These may point to the same endpoint, different endpoints, or either side may have no datalake at all. See [Datalakes — Two Independent Datalake Clients](../xl1-knowledge/datalakes.md) for the full breakdown.
+For endpoint URLs by network, see [Datalakes — HTTP Endpoints](../xl1-knowledge/datalakes.md). The wallet and dApp are independent datalake clients — they may point to different endpoints or either may have no datalake at all. See [Datalakes — Two Independent Datalake Clients](../xl1-knowledge/datalakes.md) for the full breakdown.
 
 ---
 

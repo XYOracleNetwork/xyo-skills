@@ -128,41 +128,11 @@ type HydratedBlock = [BlockBoundWitness, Payload[]]
 type HydratedTransaction = [TransactionBoundWitness, Payload[]]
 ```
 
-**9 variant combinations per type:**
-
-| Signing | Metadata | Example Type |
-|---------|----------|-------------|
-| default | plain | `HydratedBlock` |
-| default | WithHashMeta | `HydratedBlockWithHashMeta` |
-| default | WithStorageMeta | `HydratedBlockWithStorageMeta` |
-| Signed | plain | `SignedHydratedBlock` |
-| Signed | WithHashMeta | `SignedHydratedBlockWithHashMeta` |
-| Signed | WithStorageMeta | `SignedHydratedBlockWithStorageMeta` |
-| Unsigned | plain | `UnsignedHydratedBlock` |
-| Unsigned | WithHashMeta | `UnsignedHydratedBlockWithHashMeta` |
-| Unsigned | WithStorageMeta | `UnsignedHydratedBlockWithStorageMeta` |
-
-The same matrix applies to transactions.
+Blocks and transactions each have 9 type variants combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, `UnsignedHydratedTransactionWithStorageMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta` and `SignedHydratedTransactionWithHashMeta`.
 
 ---
 
 ## Validation
 
-Validators are composable pure functions that return error arrays (empty = valid).
-
-### Transaction Validators (7)
-- **TransactionProtocolValidator** — chain ID matches
-- **TransactionDurationValidator** — nbf/exp bounds, max span 10,000 blocks
-- **TransactionFromValidator** — from address is valid and in addresses array
-- **TransactionGasValidator** — fee fields meet minimums
-- **TransactionElevationValidator** — required elevation scripts present
-- **TransactionJsonSchemaValidator** — AJV JSON schema validation
-- **TransactionTransfersValidator** — signer authorization for transfers
-
-### BoundWitness Validators (2)
-- **BoundWitnessSignaturesValidator** — ECDSA cryptographic validity
-- **BoundWitnessReferencesValidator** — payload hashes/schemas match payloads
-
-### Block Validators (1)
-- **BlockCumulativeBalanceValidator** — outflow ≤ pre-block balance per address
+Validators are composable pure functions that return error arrays (empty = valid). Transaction validators check chain ID, duration bounds, sender authorization, gas fees, elevation scripts, JSON schema, and transfer authorization. BoundWitness validators verify cryptographic signatures and payload hash/schema references. Block validators enforce cumulative balance constraints (outflow ≤ pre-block balance per address). Compose them as needed — grep the SDK source for the specific validator classes.
 
