@@ -53,7 +53,9 @@ Use native APIs only when the SDK genuinely has no alternative:
 
 - **`crypto.getRandomValues()`** — for cryptographic randomness (salts, nonces). The SDK doesn't wrap generic random value generation.
 - **`crypto.randomUUID()`** — for generating unique identifiers. No SDK equivalent.
-- **`localStorage`** — for client-side persistence. The SDK doesn't provide browser storage utilities.
+- **`localStorage` / `sessionStorage`** — only for non-payload data (e.g., UI preferences, feature flags) where the archivist interface adds no value. For payload storage, use an SDK browser archivist instead — see [Module System — Browser Archivist Selection](modules.md).
+
+For payload persistence in the browser, the SDK provides three archivist implementations — `IndexedDbArchivist`, `StorageArchivist`, and `MemoryArchivist` — that share the standard archivist interface with built-in deduplication, events, and pagination. Prefer these over raw `localStorage` for payload data.
 
 When using a native construct, add a brief comment noting why the SDK doesn't cover this case, so future readers don't mistake it for an oversight.
 

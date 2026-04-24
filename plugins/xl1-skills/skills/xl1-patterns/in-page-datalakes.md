@@ -232,7 +232,7 @@ This gives visitors immediate value (browsing data, and the dApp can write to th
 
 ---
 
-## dApp State Management: Local Store + Remote Datalake
+## dApp State Management: Local Archivist + Remote Datalake
 
 Each browser session is isolated — payloads submitted by Player A are invisible to Player B unless both read from a shared data source. The wallet and the dApp are independent datalake clients (see [Datalakes](../xl1-knowledge/datalakes.md)), so the dApp cannot rely on the wallet's datalake for cross-player visibility. The dApp must manage its own state with two layers:
 
@@ -240,9 +240,9 @@ Each browser session is isolated — payloads submitted by Player A are invisibl
 
 ```
 ┌─ Player A's browser ─────────────────┐    ┌─ Player B's browser ─────────────────┐
-│  Local Payload Store (React + localStorage) │  Local Payload Store (React + localStorage)
+│  IndexedDbArchivist (local store)     │    │  IndexedDbArchivist (local store)     │
 │       │                               │    │       │                               │
-│       │  addPayloads() on submit      │    │       │  addPayloads() on submit      │
+│       │  archivist.insert() on submit │    │       │  archivist.insert() on submit │
 │       ▼                               │    │       ▼                               │
 │  ┌─────────┐    POST on submit        │    │  ┌─────────┐    POST on submit        │
 │  │ UI      │───────────────────────┐  │    │  │ UI      │───────────────────────┐  │
@@ -260,21 +260,41 @@ Each browser session is isolated — payloads submitted by Player A are invisibl
 
 ### The two layers
 
-1. **Local payload store** — React state backed by `localStorage`. Updated immediately when this browser submits a payload. Provides instant UI feedback without a network round-trip. Also syncs across tabs of the same browser via the `storage` event.
+1. **Local archivist (`IndexedDbArchivist`)** — a browser-side archivist backed by IndexedDB. Updated immediately when this browser submits a payload. Provides instant UI feedback without a network round-trip, survives page refresh, and supports schema-based filtering and cursor pagination. Deduplication by data hash is built in — inserting the same payload twice is a no-op. Use the `inserted` event to drive React state updates. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
 
-2. **Remote datalake (dApp-configured)** — the dApp's own datalake endpoint, configured independently of the wallet's datalake. Use `RestDataLakeRunner` (for writes) and `RestDataLakeViewer` (for reads) from `@xyo-network/xl1-sdk`. The dApp pushes payloads here on every submit and polls periodically to discover payloads from other players. Results are merged into the local store with deduplication by data hash. Because this is the dApp's own HTTP connection, it works with or without a wallet — and the dApp controls exactly where the data goes.
+2. **Remote datalake (dApp-configured)** — the dApp's own datalake endpoint, configured independently of the wallet's datalake. Use `RestDataLakeRunner` (for writes) and `RestDataLakeViewer` (for reads) from `@xyo-network/xl1-sdk`. The dApp pushes payloads here on every submit and polls periodically to discover payloads from other players. Polled results are inserted into the local archivist — deduplication is automatic. Because this is the dApp's own HTTP connection, it works with or without a wallet — and the dApp controls exactly where the data goes.
+
+### Creating the local archivist
+
+```ts
+import { IndexedDbArchivist, IndexedDbArchivistConfigSchema } from '@xyo-network/sdk-js'
+
+const localArchivist = await IndexedDbArchivist.create({
+  account: 'random',
+  config: {
+    schema: IndexedDbArchivistConfigSchema,
+    dbName: 'my-dapp',       // IndexedDB database name
+    storeName: 'payloads',   // object store name
+  },
+})
+
+// Drive React state from archivist events
+localArchivist.on('inserted', ({ payloads }) => {
+  setPayloads(prev => [...prev, ...payloads])
+})
+```
 
 ### Submit flow
 
-On every user action (create game, commit, reveal, settle), **insert into the dApp's datalake first, then submit the transaction**. This ordering ensures the payload data is persisted in the dApp's datalake even if the chain submission fails:
+On every user action (create game, commit, reveal, settle), **insert into the dApp's datalake first, then the local archivist, then submit the transaction**. This ordering ensures the payload data is persisted in the dApp's datalake even if the chain submission fails:
 
 ```ts
 // 1. Insert into the dApp's datalake (plain HTTP, no wallet needed)
 //    Makes payload visible to other players polling this datalake
 await datalakeRunner.insert(payloads)
 
-// 2. Store locally for immediate UI update
-addPayloads(payloads)
+// 2. Store locally for immediate UI update (deduplication is built in)
+await localArchivist.insert(payloads)
 
 // 3. Submit transaction to chain via wallet
 //    The wallet may also write to its own datalake — but the dApp
@@ -286,21 +306,22 @@ Steps 1 and 2 are dApp-controlled and work without a wallet. Step 3 requires the
 
 ### Poll flow
 
-On a 5-second interval, fetch payloads from the remote datalake filtered by the application's schemas using `RestDataLakeViewer`. Merge with the local store, deduplicating by `PayloadBuilder.dataHash`:
+On a 5-second interval, fetch payloads from the remote datalake filtered by the application's schemas using `RestDataLakeViewer`. Insert into the local archivist — deduplication by data hash is automatic:
 
 ```ts
 const remote = await datalakeViewer.next({ allowedSchemas: appSchemas })
-mergeIntoLocalStore(remote) // deduplicate by hash
+await localArchivist.insert(remote) // duplicates are ignored
 ```
 
 ### Why both layers
 
-| Concern | Local store alone | Remote datalake alone | Both |
-|---------|------------------|-----------------------|------|
+| Concern | Local archivist alone | Remote datalake alone | Both |
+|---------|----------------------|-----------------------|------|
 | Instant UI after submit | Yes | No (network latency) | Yes |
 | Cross-player visibility | No | Yes | Yes |
 | Works offline | Yes | No | Graceful degradation |
-| Survives page refresh | Via localStorage | Via remote query | Yes |
+| Survives page refresh | Yes (IndexedDB) | Via remote query | Yes |
+| Schema-filtered queries | Yes (built-in index) | Yes (allowedSchemas) | Yes |
 
 ---
 
