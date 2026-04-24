@@ -149,7 +149,29 @@ async function submitCommit(
 }
 ```
 
-**Security invariant:** The `salt` and `choice` must never be submitted on-chain during the commit phase. Store them locally (e.g., `localStorage`, React state, or in-memory). If the user closes the browser, they lose the ability to reveal — this is an acceptable trade-off for trustlessness. Applications that need durability should persist the salt to encrypted local storage.
+**Security invariant:** The `salt` and `choice` must never be submitted on-chain during the commit phase. Persist them locally using a `StorageArchivist` with `type: 'local'` and a namespace scoped to the application (e.g., `'my-dapp-secrets'`). This gives you archivist-interface access (`insert`, `get`) with built-in namespace isolation and cross-tab sync. If the user closes the browser, the salt survives in localStorage and can be retrieved for the reveal phase. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
+
+```ts
+import { StorageArchivist, StorageArchivistConfigSchema, PayloadBuilder } from '@xyo-network/sdk-js'
+
+const secretStore = await StorageArchivist.create({
+  account: 'random',
+  config: {
+    schema: StorageArchivistConfigSchema,
+    type: 'local',
+    namespace: 'my-dapp-secrets',
+  },
+})
+
+// After commit — persist salt as a payload
+const saltPayload = new PayloadBuilder({ schema: 'network.xyo.commit.salt' })
+  .fields({ topic, salt, choice })
+  .build()
+await secretStore.insert([saltPayload])
+
+// Before reveal — retrieve the salt
+const [stored] = await secretStore.get([await PayloadBuilder.dataHash(saltPayload)])
+```
 
 **Datalake note:** The browser wallet does not persist off-chain payloads to the datalake. The dApp must insert the commit payload into the datalake before submitting the transaction — otherwise the commit data is lost and only the hash reference remains on-chain. See [In-Page Data Lakes](in-page-datalakes.md) for the full pattern.
 

@@ -338,13 +338,28 @@ Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets wi
 
 ```tsx
 import { useProvidedGateway } from '@xyo-network/react-chain-client'
+import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/sdk-js'
 
 function MarketPage({ marketId }: { marketId: string }) {
   const { defaultGateway } = useProvidedGateway()
   const [market, setMarket] = useState<MarketState>()
   const [address, setAddress] = useState<string>()
+  const [secretStore, setSecretStore] = useState<StorageArchivist>()
 
   const canWrite = defaultGateway && 'addPayloadsToChain' in defaultGateway
+
+  // Create a StorageArchivist for persisting commit-reveal secrets (salts, choices).
+  // Namespace-scoped to this market so secrets don't collide across markets.
+  useEffect(() => {
+    StorageArchivist.create({
+      account: 'random',
+      config: {
+        schema: StorageArchivistConfigSchema,
+        type: 'local',
+        namespace: `market-secrets-${marketId}`,
+      },
+    }).then(setSecretStore)
+  }, [marketId])
 
   useEffect(() => {
     if (!defaultGateway) return
@@ -370,10 +385,7 @@ function MarketPage({ marketId }: { marketId: string }) {
         <CommitForm
           market={market.market}
           gateway={defaultGateway}
-          onCommit={(salt) => {
-            // Persist salt to localStorage keyed by marketId
-            localStorage.setItem(`market:${marketId}:salt`, salt)
-          }}
+          secretStore={secretStore}
         />
       )}
 
@@ -381,7 +393,7 @@ function MarketPage({ marketId }: { marketId: string }) {
         <RevealForm
           market={market.market}
           gateway={defaultGateway}
-          savedSalt={localStorage.getItem(`market:${marketId}:salt`)}
+          secretStore={secretStore}
         />
       )}
     </div>
