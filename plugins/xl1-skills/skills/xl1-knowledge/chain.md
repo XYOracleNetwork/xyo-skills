@@ -47,10 +47,7 @@ Blocks are tuples pairing the BoundWitness with its resolved payloads:
 type HydratedBlock = [BlockBoundWitness, Payload[]]
 ```
 
-**9 variant combinations** exist for each hydrated type:
-- Signing: default / `Signed` / `Unsigned`
-- Metadata: plain / `WithHashMeta` / `WithStorageMeta`
-- Example: `SignedHydratedBlockWithHashMeta`
+9 type variants exist, combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta`.
 
 ---
 
@@ -93,36 +90,9 @@ Transactions are valid within a block range:
 
 ## Fee Structure & Gas Model
 
-### Gas Costs
+Gas costs scale with operation complexity: signature and payload validation are expensive (~1,000 gas each), hash and balance validation are moderate (~100 gas), and character storage costs ~10 gas per JSON character. Use these estimates to predict transaction costs for payload-heavy operations. Minimum transaction fees are defined by the protocol (base, gasPrice, gasLimit, priority fields) — check the chain config for current values.
 
-| Operation | Gas Cost |
-|-----------|----------|
-| Character storage (per JSON char) | 10 |
-| Payload validation (per payload) | 1,000 |
-| Signature validation (per signature) | 1,000 |
-| Hash validation (per hash) | 100 |
-| Balance validation (per state change) | 100 |
-
-### Minimum Transaction Fees
-
-| Field | Minimum (AttoXL1) | Human Readable |
-|-------|--------------------|----------------|
-| `base` | 1,000 × 10^9 | 1,000 NanoXL1 |
-| `gasPrice` | 10 × 10^9 | 10 NanoXL1/gas |
-| `gasLimit` | 1,000,000 × 10^9 | 1M NanoXL1 |
-| `priority` | 0 | 0 |
-
-### Currency Units
-
-| Unit | Decimal Places | Relation to AttoXL1 |
-|------|----------------|---------------------|
-| XL1 | 18 | 1 XL1 = 10^18 AttoXL1 |
-| MilliXL1 | 15 | 10^15 AttoXL1 |
-| MicroXL1 | 12 | 10^12 AttoXL1 |
-| NanoXL1 | 9 | 10^9 AttoXL1 |
-| PicoXL1 | 6 | 10^6 AttoXL1 |
-| FemtoXL1 | 3 | 10^3 AttoXL1 |
-| **AttoXL1** | 0 | Base unit (like wei) |
+XL1 uses **AttoXL1** as the base unit (like wei in Ethereum). All on-chain amounts are integers in AttoXL1. Key conversions: 1 XL1 = 10^18 AttoXL1, 1 NanoXL1 = 10^9 AttoXL1. Use these for fee calculations, balance display, and token math.
 
 ---
 
@@ -169,9 +139,4 @@ XL1 uses a novel consensus mechanism:
 - **Lookback windows**: nodes only actively store recent transactions; older data archived but accessible
 - **Step hashes**: sequential data processing checkpoints that reduce bloat
 
-### Hex Encoding Convention
-
-All hex values in XL1 use:
-- **Lowercase** characters (`a-f`, not `A-F`)
-- **No `0x` prefix** (unless explicitly specified)
-- Hash: 64 chars, Address/ChainId: 40 chars, Signature: 128 chars
+**Hex encoding:** all hex values are lowercase, no `0x` prefix. Hashes are 64 chars, addresses/chain IDs 40, signatures 128.

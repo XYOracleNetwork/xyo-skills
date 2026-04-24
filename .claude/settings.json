@@ -1,37 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(cat:*)",
-      "Bash(find:*)",
-      "Bash(git add:*)",
-      "Bash(git commit -m ':*)",
-      "Bash(grep:*)",
-      "Bash(ls:*)",
-      "Bash(pnpm --version)",
-      "Bash(pnpm add:*)",
-      "Bash(pnpm approve-builds:*)",
-      "Bash(pnpm build:*)",
-      "Bash(pnpm config:*)",
-      "Bash(pnpm dev:*)",
-      "Bash(pnpm install:*)",
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm lint:fix)",
-      "Bash(pnpm ls:*)",
-      "Bash(pnpm remove:*)",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm tsc:*)",
-      "Bash(pnpm view:*)",
-      "Bash(pnpm why:*)",
-      "Bash(timeout:*)",
-      "Bash(volta install:*)",
-      "WebFetch(domain:api.github.com)",
-      "WebFetch(domain:docs.xyo.network)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:registry.npmjs.org)",
-      "WebFetch(domain:www.npmjs.com)",
-      "WebFetch(domain:xyo.network)",
-      "WebSearch"
-    ]
+    "allow": []
   }
 }

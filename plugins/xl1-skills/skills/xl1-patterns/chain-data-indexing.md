@@ -78,8 +78,10 @@ Application data goes in the `offChain` parameter of `addPayloadsToChain`, but *
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
 import { RestDataLakeRunner, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
+import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
 
-// TODO - where to get basic context?
+// See Gateway Usage — Accessing the Datalake for full setup details
+const context = getTestProviderContext()
 const datalakeRunner = await RestDataLakeRunner.create({
   context,
   endpoint: 'https://api.archivist.xyo.network/dataLake',
@@ -111,19 +113,7 @@ If you skip the datalake insert, the transaction still records on-chain but the 
 
 ### Via Viewer API — Transaction-Centric Queries
 
-**RPC wire methods vs. TypeScript API.** The JSON-RPC wire protocol uses method names like `transactionViewer_byHash` and `blockViewer_currentBlockNumber`. Those strings are the *wire format* — application code should not call them directly. `XyoGateway` (and `XyoGatewayRunner`) **does not expose a `.call(method, params)` entry point**. The typed API is reached via `gateway.connection.viewer.<sub-viewer>.<method>(...)`.
-
-The sub-viewers on `XyoViewer` are:
-
-| Sub-viewer | Key methods |
-|------------|-------------|
-| `connection.viewer.block` | `currentBlockNumber()`, `currentBlock()`, `blockByNumber(n)`, `blockByHash(h)`, `payloadsByHash(hashes)` |
-| `connection.viewer.transaction` | `byHash(h)`, `byBlockNumberAndIndex(n, i)` |
-| `connection.viewer.account.balance` | `accountBalance(addr)`, `accountBalanceHistory(addr)` |
-| `connection.viewer.finalization` | `head()`, `headNumber()`, `headHash()` |
-| `connection.viewer.mempool` | `pendingBlocks()`, `pendingTransactions()` |
-
-`connection.viewer` is typed `XyoViewer | undefined` — the in-page gateway populates it once it finishes resolving, but a wallet-only or runner-only `XyoGateway` may not have a viewer at all. Always guard with `?.` or an `if (!viewer) throw …` at the call site.
+Chain state is read through sub-viewers on `gateway.connection.viewer`. `connection.viewer` is typed `XyoViewer | undefined` — always guard with `?.` or an explicit null check. See [Gateway — Viewer API](../xl1-knowledge/gateway.md) for the full method-by-method reference.
 
 Use the transaction sub-viewer when you need full transaction context (who signed, when, block number):
 
@@ -141,7 +131,9 @@ When you need to find all payloads of a given type regardless of which transacti
 
 ```ts
 import { RestDataLakeViewer, type RestDataLakeViewerParams } from '@xyo-network/xl1-sdk'
+import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
 
+const context = getTestProviderContext()
 const viewer = await RestDataLakeViewer.create({
   context,
   endpoint: 'https://api.archivist.xyo.network/dataLake',
@@ -265,8 +257,8 @@ function useChainData(schemas: Schema[], intervalMs = 5000) {
 
 | Decision | Guidance |
 |----------|----------|
-| Transaction context needed? | Use `transactionViewer_*` RPC methods — gives you signer addresses, block number, fees |
-| Just need payloads by type? | Use datalake schema filtering via `/chain` endpoint |
-| Need a specific payload? | Use `blockViewer_payloadsByHash` with the hash |
-| Real-time updates? | Poll `blockViewer_currentBlockNumber` on an interval |
-| Large result sets? | Use cursor-based pagination via `next()` on the datalake |
+| Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
+| Just need payloads by type? | Use `RestDataLakeViewer` with `allowedSchemas` filtering |
+| Need a specific payload? | Use `connection.viewer.block.payloadsByHash(hashes)` |
+| Real-time updates? | Poll `connection.viewer.block.currentBlockNumber()` on an interval |
+| Large result sets? | Use cursor-based pagination via `next()` on the `RestDataLakeViewer` |

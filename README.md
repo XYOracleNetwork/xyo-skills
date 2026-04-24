@@ -90,6 +90,20 @@ Add a directory-based marketplace to your `.claude/settings.json` (project or us
 
 Then run `/plugin install xl1-skills` in your next session.
 
+### Building the Scaffold Package (required for the `xl1-scaffold` skill)
+
+The `xl1-scaffold` skill invokes a compiled CLI bundled under `plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold/`. That directory is **generated** from the TypeScript source at `packages/xl1-scaffold/`; it is not hand-authored. Before testing the scaffold skill locally, build it at least once:
+
+```shell
+corepack enable                      # first time only — ensures pnpm 10.x is available
+corepack pnpm@10 install
+corepack pnpm@10 -w run build
+```
+
+The build chain (`clean → tsc → copy-templates → sync-to-plugin`) compiles the TS source, mirrors the raw template files, and writes the resulting runtime into the skill directory.
+
+Rebuild after any change to `packages/xl1-scaffold/src/` or `packages/xl1-scaffold/templates/`. CI fails the PR if committed source drifts from the synced runtime (`git diff --exit-code plugins/xl1-skills/skills/xl1-scaffold/scripts`).
+
 ### Edit-Reload Cycle
 
 Claude Code loads skill content at startup. After editing any skill file, you must reload for changes to take effect:
@@ -147,9 +161,15 @@ jq empty plugins/xl1-skills/.claude-plugin/plugin.json
 
 ## Evaluation
 
-This repo doubles as a test bed for the skill stack. Start a Claude Code session with the plugin loaded and paste this prompt to exercise all five layers:
+This repo doubles as a test bed for the skill stack. **Before running the prompts below, make sure the scaffold is built locally** (see [Building the Scaffold](#building-the-scaffold-required-for-the-xl1-scaffold-skill)) — the `xl1-scaffold` skill depends on it.
+
+Start a Claude Code session with the plugin loaded and paste this prompt to exercise all five layers:
 
 > Build me a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.
+
+To test how your skill are picked up you can ask in a plan:
+
+> Make me a plan to build a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.  Be sure the plan includes the relevant skills you will use and how you will use them
 
 ## License
 

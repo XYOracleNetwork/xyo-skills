@@ -116,6 +116,23 @@ export const isMarketSettlementPayload = zodIsFactory(MarketSettlementPayloadZod
 
 ---
 
+## Datalake Setup
+
+The phase functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+
+```ts
+import { RestDataLakeRunner, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
+import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+
+const context = getTestProviderContext()
+const datalakeRunner = await RestDataLakeRunner.create({
+  context,
+  endpoint: 'https://api.archivist.xyo.network/dataLake',
+} satisfies RestDataLakeRunnerParams)
+```
+
+---
+
 ## Phase 1: Create Market
 
 The market creator defines the question, valid options, and deadlines. This is the first payload recorded on-chain:
@@ -151,7 +168,6 @@ async function createMarket(
   )
 
   // Insert into the dApp's datalake first — the wallet does not do this automatically.
-  // datalakeRunner is a RestDataLakeRunner from @xyo-network/xl1-sdk.
   await datalakeRunner.insert([marketPayload])
 
   const [txHash] = await gateway.addPayloadsToChain([], [marketPayload])
@@ -338,13 +354,28 @@ Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets wi
 
 ```tsx
 import { useProvidedGateway } from '@xyo-network/react-chain-client'
+import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/sdk-js'
 
 function MarketPage({ marketId }: { marketId: string }) {
   const { defaultGateway } = useProvidedGateway()
   const [market, setMarket] = useState<MarketState>()
   const [address, setAddress] = useState<string>()
+  const [secretStore, setSecretStore] = useState<StorageArchivist>()
 
   const canWrite = defaultGateway && 'addPayloadsToChain' in defaultGateway
+
+  // Create a StorageArchivist for persisting commit-reveal secrets (salts, choices).
+  // Namespace-scoped to this market so secrets don't collide across markets.
+  useEffect(() => {
+    StorageArchivist.create({
+      account: 'random',
+      config: {
+        schema: StorageArchivistConfigSchema,
+        type: 'local',
+        namespace: `market-secrets-${marketId}`,
+      },
+    }).then(setSecretStore)
+  }, [marketId])
 
   useEffect(() => {
     if (!defaultGateway) return
@@ -370,10 +401,7 @@ function MarketPage({ marketId }: { marketId: string }) {
         <CommitForm
           market={market.market}
           gateway={defaultGateway}
-          onCommit={(salt) => {
-            // Persist salt to localStorage keyed by marketId
-            localStorage.setItem(`market:${marketId}:salt`, salt)
-          }}
+          secretStore={secretStore}
         />
       )}
 
@@ -381,7 +409,7 @@ function MarketPage({ marketId }: { marketId: string }) {
         <RevealForm
           market={market.market}
           gateway={defaultGateway}
-          savedSalt={localStorage.getItem(`market:${marketId}:salt`)}
+          secretStore={secretStore}
         />
       )}
     </div>

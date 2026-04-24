@@ -1,0 +1,26 @@
+{
+  "name": "@xyo-network/xl1-scaffold",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "scaffold-xl1": "./dist/scaffold-xl1-dapp.js"
+  },
+  "scripts": {
+    "build": "pnpm clean && tsc && node scripts/copy-templates.mjs && node scripts/sync-to-plugin.mjs",
+    "clean": "rm -rf dist",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "scaffold": "node dist/scaffold-xl1-dapp.js",
+    "scaffold:dev": "tsx src/scaffold-xl1-dapp.ts"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "@xylabs/eslint-config-flat": "*",
+    "@xylabs/tsconfig": "*",
+    "eslint": "*",
+    "tsx": "*",
+    "typescript": "*"
+  }
+}

@@ -18,6 +18,9 @@ These patterns compose primitives from the full skill stack:
 
 ## Table of Contents
 
+### [Gateway Usage](gateway-usage.md)
+Read when you need to interact with the XL1 chain from application code — reading chain state, submitting transactions, or accessing the datalake. Covers provider setup, viewer sub-viewers, transaction submission, standalone datalake clients, capability detection, and network selection.
+
 ### [Chain Data Indexing](chain-data-indexing.md)
 Read when your dApp needs to query, filter, or paginate application-specific data from the XL1 chain. Covers schema-based datalake filtering, RPC viewer queries, polling for new data, and building application read models from raw chain state.
 
@@ -29,3 +32,6 @@ Read when your React dApp needs read-only access to chain data without requiring
 
 ### [Commit-Reveal Prediction Markets](commit-reveal-prediction-markets.md)
 Read when building a game, prediction market, or any application with a stake-commit-reveal-settle lifecycle. This is a composite pattern that combines commit-reveal, chain data indexing, and in-page datalakes into a complete recipe.
+
+### [dApp Definition of Done](dapp-checklist.md)
+Read before shipping any XL1 dApp feature. A checklist that validates gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, provider architecture, display conventions, and commit-reveal correctness against the rules and anti-patterns defined across the skill stack.

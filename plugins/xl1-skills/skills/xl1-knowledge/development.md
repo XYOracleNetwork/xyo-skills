@@ -89,7 +89,6 @@ The protocol separates read and write operations:
 | Prefix | Description | Example |
 |--------|-------------|---------|
 | `Simple*` | In-memory / direct implementation | `SimpleBlockViewer` |
-| `JsonRpc*` | Remote via JSON-RPC transport | `JsonRpcBlockViewer` |
 | `Rest*` | REST API implementation | `RestDataLakeViewer` |
 | `Abstract*` | Base class for extension | `AbstractCreatableProvider` |
 
@@ -129,52 +128,11 @@ type HydratedBlock = [BlockBoundWitness, Payload[]]
 type HydratedTransaction = [TransactionBoundWitness, Payload[]]
 ```
 
-**9 variant combinations per type:**
-
-| Signing | Metadata | Example Type |
-|---------|----------|-------------|
-| default | plain | `HydratedBlock` |
-| default | WithHashMeta | `HydratedBlockWithHashMeta` |
-| default | WithStorageMeta | `HydratedBlockWithStorageMeta` |
-| Signed | plain | `SignedHydratedBlock` |
-| Signed | WithHashMeta | `SignedHydratedBlockWithHashMeta` |
-| Signed | WithStorageMeta | `SignedHydratedBlockWithStorageMeta` |
-| Unsigned | plain | `UnsignedHydratedBlock` |
-| Unsigned | WithHashMeta | `UnsignedHydratedBlockWithHashMeta` |
-| Unsigned | WithStorageMeta | `UnsignedHydratedBlockWithStorageMeta` |
-
-The same matrix applies to transactions.
+Blocks and transactions each have 9 type variants combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, `UnsignedHydratedTransactionWithStorageMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta` and `SignedHydratedTransactionWithHashMeta`.
 
 ---
 
 ## Validation
 
-Validators are composable pure functions that return error arrays (empty = valid).
+Validators are composable pure functions that return error arrays (empty = valid). Transaction validators check chain ID, duration bounds, sender authorization, gas fees, elevation scripts, JSON schema, and transfer authorization. BoundWitness validators verify cryptographic signatures and payload hash/schema references. Block validators enforce cumulative balance constraints (outflow ≤ pre-block balance per address). Compose them as needed — grep the SDK source for the specific validator classes.
 
-### Transaction Validators (7)
-- **TransactionProtocolValidator** — chain ID matches
-- **TransactionDurationValidator** — nbf/exp bounds, max span 10,000 blocks
-- **TransactionFromValidator** — from address is valid and in addresses array
-- **TransactionGasValidator** — fee fields meet minimums
-- **TransactionElevationValidator** — required elevation scripts present
-- **TransactionJsonSchemaValidator** — AJV JSON schema validation
-- **TransactionTransfersValidator** — signer authorization for transfers
-
-### BoundWitness Validators (2)
-- **BoundWitnessSignaturesValidator** — ECDSA cryptographic validity
-- **BoundWitnessReferencesValidator** — payload hashes/schemas match payloads
-
-### Block Validators (1)
-- **BlockCumulativeBalanceValidator** — outflow ≤ pre-block balance per address
-
----
-
-## Viewer → RPC Pipeline
-
-To expose a viewer via JSON-RPC, five files form the chain:
-
-1. **Viewer interface** — defines `*Methods` (RPC-exposable) and full `*Viewer` (extends Methods + Provider)
-2. **RPC types** — derives `namespace_methodName` RPC method names and handler types
-3. **RPC schemas** — Zod `{ params: { to, from }, result: { to, from } }` for serialization
-4. **Registration** — all schema maps aggregated into `AllRpcSchemas`
-5. **Engine handler** — factory that delegates RPC calls to viewer methods

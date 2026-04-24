@@ -35,14 +35,68 @@ interface ArchivistFunctions {
 }
 ```
 
-**Implementations:** MemoryArchivist, IndexedDB, LevelDB, LMDB, MongoDB, Cookie, Firebase
+**Implementations:** MemoryArchivist, IndexedDbArchivist, StorageArchivist, LevelDB, LMDB, MongoDB, Cookie, Firebase
+
+#### Browser Archivist Selection
+
+| Archivist | Backing Store | Capacity | Schema Filtering | Persistence | Best For |
+|-----------|---------------|----------|-----------------|-------------|----------|
+| **IndexedDbArchivist** | Browser IndexedDB | 50 MB+ | Yes (built-in schema index) | Survives refresh + tab close | Primary local payload store — game state, moves, market data |
+| **StorageArchivist** | localStorage / sessionStorage / page memory | ~5–10 MB (localStorage) | No | localStorage: survives refresh; session: tab-scoped; page: ephemeral | Small critical data — commit-reveal secrets (salts, choices), user preferences |
+| **MemoryArchivist** | In-process LRU cache | Configurable (default 10,000 entries) | No | None — lost on refresh | Hot cache, poll buffer, testing |
+
+**Decision logic:**
+- Storing dApp payloads locally? → **IndexedDbArchivist** (large capacity, schema-indexed querying, cursor pagination)
+- Persisting secrets that must never go on-chain? → **StorageArchivist** with `type: 'local'` (namespace-isolated, cross-tab sync)
+- Ephemeral in-memory cache or tests? → **MemoryArchivist** (fast LRU, automatic eviction)
+
+#### Creation Examples
+
+All browser archivists share the standard archivist interface (`insert`, `get`, `next`, `delete`, `clear`) with built-in deduplication by data hash.
 
 ```ts
-import { MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk-js'
+import {
+  MemoryArchivist, MemoryArchivistConfigSchema,
+  IndexedDbArchivist, IndexedDbArchivistConfigSchema,
+  StorageArchivist, StorageArchivistConfigSchema,
+} from '@xyo-network/sdk-js'
 
-const archivist = await MemoryArchivist.create({
+// IndexedDbArchivist — primary local store for dApp payloads
+const localStore = await IndexedDbArchivist.create({
   account: 'random',
-  config: { schema: MemoryArchivistConfigSchema, name: 'GameArchivist' },
+  config: {
+    schema: IndexedDbArchivistConfigSchema,
+    dbName: 'my-dapp',        // IndexedDB database name
+    storeName: 'payloads',    // object store name
+  },
+})
+
+// StorageArchivist — small persistent secrets (salts, choices)
+const secretStore = await StorageArchivist.create({
+  account: 'random',
+  config: {
+    schema: StorageArchivistConfigSchema,
+    type: 'local',              // 'local' | 'session' | 'page'
+    namespace: 'my-dapp-secrets', // isolates keys from other apps
+    maxEntrySize: 16_000,       // bytes per payload (default)
+  },
+})
+
+// MemoryArchivist — in-memory cache or testing
+const cache = await MemoryArchivist.create({
+  account: 'random',
+  config: { schema: MemoryArchivistConfigSchema, max: 10_000 },
+})
+```
+
+#### Events
+
+All archivists emit `inserted`, `deleted`, and `cleared` events. Use these to drive React state updates:
+
+```ts
+localStore.on('inserted', ({ payloads }) => {
+  // Update UI with newly stored payloads
+  setPayloads(prev => [...prev, ...payloads])
 })
 ```
 

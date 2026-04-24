@@ -1,10 +1,9 @@
 # Gateway
 
 **Key npm packages:**
-- `@xyo-network/xl1-rpc` — RPC type definitions, Zod schemas, engine handlers
 - `@xyo-network/xl1-providers` — Browser, Node, and Neutral provider implementations
 
-Note: The gateway API server itself is part of the `xyo-chain` runtime repo (not published as a standalone npm package). The packages above cover the client-side RPC and provider interfaces needed for dApp development.
+Note: The gateway API server itself is part of the `xyo-chain` runtime repo (not published as a standalone npm package). The package above covers the client-side provider interfaces needed for dApp development.
 
 ---
 
@@ -18,9 +17,6 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 |----------|--------|---------|
 | `/rpc` | POST | JSON-RPC 2.0 — all viewer and runner methods |
 | `/chain` | Various | Archivist middleware for finalized chain data (datalake) |
-| `/startupz` | GET | Startup health probe |
-| `/readyz` | GET | Readiness health probe |
-| `/livez` | GET | Liveness health probe |
 
 ---
 
@@ -43,74 +39,102 @@ For dApp development, start with **Sequence** (beta) to test against a live chai
 
 ---
 
-## RPC Method Namespaces
+## Gateway Viewer API
 
-Methods follow the pattern `<namespace>_<methodName>`:
+Chain state is read through sub-viewers on `gateway.connection.viewer`. See [Gateway Usage](../xl1-patterns/gateway-usage.md) for full code examples. For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
 
-### Block Queries (`blockViewer_*`)
+**`connection.viewer` is optional** (`XyoViewer | undefined`). The in-page gateway populates it once it finishes resolving, but a wallet-only or runner-only gateway may not have a viewer. Always guard access with `?.` or an explicit null check.
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `blockViewer_blocksByHash` | `(hash, limit?)` | `SignedHydratedBlockWithHashMeta[]` |
-| `blockViewer_blocksByNumber` | `(block, limit?)` | `SignedHydratedBlockWithHashMeta[]` |
-| `blockViewer_blockByHash` | `(hash)` | `SignedHydratedBlockWithHashMeta \| null` |
-| `blockViewer_blockByNumber` | `(block)` | `SignedHydratedBlockWithHashMeta \| null` |
-| `blockViewer_currentBlock` | `()` | `SignedHydratedBlockWithHashMeta` |
-| `blockViewer_currentBlockNumber` | `()` | `XL1BlockNumber` |
-| `blockViewer_currentBlockHash` | `()` | `Hash` |
-| `blockViewer_chainId` | `(blockNumber?)` | `ChainId` |
-| `blockViewer_payloadsByHash` | `(hashes)` | `WithHashMeta<Payload>[]` |
+### Block Queries — `connection.viewer.block`
 
-### Transaction Queries (`transactionViewer_*`)
+| When you need to... | Use |
+|---------------------|-----|
+| Get the latest block number (polling, deadlines) | `.block.currentBlockNumber()` |
+| Get the full latest block (header + payloads) | `.block.currentBlock()` |
+| Get the latest block hash | `.block.currentBlockHash()` |
+| Look up a specific block you already have a hash for | `.block.blockByHash(hash)` |
+| Look up a specific block by its number | `.block.blockByNumber(n)` |
+| Scan a range of blocks starting from a hash or number | `.block.blocksByHash(hash, limit?)` / `.block.blocksByNumber(n, limit?)` |
+| Resolve off-chain payloads referenced in a transaction | `.block.payloadsByHash(hashes)` |
+| Get the chain ID at a given block height | `.block.chainId(blockNumber?)` |
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `transactionViewer_byHash` | `(txHash)` | `SignedHydratedTransactionWithHashMeta \| null` |
-| `transactionViewer_byBlockHashAndIndex` | `(blockHash, index)` | `SignedHydratedTransactionWithHashMeta \| null` |
-| `transactionViewer_byBlockNumberAndIndex` | `(blockNumber, index)` | `SignedHydratedTransactionWithHashMeta \| null` |
+### Transaction Queries — `connection.viewer.transaction`
 
-### Account Balances (`accountBalanceViewer_*`)
+| When you need to... | Use |
+|---------------------|-----|
+| Look up a transaction by its hash (e.g., after `addPayloadsToChain`) | `.transaction.byHash(txHash)` |
+| Look up a transaction by its position within a block | `.transaction.byBlockNumberAndIndex(n, i)` or `.transaction.byBlockHashAndIndex(hash, i)` |
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `accountBalanceViewer_accountBalance` | `(address, config?)` | `AttoXL1` |
-| `accountBalanceViewer_accountBalances` | `(addresses, config?)` | `Record<Address, AttoXL1>` |
-| `accountBalanceViewer_accountBalanceHistory` | `(address, config?)` | `AccountBalanceHistoryItem[]` |
+### Account Balances — `connection.viewer.account.balance`
 
-### Finalization (`finalizationViewer_*`)
+| When you need to... | Use |
+|---------------------|-----|
+| Check a single account's XL1 balance | `.account.balance.accountBalance(address)` |
+| Check multiple account balances in one call | `.account.balance.accountBalances(addresses)` |
+| Show balance history over time (charts, audit trails) | `.account.balance.accountBalanceHistory(address)` |
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `finalizationViewer_head` | `()` | `SignedHydratedBlockWithHashMeta` |
-| `finalizationViewer_headNumber` | `()` | `XL1BlockNumber` |
-| `finalizationViewer_headHash` | `()` | `Hash` |
-| `finalizationViewer_chainId` | `()` | `ChainId` |
+### Finalization — `connection.viewer.finalization`
 
-### Mempool (`mempoolViewer_*` / `mempoolRunner_*`)
+| When you need to... | Use |
+|---------------------|-----|
+| Get the latest finalized block (confirmed, irreversible) | `.finalization.head()` |
+| Get just the finalized block number or hash | `.finalization.headNumber()` / `.finalization.headHash()` |
+| Get the chain ID from the finalized state | `.finalization.chainId()` |
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `mempoolViewer_pendingBlocks` | `(options?)` | `SignedHydratedBlockWithHashMeta[]` |
-| `mempoolViewer_pendingTransactions` | `(options?)` | `SignedHydratedTransactionWithHashMeta[]` |
-| `mempoolRunner_submitBlocks` | `(blocks)` | `Hash[]` |
-| `mempoolRunner_submitTransactions` | `(txs)` | `Hash[]` |
+Use finalization viewers when you need confirmed state. Use block viewers when you need the latest state including unfinalized blocks.
 
-### Staking (`stakeViewer_*`)
+### Mempool — `connection.viewer.mempool`
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `stakeViewer_stakeById` | `(id)` | `Position` |
-| `stakeViewer_stakesByStaker` | `(staker)` | `Position[]` |
-| `stakeViewer_stakesByStaked` | `(staked)` | `Position[]` |
-| `stakeViewer_activeStakes` | `()` | `Position[]` |
+| When you need to... | Use |
+|---------------------|-----|
+| See pending blocks not yet included in the chain | `.mempool.pendingBlocks()` |
+| See pending transactions awaiting inclusion | `.mempool.pendingTransactions()` |
 
-### Transaction Operations (`xyoRunner_*` / `xyoSigner_*`)
+### Staking — `connection.viewer.stake`
 
-| Method | Parameters | Returns |
-|--------|-----------|---------|
-| `xyoRunner_broadcastTransaction` | `(tx)` | `Hash` |
-| `xyoSigner_address` | `()` | `Address` |
-| `xyoSigner_signTransaction` | `(tx)` | `SignedHydratedTransactionWithHashMeta` |
+| When you need to... | Use |
+|---------------------|-----|
+| Look up a specific staking position by ID | `.stake.stakeById(id)` |
+| List all positions staked by a given address | `.stake.stakesByStaker(address)` |
+| List all positions staked on a given address | `.stake.stakesByStaked(address)` |
+| List all currently active staking positions | `.stake.activeStakes()` |
+
+### Other Sub-Viewers — `connection.viewer.*`
+
+| Sub-viewer | When to use |
+|------------|-------------|
+| `.networkStake` | Querying network-level staking aggregates |
+| `.step` | Querying step/epoch boundaries and progression |
+| `.time` | Time synchronization between client and chain |
+
+### Transaction Methods — on `XyoGatewayRunner` directly
+
+Transaction submission is done through high-level methods on the gateway itself (not through `connection.viewer`). These require a wallet connection:
+
+| When you need to... | Use |
+|---------------------|-----|
+| Record application data on-chain (game moves, attestations) | `gateway.addPayloadsToChain(onChain, offChain)` |
+| Submit a transaction you built manually | `gateway.addTransactionToChain(tx, offChain?)` |
+| Send XL1 tokens to one address | `gateway.send(to, amount)` |
+| Send XL1 tokens to multiple addresses | `gateway.sendMany(transfers)` |
+| Wait for a submitted transaction to be included in a block | `gateway.confirmSubmittedTransaction(txHash)` |
+
+See [Gateway Usage — Submitting Transactions](../xl1-patterns/gateway-usage.md) for details.
+
+---
+
+## Connection Properties
+
+The gateway object (`XyoGateway` or `XyoGatewayRunner`) exposes chain access through `gateway.connection`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `.viewer` | `XyoViewer \| undefined` | Read-only chain state (sub-viewers for blocks, transactions, balances, etc.) |
+| `.storage` | `DataLakeViewer \| undefined` | Read-only datalake attached to this connection. May not point to the dApp's desired endpoint. |
+| `.runner` | `XyoRunner \| undefined` | Low-level runner (internal — use gateway methods instead) |
+| `.network` | `XyoNetwork \| undefined` | Network metadata |
+
+**`connection.storage` is not the recommended datalake path.** It is a read-only `DataLakeViewer` populated from the connection's configuration — it cannot write, and it may not point to the endpoint the dApp wants to use. For datalake access, create standalone `RestDataLakeRunner` / `RestDataLakeViewer` clients. See [Gateway Usage — Accessing the Datalake](../xl1-patterns/gateway-usage.md) and [Datalakes](datalakes.md).
 
 ---
 

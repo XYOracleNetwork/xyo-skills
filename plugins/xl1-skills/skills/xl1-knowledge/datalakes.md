@@ -23,7 +23,7 @@ Each network exposes its datalake as a standalone HTTP archivist endpoint, separ
 | **Sequence** (beta) | `https://beta.api.archivist.xyo.network/dataLake` |
 | **Local** | `http://localhost:8080/dataLake` |
 
-**The datalake is not a property on the gateway JS object.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Do not use `defaultGateway.datalake` (which does not exist).
+**The datalake is not a direct property on the gateway JS object.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Do not use `defaultGateway.datalake` (which does not exist). Note: `gateway.connection.storage` exists as a read-only `DataLakeViewer` when the connection is configured with a datalake endpoint, but it is not the recommended path for dApp code — it is read-only, and it may not point to the endpoint the dApp intends to use. Always create standalone datalake clients. See [Gateway Usage — Accessing the Datalake](../xl1-patterns/gateway-usage.md).
 
 ### Two Independent Datalake Clients
 
@@ -163,4 +163,4 @@ The gateway exposes datalake data at the `/chain` endpoint using XYO archivist m
 2. **Paginated** — iterate through data using cursor-based pagination via `next()`
 3. **Schema-filtered** — limit results to specific payload schemas
 
-For dApp development, use the gateway's RPC interface (see [Gateway](gateway.md)) rather than querying the datalake directly. The RPC viewer methods (`blockViewer_*`, `transactionViewer_*`, etc.) provide typed, validated access to chain data.
+For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than querying the datalake directly. The `connection.viewer` sub-viewers provide typed, validated access to chain data.

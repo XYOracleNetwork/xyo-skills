@@ -29,7 +29,7 @@ Read when building applications or services on XL1. Covers the Zod-first type pa
 Read when working with XL1 chain data storage — archiving, querying, or configuring storage backends. Covers the DataLake abstraction and how it builds on XYO Archivists.
 
 ### [Gateway](gateway.md)
-Read when connecting to the XL1 chain — JSON-RPC API, RPC method namespaces, transports, and providers. Covers how to query blocks, submit transactions, and run a gateway node.
+Read when connecting to the XL1 chain — gateway viewer API, networks, transports, and providers. Covers how to query blocks, submit transactions, and run a gateway node.
 
 ### [Browser Wallet](wallet.md)
 Read when integrating with the XL1 browser wallet — transaction signing, React components, and the dApp ↔ wallet communication flow.
