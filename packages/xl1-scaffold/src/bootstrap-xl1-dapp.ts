@@ -8,6 +8,7 @@
 // Defaults: target-dir=src, template=react.
 
 import { resolve } from 'node:path'
+import { parseArgs as parseNodeArgs } from 'node:util'
 
 import { expandWithPeers, resolveLatestPnpmByMajor, resolveVersions } from './registry.js'
 import { BASE, type Template } from './template.js'
@@ -34,24 +35,26 @@ type Args = {
   noInstall: boolean
 }
 
+// Supported flag forms (any order relative to each other and to positionals):
+//   --force, --no-install             boolean switches
+//   --template=node, --template node  option with value (also --template's short form -t)
+//   --target=my-app, --target my-app  same; target is also acceptable as positional[0]
 function parseArgs(argv: string[]): Args {
-  const flags = new Set<string>()
-  const options: Record<string, string> = {}
-  const positional: string[] = []
-  for (const a of argv) {
-    if (a.startsWith('--')) {
-      const eq = a.indexOf('=')
-      if (eq === -1) flags.add(a)
-      else options[a.slice(2, eq)] = a.slice(eq + 1)
-    } else {
-      positional.push(a)
-    }
-  }
+  const { values, positionals } = parseNodeArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      template: { type: 'string', short: 't', default: 'react' },
+      target: { type: 'string' },
+      force: { type: 'boolean', default: false },
+      'no-install': { type: 'boolean', default: false },
+    },
+  })
   return {
-    target: positional[0] ?? 'src',
-    templateName: options.template ?? 'react',
-    force: flags.has('--force'),
-    noInstall: flags.has('--no-install'),
+    target: values.target ?? positionals[0] ?? 'src',
+    templateName: values.template!,
+    force: values.force!,
+    noInstall: values['no-install']!,
   }
 }
 
