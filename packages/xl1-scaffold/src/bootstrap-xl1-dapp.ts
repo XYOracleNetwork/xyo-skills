@@ -93,7 +93,11 @@ async function main() {
     process.exit(1)
   }
 
-  const target = resolve(process.cwd(), targetArg)
+  // Prefer INIT_CWD — pnpm sets it to the user's original invocation dir.
+  // Without this, running via `pnpm --filter ... run scaffold` resolves
+  // relative to the filtered workspace package, not where the user ran from.
+  const invocationCwd = process.env.INIT_CWD ?? process.cwd()
+  const target = resolve(invocationCwd, targetArg)
   const templatesRoot = resolveTemplatesRoot(import.meta.url)
 
   console.log(`Bootstrapping ${template.description} at: ${target}`)

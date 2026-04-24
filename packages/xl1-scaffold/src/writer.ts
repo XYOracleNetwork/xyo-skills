@@ -61,7 +61,15 @@ export function copyTemplateFile(templatesRoot: string, templateName: string, fi
 
 export function runPnpmStep(target: string, label: string, pnpmArgs: string[]): void {
   console.log(`\n${label}...`)
-  const r = spawnSync('corepack', ['pnpm@10', ...pnpmArgs], { cwd: target, stdio: 'inherit' })
+  // --ignore-workspace prevents pnpm from walking up to a parent
+  // pnpm-workspace.yaml, which would otherwise make it treat the scaffolded
+  // target as a workspace member (reusing the outer node_modules instead of
+  // installing the target's own deps).
+  const r = spawnSync(
+    'corepack',
+    ['pnpm@10', '--ignore-workspace', ...pnpmArgs],
+    { cwd: target, stdio: 'inherit' },
+  )
   if (r.status !== 0) {
     console.error(`${label} failed.`)
     process.exit(r.status ?? 1)
