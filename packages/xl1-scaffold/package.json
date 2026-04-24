@@ -7,7 +7,7 @@
     "scaffold-xl1": "./dist/bootstrap-xl1-dapp.js"
   },
   "scripts": {
-    "build": "tsc && node build/copy-templates.mjs",
+    "build": "pnpm clean && tsc && node scripts/copy-templates.mjs && node scripts/sync-to-plugin.mjs",
     "clean": "rm -rf dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

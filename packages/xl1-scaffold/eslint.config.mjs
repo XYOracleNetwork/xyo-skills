@@ -8,7 +8,7 @@ export default [
       'coverage/',
       'templates/',
       'eslint.config.mjs',
-      'build/',
+      'scripts/',
     ],
   },
   ...xylabsConfig,
