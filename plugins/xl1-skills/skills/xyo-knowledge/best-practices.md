@@ -33,7 +33,7 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 
 - **Hashing:** `PayloadBuilder.dataHash` strips meta fields and uses deterministic field ordering before hashing. `crypto.subtle.digest('SHA-256', JSON.stringify(payload))` produces a *different hash* because `JSON.stringify` doesn't strip meta or guarantee field order. Other protocol participants will compute a different hash for the same payload.
 - **Datalake access:** `RestDataLakeRunner` and `RestDataLakeViewer` implement the archivist HTTP contract (request format, pagination, schema filtering). Raw `fetch()` to the same endpoint may not match the expected request shape.
-- **RPC calls:** The gateway from `useProvidedGateway()` is the correct RPC client. Using a generic `rpc` variable or raw `fetch` to `/rpc` loses type safety and provenance — you can't tell which gateway (wallet vs. in-page) is being called.
+- **Chain queries:** The gateway from `useProvidedGateway()` is the correct client for reading chain state. Access viewer methods via `connection.viewer` sub-viewers. Raw `fetch` to the gateway endpoint loses type safety and provenance.
 - **Payload construction:** `PayloadBuilder` manages schema validation and meta field conventions. Raw object literals (`{ schema: '...', field: value }`) skip this and may produce invalid payloads.
 - **BoundWitness construction:** `BoundWitnessBuilder` computes parallel arrays (`addresses`, `payload_hashes`, `payload_schemas`, `previous_hashes`, `$signatures`) and maintains chain continuity. Manual construction risks breaking these invariants.
 
@@ -43,7 +43,7 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 |---|---|---|
 | `crypto.subtle.digest` on `JSON.stringify(payload)` | Hash won't match canonical protocol hash | `PayloadBuilder.dataHash(payload)` |
 | Raw `fetch()` to datalake endpoint | May not match archivist HTTP contract | `RestDataLakeRunner` / `RestDataLakeViewer` from `@xyo-network/xl1-sdk` |
-| Calling `gateway.call('namespace_method', [...])` | `XyoGateway`/`XyoGatewayRunner` has no `.call()` — that string is the JSON-RPC *wire* method, not a TS API | `defaultGateway.connection.viewer?.<sub-viewer>.<method>(...)` — see [Gateway Usage](../xl1-patterns/gateway-usage.md) |
+| Calling gateway methods by string name or raw HTTP | The gateway has no `.call()` method — use the typed sub-viewer API | `defaultGateway.connection.viewer?.<sub-viewer>.<method>(...)` — see [Gateway Usage](../xl1-patterns/gateway-usage.md) |
 | Manual BoundWitness field construction | Parallel array invariants easily broken | `BoundWitnessBuilder` |
 | Raw object literal `{ schema: '...', field: val }` | Skips meta field management and validation | `PayloadBuilder` |
 | Using `datalakeRunner`/`datalakeViewer` without creating them | These are not globals — they must be instantiated with a context | `RestDataLakeRunner.create({ context: getTestProviderContext(), endpoint })` — see [Gateway Usage](../xl1-patterns/gateway-usage.md) |

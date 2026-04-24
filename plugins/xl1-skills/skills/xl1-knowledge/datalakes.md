@@ -163,4 +163,4 @@ The gateway exposes datalake data at the `/chain` endpoint using XYO archivist m
 2. **Paginated** — iterate through data using cursor-based pagination via `next()`
 3. **Schema-filtered** — limit results to specific payload schemas
 
-For dApp development, use the gateway's RPC interface (see [Gateway](gateway.md)) rather than querying the datalake directly. The RPC viewer methods (`blockViewer_*`, `transactionViewer_*`, etc.) provide typed, validated access to chain data.
+For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than querying the datalake directly. The `connection.viewer` sub-viewers provide typed, validated access to chain data.

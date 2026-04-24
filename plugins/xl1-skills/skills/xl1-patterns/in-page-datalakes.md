@@ -5,7 +5,7 @@ Read this pattern when your React dApp needs to access chain data or the datalak
 **Builds on:**
 - [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
-- [Gateway](../xl1-knowledge/gateway.md) — RPC methods, networks, transports
+- [Gateway](../xl1-knowledge/gateway.md) — networks, viewer API, transports
 - [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling patterns
 
 ---
@@ -181,7 +181,7 @@ function GameBoard({ address }: { address?: string }) {
 
 ## Querying the In-Page Datalake
 
-The in-page gateway exposes the same RPC interface as the wallet gateway, minus write operations. All `*Viewer` methods work:
+The in-page gateway exposes the same viewer API as the wallet gateway, minus write operations. All `connection.viewer` sub-viewer methods work:
 
 ```tsx
 function Leaderboard() {

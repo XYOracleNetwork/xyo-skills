@@ -25,7 +25,7 @@ The XL1 wallet is a Chrome browser extension for interacting with the XYO Layer 
 
 ## Submitting Transactions
 
-**The gateway is the single point of entry for all chain interactions in application code.** It abstracts transaction construction, wallet signing, and broadcasting into single method calls. Do not use low-level RPC constructs (`TransactionBoundWitness`, `xyoSigner_signTransaction`, `xyoRunner_broadcastTransaction`) directly — those are internal to the gateway implementation. Application code should always go through the gateway's high-level methods.
+**The gateway is the single point of entry for all chain interactions in application code.** It abstracts transaction construction, wallet signing, and broadcasting into single method calls. Do not construct `TransactionBoundWitness` objects or call low-level signing/broadcast operations directly — those are internal to the gateway implementation. Application code should always go through the gateway's high-level methods.
 
 ### Adding application data to the chain
 

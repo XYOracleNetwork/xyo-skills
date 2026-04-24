@@ -113,9 +113,7 @@ If you skip the datalake insert, the transaction still records on-chain but the 
 
 ### Via Viewer API — Transaction-Centric Queries
 
-**RPC wire methods vs. TypeScript API.** The JSON-RPC wire protocol uses method names like `transactionViewer_byHash` and `blockViewer_currentBlockNumber`. Those strings are the *wire format* — application code should not call them directly. `XyoGateway` (and `XyoGatewayRunner`) **does not expose a `.call(method, params)` entry point**. The typed API is reached via `gateway.connection.viewer.<sub-viewer>.<method>(...)`.
-
-The sub-viewers on `XyoViewer` are:
+Chain state is read through sub-viewers on `gateway.connection.viewer`. The sub-viewers on `XyoViewer` are:
 
 | Sub-viewer | Key methods |
 |------------|-------------|

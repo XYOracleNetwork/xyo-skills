@@ -119,20 +119,6 @@ const balance = await defaultGateway?.connection.viewer?.account.balance.account
 // balance: AttoXL1
 ```
 
-### Wire names vs TypeScript API
-
-The [Gateway reference](../xl1-knowledge/gateway.md) lists RPC methods by wire name (e.g., `blockViewer_currentBlockNumber`). Those strings are the JSON-RPC wire protocol — **not** a TypeScript API. Application code uses the typed sub-viewer path:
-
-| Wire name | TypeScript API |
-|-----------|---------------|
-| `blockViewer_currentBlockNumber` | `connection.viewer.block.currentBlockNumber()` |
-| `transactionViewer_byHash` | `connection.viewer.transaction.byHash(h)` |
-| `accountBalanceViewer_accountBalance` | `connection.viewer.account.balance.accountBalance(addr)` |
-| `finalizationViewer_headNumber` | `connection.viewer.finalization.headNumber()` |
-| `mempoolViewer_pendingTransactions` | `connection.viewer.mempool.pendingTransactions()` |
-
-`XyoGateway` and `XyoGatewayRunner` do not expose a `.call(method, params)` entry point. The wire names are internal to the JSON-RPC transport layer.
-
 ---
 
 ## Submitting Transactions
@@ -282,8 +268,7 @@ Start with **Sequence** (beta) to test against a live chain, then switch to **Ma
 
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
-| `gateway.call('blockViewer_currentBlockNumber', [])` | `XyoGateway` has no `.call()` method. Wire names are JSON-RPC transport internals. | `gateway.connection.viewer?.block.currentBlockNumber()` |
+| Calling RPC methods directly (raw `fetch` to `/rpc`, manual JSON-RPC payloads) | Loses type safety, provenance, and transport abstraction | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
 | `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use standalone `RestDataLakeRunner`/`RestDataLakeViewer` |
-| `fetch('/rpc', { body: JSON.stringify({ method: '...' }) })` | Loses type safety, provenance, and transport abstraction | Use `connection.viewer` sub-viewers |
 | `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use standalone `RestDataLakeRunner` |
 | Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |

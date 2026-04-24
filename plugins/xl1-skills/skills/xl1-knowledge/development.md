@@ -89,7 +89,6 @@ The protocol separates read and write operations:
 | Prefix | Description | Example |
 |--------|-------------|---------|
 | `Simple*` | In-memory / direct implementation | `SimpleBlockViewer` |
-| `JsonRpc*` | Remote via JSON-RPC transport | `JsonRpcBlockViewer` |
 | `Rest*` | REST API implementation | `RestDataLakeViewer` |
 | `Abstract*` | Base class for extension | `AbstractCreatableProvider` |
 
@@ -167,14 +166,3 @@ Validators are composable pure functions that return error arrays (empty = valid
 ### Block Validators (1)
 - **BlockCumulativeBalanceValidator** — outflow ≤ pre-block balance per address
 
----
-
-## Viewer → RPC Pipeline
-
-To expose a viewer via JSON-RPC, five files form the chain:
-
-1. **Viewer interface** — defines `*Methods` (RPC-exposable) and full `*Viewer` (extends Methods + Provider)
-2. **RPC types** — derives `namespace_methodName` RPC method names and handler types
-3. **RPC schemas** — Zod `{ params: { to, from }, result: { to, from } }` for serialization
-4. **Registration** — all schema maps aggregated into `AllRpcSchemas`
-5. **Engine handler** — factory that delegates RPC calls to viewer methods
