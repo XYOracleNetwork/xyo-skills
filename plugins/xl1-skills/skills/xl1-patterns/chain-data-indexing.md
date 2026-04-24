@@ -113,17 +113,7 @@ If you skip the datalake insert, the transaction still records on-chain but the 
 
 ### Via Viewer API — Transaction-Centric Queries
 
-Chain state is read through sub-viewers on `gateway.connection.viewer`. The sub-viewers on `XyoViewer` are:
-
-| Sub-viewer | Key methods |
-|------------|-------------|
-| `connection.viewer.block` | `currentBlockNumber()`, `currentBlock()`, `blockByNumber(n)`, `blockByHash(h)`, `payloadsByHash(hashes)` |
-| `connection.viewer.transaction` | `byHash(h)`, `byBlockNumberAndIndex(n, i)` |
-| `connection.viewer.account.balance` | `accountBalance(addr)`, `accountBalanceHistory(addr)` |
-| `connection.viewer.finalization` | `head()`, `headNumber()`, `headHash()` |
-| `connection.viewer.mempool` | `pendingBlocks()`, `pendingTransactions()` |
-
-`connection.viewer` is typed `XyoViewer | undefined` — the in-page gateway populates it once it finishes resolving, but a wallet-only or runner-only `XyoGateway` may not have a viewer at all. Always guard with `?.` or an `if (!viewer) throw …` at the call site.
+Chain state is read through sub-viewers on `gateway.connection.viewer`. `connection.viewer` is typed `XyoViewer | undefined` — always guard with `?.` or an explicit null check. See [Gateway — Viewer API](../xl1-knowledge/gateway.md) for the full method-by-method reference.
 
 Use the transaction sub-viewer when you need full transaction context (who signed, when, block number):
 

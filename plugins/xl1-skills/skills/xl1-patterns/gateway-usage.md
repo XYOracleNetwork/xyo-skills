@@ -83,17 +83,19 @@ Chain state is accessed through sub-viewers on `gateway.connection.viewer`. The 
 
 ### Sub-viewer reference
 
-| Sub-viewer | Type | Key methods |
-|------------|------|-------------|
-| `.block` | `BlockViewer` | `currentBlockNumber()`, `currentBlock()`, `blockByNumber(n)`, `blockByHash(h)`, `payloadsByHash(hashes)` |
-| `.transaction` | `TransactionViewer` | `byHash(h)`, `byBlockNumberAndIndex(n, i)`, `byBlockHashAndIndex(h, i)` |
-| `.account.balance` | `AccountBalanceViewer` | `accountBalance(addr)`, `accountBalances(addrs)`, `accountBalanceHistory(addr)` |
-| `.finalization` | `FinalizationViewer` | `head()`, `headNumber()`, `headHash()`, `chainId()` |
-| `.mempool` | `MempoolViewer` | `pendingBlocks()`, `pendingTransactions()` |
-| `.stake` | `StakeViewer` | `stakeById(id)`, `stakesByStaker(addr)`, `stakesByStaked(addr)`, `activeStakes()` |
-| `.networkStake` | `NetworkStakeViewer` | Network-level staking queries |
-| `.step` | `StepViewer` | Step/epoch queries |
-| `.time` | `TimeSyncViewer` | Time synchronization queries |
+| Sub-viewer | When to use |
+|------------|-------------|
+| `.block` | Query blocks, get latest block number (for polling/deadlines), resolve off-chain payloads by hash |
+| `.transaction` | Look up transactions by hash or by position within a block |
+| `.account.balance` | Check XL1 balances, batch balance lookups, balance history |
+| `.finalization` | Get the latest **finalized** (irreversible) block — use when you need confirmed state rather than latest |
+| `.mempool` | Inspect pending blocks/transactions not yet included in the chain |
+| `.stake` | Look up staking positions by ID, staker, or staked address |
+| `.networkStake` | Network-level staking aggregates |
+| `.step` | Step/epoch boundaries and progression |
+| `.time` | Time synchronization between client and chain |
+
+See [Gateway — Viewer API](../xl1-knowledge/gateway.md) for the full method-by-method reference.
 
 ### Example: Read current block number
 
