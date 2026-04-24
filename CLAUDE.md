@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This repo serves two roles:
+This repo serves three roles:
 
 1. **Claude Code plugin marketplace** — packages a 5-layer XL1/XYO skill stack as an installable plugin (`plugins/xl1-skills/`)
-2. **Evaluation test bed** — `src/` is where a rock-paper-scissors game gets built to test the skill stack's quality
+2. **Scaffold tool** — `packages/xl1-scaffold/` scaffolds a new XL1 app (React dApp or Node service) with the correct dep graph, tsconfig, ESLint, and smoke test wired up
+3. **Evaluation test bed** — `src/` is where a rock-paper-scissors game gets built to test the skill stack's quality
 
 The skills themselves are the primary artifact. When implementation reveals incorrect or misleading guidance in a skill, update the skill file — not just the application code.
 
@@ -48,7 +49,21 @@ jq empty .claude-plugin/marketplace.json
 jq empty plugins/xl1-skills/.claude-plugin/plugin.json
 ```
 
-Once `src/` has a `package.json`, use the repo's scripts (e.g. `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm dev`) — never raw tool commands.
+**Workspace layout** (pnpm workspaces):
+- `/` — workspace root (`package.json`, `pnpm-workspace.yaml`, `.npmrc`)
+- `/packages/xl1-scaffold/` — the scaffold CLI (TS source under `src/`, raw template files under `templates/`, compiled output in `dist/`)
+- `/src/` — target for the scaffolded app (not a workspace member; scaffold generates it as a standalone pnpm project)
+
+**Scaffold usage** (run from repo root):
+```shell
+pnpm install                                # install workspace deps
+pnpm -w run build                           # build the scaffold
+pnpm -w run scaffold src                    # scaffold React dApp into ./src (default)
+pnpm -w run scaffold src --template=node    # scaffold Node service instead
+pnpm -w run scaffold:dev src --template=node # skip build, run straight from TS via tsx
+```
+
+Once `src/` has a `package.json`, use its scripts (e.g. `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm dev`) from inside `src/` — never raw tool commands.
 
 ## Key Conventions (from the skills)
 
