@@ -21,54 +21,89 @@ const NO_INSTALL = flags.has('--no-install')
 
 const PACKAGE_NAME = 'xl1-dapp'
 
-// Pinned against node_modules/ as of 2026-04-23.
-const DEPS = {
-  react: '^19.2.5',
-  'react-dom': '^19.2.5',
-  'react-is': '^19.2.5',
-  '@xyo-network/sdk-js': '^5.5.5',
-  '@xyo-network/xl1-sdk': '^1.26.37',
-  '@xyo-network/react-chain-client': '^1.20.26',
+// Versions are resolved at runtime from the npm registry. See resolveVersions().
+const DEPENDENCIES = [
+  'react',
+  'react-dom',
+  'react-is',
+  '@xyo-network/sdk-js',
+  '@xyo-network/xl1-sdk',
+  '@xyo-network/react-chain-client',
   // Peer deps of @xyo-network/react-chain-client.
-  '@mui/material': '^7.3.10',
-  '@emotion/react': '^11.14.0',
-  '@emotion/styled': '^11.14.1',
-  '@xylabs/sdk-js': '^5.0.100',
-  '@xylabs/zod': '^5.0.100',
-  '@xylabs/react-async-effect': '^7.1.20',
-  '@xylabs/react-promise': '^7.1.20',
-  '@xylabs/react-quick-tip-button': '^7.1.20',
+  '@mui/material',
+  '@emotion/react',
+  '@emotion/styled',
+  '@xylabs/sdk-js',
+  '@xylabs/zod',
+  '@xylabs/react-async-effect',
+  '@xylabs/react-promise',
+  '@xylabs/react-quick-tip-button',
   // Browser polyfill for Node's 'events' module — required because
   // @metamask/safe-event-emitter (pulled in by wallet postMessage transport)
   // imports 'events' directly. The npm "events" package is the canonical
   // browser shim.
-  events: '^3.3.0',
-}
+  'events',
+]
 
-const DEV_DEPS = {
-  '@xylabs/toolchain': '^7.11.8',
+const DEV_DEPENDENCIES = [
+  '@xylabs/toolchain',
   // tsconfig-react extends tsconfig-dom extends tsconfig. All three need to be
   // direct dev deps so the ESLint import resolver can find them when it walks
   // the tsconfig extends chain.
-  '@xylabs/tsconfig': '^7.11.8',
-  '@xylabs/tsconfig-dom': '^7.11.8',
-  '@xylabs/tsconfig-react': '^7.11.8',
-  '@xylabs/eslint-config-react-flat': '^7.11.8',
-  '@types/react': '^19.2.14',
-  '@types/react-dom': '^19.2.3',
-  '@vitejs/plugin-react': '^4.7.0',
-  eslint: '^10.2.1',
-  'happy-dom': '^15.11.7',
-  typescript: '~5.8.3',
-  vite: '^6.4.2',
-  'vite-plugin-top-level-await': '^1.6.0',
-  'vite-tsconfig-paths': '^5.1.4',
-  vitest: '^2.1.9',
+  '@xylabs/tsconfig',
+  '@xylabs/tsconfig-dom',
+  '@xylabs/tsconfig-react',
+  '@xylabs/eslint-config-react-flat',
+  '@types/react',
+  '@types/react-dom',
+  '@vitejs/plugin-react',
+  'eslint',
+  'happy-dom',
+  'typescript',
+  'vite',
+  'vite-plugin-top-level-await',
+  'vite-tsconfig-paths',
+  'vitest',
+]
+
+// pnpm 11.0.0-rc.2 hits ERR_PNPM_MISSING_TIME on @eslint-react/* and
+// @typescript-eslint/* even with resolution-mode=highest set, so the script
+// pins pnpm to the latest 10.x via `corepack pnpm@10` and resolves the
+// concrete version for package.json's packageManager field at runtime.
+const PNPM_MAJOR = '10'
+
+async function fetchJson(url) {
+  const res = await fetch(url, { headers: { accept: 'application/json' } })
+  if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`)
+  return res.json()
 }
 
-// Pinned — pnpm 11.0.0-rc.2 hits ERR_PNPM_MISSING_TIME on @eslint-react/*
-// and @typescript-eslint/* even with resolution-mode=highest set.
-const PACKAGE_MANAGER = 'pnpm@10.33.1'
+async function fetchLatestVersion(pkg) {
+  const encoded = pkg.replaceAll('/', '%2F')
+  const body = await fetchJson(`https://registry.npmjs.org/${encoded}/latest`)
+  if (!body.version) throw new Error(`no version in registry response for ${pkg}`)
+  return body.version
+}
+
+// Returns { "pkg": "^1.2.3", ... } for the given package names.
+async function resolveVersions(packages) {
+  const entries = await Promise.all(
+    packages.map(async pkg => [pkg, `^${await fetchLatestVersion(pkg)}`]),
+  )
+  return Object.fromEntries(entries)
+}
+
+async function resolveLatestPnpmByMajor(major) {
+  const body = await fetchJson('https://registry.npmjs.org/pnpm')
+  const candidates = Object.keys(body.versions).filter(v => v.startsWith(`${major}.`) && !v.includes('-'))
+  if (candidates.length === 0) throw new Error(`no stable pnpm ${major}.x on registry`)
+  candidates.sort((a, b) => {
+    const pa = a.split('.').map(Number)
+    const pb = b.split('.').map(Number)
+    return pa[0] - pb[0] || pa[1] - pb[1] || pa[2] - pb[2]
+  })
+  return candidates.at(-1)
+}
 
 function ensureTargetDir() {
   if (!existsSync(TARGET)) {
@@ -90,14 +125,14 @@ function write(relPath, contents) {
   console.log(`  wrote ${relPath}`)
 }
 
-function packageJson() {
+function packageJson({ dependencies, devDependencies, packageManager }) {
   return JSON.stringify(
     {
       name: PACKAGE_NAME,
       version: '0.1.0',
       private: true,
       type: 'module',
-      packageManager: PACKAGE_MANAGER,
+      packageManager,
       scripts: {
         dev: 'vite',
         build: 'tsc --noEmit && vite build',
@@ -108,8 +143,8 @@ function packageJson() {
         'test:watch': 'vitest',
         typecheck: 'tsc --noEmit',
       },
-      dependencies: DEPS,
-      devDependencies: DEV_DEPS,
+      dependencies,
+      devDependencies,
     },
     null,
     2,
@@ -143,12 +178,18 @@ export default [
 }
 
 function viteConfig() {
+  // build.target: 'esnext' — bypass Vite's default ES2020 downleveling, which
+  // fails on modern syntax used by @xyo-network/* deps (destructuring in
+  // specific forms not supported by the ES2020 target).
   return `import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import topLevelAwait from 'vite-plugin-top-level-await'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
-export default defineConfig({ plugins: [react(), topLevelAwait(), tsconfigPaths()] })
+export default defineConfig({
+  plugins: [react(), topLevelAwait(), tsconfigPaths()],
+  build: { target: 'esnext' },
+})
 `
 }
 
@@ -267,11 +308,20 @@ function runVerification() {
   }
 }
 
-function main() {
+async function main() {
   console.log(`Bootstrapping XL1 dApp at: ${TARGET}`)
   ensureTargetDir()
 
-  write('package.json', packageJson())
+  console.log('Resolving latest versions from npm registry...')
+  const [dependencies, devDependencies, pnpmVersion] = await Promise.all([
+    resolveVersions(DEPENDENCIES),
+    resolveVersions(DEV_DEPENDENCIES),
+    resolveLatestPnpmByMajor(PNPM_MAJOR),
+  ])
+  const packageManager = `pnpm@${pnpmVersion}`
+  console.log(`  packageManager: ${packageManager}`)
+
+  write('package.json', packageJson({ dependencies, devDependencies, packageManager }))
   write('tsconfig.json', tsconfigJson())
   write('eslint.config.mjs', eslintConfig())
   write('vite.config.ts', viteConfig())
@@ -297,4 +347,7 @@ function main() {
   console.log('  pnpm dev')
 }
 
-main()
+main().catch(err => {
+  console.error(err instanceof Error ? err.message : err)
+  process.exit(1)
+})
