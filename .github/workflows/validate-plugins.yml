@@ -126,15 +126,16 @@ jobs:
       - name: Build scaffold (mirrors into plugins/xl1-skills/bin/)
         run: corepack pnpm@10 -w run build
 
-      - name: Fail if plugin bin/ drifted from source
+      - name: Fail if scaffold runtime drifted from source
         run: |
-          if ! git diff --exit-code plugins/xl1-skills/bin; then
+          SYNC_PATH=plugins/xl1-skills/skills/xl1-scaffold/scripts/bootstrap
+          if ! git diff --exit-code "$SYNC_PATH"; then
             echo ""
-            echo "✗ plugins/xl1-skills/bin/ is out of sync with packages/xl1-scaffold/."
+            echo "✗ $SYNC_PATH is out of sync with packages/xl1-scaffold/."
             echo "  Run 'pnpm -w run build' locally and commit the changes."
             exit 1
           fi
-          echo "✓ Scaffold bin/ is in sync"
+          echo "✓ Scaffold runtime is in sync"
 
   check-duplicates:
     name: Check for Duplicate Plugin Names

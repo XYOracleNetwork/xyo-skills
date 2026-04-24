@@ -1,2 +1,2 @@
-bin/** linguist-generated=true
-bin/** -diff
+skills/xl1-scaffold/scripts/bootstrap/** linguist-generated=true
+skills/xl1-scaffold/scripts/bootstrap/** -diff

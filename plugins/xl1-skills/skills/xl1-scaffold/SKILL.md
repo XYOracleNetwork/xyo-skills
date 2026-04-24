@@ -27,7 +27,7 @@ If ambiguous, ask one question: *"Are you starting a new project, or adding to a
 
 ## Invocation
 
-The scaffold binary ships with this plugin. Claude Code adds `plugins/xl1-skills/bin/` to PATH while the plugin is enabled, so the CLI is callable by name.
+The scaffold runtime ships with this plugin under `scripts/bootstrap/` (synced from `packages/xl1-scaffold/` at build time). Invoke it directly with Node — `${CLAUDE_SKILL_DIR}` resolves to this skill's directory at runtime.
 
 ### Template
 
@@ -42,7 +42,7 @@ Default to **react** unless the user explicitly wants a Node-only service (no br
 ### Run the scaffold
 
 ```shell
-bootstrap-xl1-dapp <target> --template=<react|node>
+node "${CLAUDE_SKILL_DIR}/scripts/bootstrap/bootstrap-xl1-dapp.js" <target> --template=<react|node>
 ```
 
 The scaffold:
