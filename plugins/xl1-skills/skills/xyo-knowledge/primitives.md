@@ -35,7 +35,7 @@ Payload fields use prefix conventions to distinguish data from metadata:
 |--------|------|----------|---------|
 | _(none)_ | Data fields | `move`, `player`, `score` | Application data — included in data hash |
 | `_*` | Storage metadata | `_hash`, `_dataHash`, `_sequence` | Computed by infrastructure, not part of the payload's identity |
-| `$*` | Client metadata | `$sources`, `$signatures` | Transaction/state data attached by the client |
+| `$*` | Client metadata | `$sources`, `$signatures` | Transaction/state data - included in hash |
 
 **Never use `_` or `$` prefixes for your own custom fields.** These are reserved.
 
