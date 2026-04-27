@@ -183,7 +183,22 @@ function buildGameState(payloads: Payload[]): GameState {
 
 ## Polling for New Data
 
-XL1 does not provide push-based subscriptions. Poll for new data by tracking the last-seen block number:
+XL1 does not provide push-based subscriptions. Poll for new data by tracking the last-seen block number.
+
+### Finalized vs. latest — pick the right bound
+
+Two sub-viewers expose the chain head, and the choice matters:
+
+| Sub-viewer | Returns | Use when |
+|---|---|---|
+| `connection.viewer.block.currentBlockNumber()` | The latest block, which may not yet be finalized | Ephemeral display where transient data is acceptable (a tx-just-submitted toast, mempool insight, "live" feeds that can flicker) |
+| `connection.viewer.finalization.headNumber()` | The latest **finalized** block — irreversible by chain consensus | Any indexer that derives durable state — balances, ownership ledgers, leaderboards, anything that must not silently roll back during a reorg |
+
+**Default to `finalization` when in doubt.** Replaying state from unfinalized blocks means a reorg can erase transitions you've already shown to users. The cost of finalization-only replay is latency (state appears slightly later); the benefit is a deterministic, reorg-safe read model.
+
+The example below uses `currentBlockNumber()` for simplicity (showing recent payloads in a feed). For state-derivation indexers — see [Inscription Substrate](inscription-substrate.md) — use `viewer.finalization.headNumber()` instead.
+
+
 
 ```ts
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'

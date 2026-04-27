@@ -125,6 +125,58 @@ const payload = { schema: 'network.xyo.rps.move', move: 'rock' }
 
 ---
 
+## Declarative Payloads, Structural Authorship
+
+**Payloads are pure declarative content. Authorship, ownership, and identity are structural — they live on the BoundWitness, not in payload fields.**
+
+This decomposition is foundational. Every protocol-correct application on XYO/XL1 obeys it, and most subtle bugs in higher-layer applications come from violating it.
+
+### The decomposition
+
+| Concern | Lives where | Why |
+|---|---|---|
+| What the data says (content) | Payload fields | Content is declarative — it describes the world |
+| Who said it (authorship) | BoundWitness `addresses[]` + `$signatures[]` | Authorship is structural — it's the act of binding signed proof to that content |
+| When it was said (ordering) | Block height + intra-block payload index | Ordering is structural — assigned by the chain at inclusion time |
+| Whether it can be trusted | Signature verification on the BoundWitness | Trust is structural — derived from cryptographic proof, not from a self-declared field |
+
+A payload that says `{ schema: '...', amount: 100, from: '0xABC...' }` mixes the two layers. The `from` field is *declarative* (anyone can write it) but is being asked to carry *structural* meaning (this came from 0xABC). The structural truth is that whoever signed the wrapping BoundWitness is the actor — and that's already cryptographically verifiable. The `from` field is at best redundant, at worst a footgun where an attacker writes a different address than the signer.
+
+### The rule
+
+When you find yourself reaching for a `from`, `signer`, `owner`, `author`, or `creator` field on a payload, **stop**. The information you need is already on the BoundWitness wrapping that payload:
+
+```ts
+// For a transaction-wrapped payload (most application data)
+const signer = transactionBoundWitness.from
+
+// For a generic block-level BoundWitness (multi-signer scenarios)
+const signers = boundWitness.addresses // addresses[i] paired with $signatures[i]
+```
+
+If your indexer / read model needs the actor for a payload, it should retrieve the wrapping BoundWitness and read `from` (or `addresses[0]`) — not trust a field inside the payload.
+
+### Why this matters in practice
+
+- **Eliminates a class of bug.** A `from`-in-payload field can disagree with the BoundWitness signer. Now you have two sources of truth and must choose which one to trust. By keeping `from` exclusively structural, there is only one source of truth — the cryptographically verified signer.
+- **Keeps payloads idempotent and content-addressable.** Two users submitting byte-identical declarative payloads naturally produce the same hash. That's a feature for artifacts (NFTs, deploys), and it composes cleanly with first-finalized-wins ownership semantics. Stuffing per-submitter fields into payloads breaks this.
+- **Lets identical content be co-witnessed.** Multiple parties can co-sign the same payload (e.g., both players witnessing the same game outcome). If authorship were declarative, each party would need their own copy of the payload with their address baked in. Structural authorship lets one payload have many witnesses.
+- **Makes ownership models composable.** Inscription substrates, ownable assets, and signed-event protocols all derive ownership from the BoundWitness chain — no schema-specific field plumbing.
+
+### When a field that *looks* like authorship is actually content
+
+Sometimes a payload legitimately has a field like `recipient`, `target`, or `delegate`. These are not authorship — they are part of the declarative content (what the actor is asserting). The test is: *would it make sense for someone other than the actor to write this field?* If yes, it's content. If no, it's authorship and belongs on the BoundWitness.
+
+```ts
+// Content — recipient is a fact the actor is declaring
+{ schema: 'network.xyo.transfer', to: '0xRecipient...', amount: 100 }
+
+// Authorship — never in the payload
+{ schema: '...', from: '0xSelf...' }  // Wrong — derive from BoundWitness signer
+```
+
+---
+
 ## Module Composition
 
 ### Prefer Composition Over Custom Implementations

@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, and prediction markets. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, or client-side chain queries.
+description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, client-side chain queries, ownable artifacts, or token protocols.
 ---
 
 # XL1 Design Patterns
@@ -32,6 +32,12 @@ Read when your React dApp needs read-only access to chain data without requiring
 
 ### [Commit-Reveal Prediction Markets](commit-reveal-prediction-markets.md)
 Read when building a game, prediction market, or any application with a stake-commit-reveal-settle lifecycle. This is a composite pattern that combines commit-reveal, chain data indexing, and in-page datalakes into a complete recipe.
+
+### [Inscription Substrate](inscription-substrate.md)
+Read when your application needs persistent, transferable, owned objects on XL1 — the equivalent of Bitcoin's Ordinals. Covers the artifact-vs-event split, content-addressed inscription IDs, single-step signed transfers, finalization-only indexer replay, and ownership ledger derivation. The substrate that higher-layer protocols (fungible tokens, collections, recursive content) compose on top of.
+
+### [Fungible Tokens (XRC-20)](fungible-tokens.md)
+Read when building a fungible token on XL1 in the style of Bitcoin's BRC-20 — open ticker registration, capped mints, address-to-address transfers, off-chain ledger from on-chain events. Layered directly on the inscription substrate. Covers deploy/mint/transfer schemas, the dual-pass indexer, canonical ordering rules, and the deliberate divergence from BRC-20's two-step transfer.
 
 ### [dApp Definition of Done](dapp-checklist.md)
 Read before shipping any XL1 dApp feature. A checklist that validates gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, provider architecture, display conventions, and commit-reveal correctness against the rules and anti-patterns defined across the skill stack.
