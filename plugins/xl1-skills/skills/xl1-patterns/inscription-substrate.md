@@ -283,6 +283,12 @@ async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
 
 If `hashToSigner.get(p._hash)` returns `undefined`, the payload was not wrapped by a transaction in this block (e.g., it's a system payload). Drop it — only transaction-wrapped payloads carry application authorship.
 
+### A note on `tx.from` vs `transfer.from`
+
+The actor for any application payload is `transactionBoundWitness.from`. The sentinel `Transfer` payload accompanying an inscription has its own `from` field, but the indexer doesn't read it — the chain's balance validator already enforces `transfer.from === tx.from`, and reading authorship out of payload content would mix declarative content with structural authorship.
+
+Chain-native consumers using [Scan Strategy 4](chain-data-indexing.md#strategy-4-sentinel-transfer) end up reading `transfer.from` because that's what `accountBalanceHistory` returns directly — they arrive at the same minter address by a different path. Both views agree by construction.
+
 ### Register an artifact
 
 Content-addressed identity means duplicates collapse harmlessly. First-finalized wins. Higher layers (token deploys, collection roots) reuse this same registration to participate in the substrate's transfer mechanism.
