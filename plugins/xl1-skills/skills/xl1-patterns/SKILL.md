@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, client-side chain queries, ownable artifacts, or token protocols.
+description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, or token protocols.
 ---
 
 # XL1 Design Patterns
@@ -31,7 +31,10 @@ Read when building any feature where multiple parties make simultaneous decision
 Read when your React dApp needs read-only access to chain data without requiring a wallet connection. Covers the in-page gateway architecture, querying datalakes from React components, and combining read-only access with wallet-gated writes.
 
 ### [Commit-Reveal Prediction Markets](commit-reveal-prediction-markets.md)
-Read when building a game, prediction market, or any application with a stake-commit-reveal-settle lifecycle. This is a composite pattern that combines commit-reveal, chain data indexing, and in-page datalakes into a complete recipe.
+Read when building a game, prediction market, or any application with a stake-commit-reveal-settle lifecycle. This is a composite pattern that combines commit-reveal, chain data indexing, and in-page datalakes into a complete recipe. Uses `nbf`/`exp` validity windows, configured `outcomeAuthorities`, lean settlement payloads, and `$sources` linkage between phases.
+
+### [Atomic Exchange](atomic-exchange.md)
+Read when two or more parties need to exchange assets atomically — neither side gets what they want unless every side has irrevocably committed. The dApp-shaped projection of the XYO/XNS escrow flow: multi-party paired secrets, multi-signer BoundWitnesses, configurable authority lists for appraisals and receipts, lean outcome payloads, and the strict rule that missing reveals prevent settlement (rather than forfeiting). Composes commit-reveal as a *gating mechanism for asset release* rather than a hidden-choice protocol.
 
 ### [Inscription Substrate](inscription-substrate.md)
 Read when your application needs persistent, transferable, owned objects on XL1 — the equivalent of Bitcoin's Ordinals. Covers the artifact-vs-event split, content-addressed inscription IDs, single-step signed transfers, finalization-only indexer replay, and ownership ledger derivation. The substrate that higher-layer protocols (fungible tokens, collections, recursive content) compose on top of.

@@ -167,6 +167,38 @@ Builder methods:
 
 The builder auto-generates `addresses`, `payload_hashes`, `payload_schemas`, and `previous_hashes` from the provided signers and payloads. These fields cannot be set manually.
 
+### Multi-Signer (Co-Witnessed) BoundWitnesses
+
+A single bound witness can be co-signed by multiple parties. Each signer contributes their address and signature to the same witness, producing a single artifact that proves *joint* attestation:
+
+```ts
+const [bw, payloads] = await new BoundWitnessBuilder()
+  .signers([accountA, accountB, accountC])
+  .payload(jointPayload)
+  .build()
+
+// bw.addresses === [addrA, addrB, addrC]
+// bw.$signatures contains one signature per signer, in the same order
+```
+
+This is the right shape for any "all parties agree to X" attestation — joint terms, multi-party releases, group commitments — where the proof must be a single co-signed object rather than three independent signatures.
+
+#### Verifying multi-signer witnesses
+
+`@xyo-network/boundwitness-validator` exposes two predicates:
+
+```ts
+import { addressesContainsAll, addressesContainsAny } from '@xyo-network/boundwitness-validator'
+
+// All listed parties must have signed this BW
+addressesContainsAll(bw, [addrA, addrB, addrC])
+
+// At least one of the listed parties must have signed
+addressesContainsAny(bw, authorityAddresses)
+```
+
+Use `addressesContainsAll` when every party's signature is required (joint commitment, atomic exchange). Use `addressesContainsAny` when any one of a set of authorized signers suffices (oracle attestation, authority signoff).
+
 ### Chain Continuity
 
 Each signer tracks a `previousHash` that links bound witnesses into a tamper-evident chain. The `previous_hashes` array records each signer's last known hash at the time of signing. This creates an ordered, linked history of interactions per identity.

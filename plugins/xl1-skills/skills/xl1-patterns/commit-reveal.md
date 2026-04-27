@@ -42,8 +42,6 @@ export const CommitPayloadZod = z.object({
   topic: z.string(),
   /** hash(choice + salt) — the hidden commitment */
   commitment: z.string(),
-  /** Block number when this commit was recorded */
-  commitBlock: z.number().int(),
 })
 
 export type CommitPayload = z.infer<typeof CommitPayloadZod>
@@ -136,18 +134,9 @@ async function submitCommit(
   const salt = generateSalt()
   const commitment = await createCommitment(choice, salt)
 
-  // RPC viewers live on the gateway's connection — `XyoGatewayRunner` has no `.call(...)` method.
-  const viewer = gateway.connection.viewer
-  if (!viewer) throw new Error('Gateway has no viewer attached')
-  const currentBlock = Number(await viewer.block.currentBlockNumber())
-
   const commitPayload: CommitPayload = asCommitPayload(
     new PayloadBuilder({ schema: CommitSchema })
-      .fields({
-        topic,
-        commitment,
-        commitBlock: currentBlock,
-      })
+      .fields({ topic, commitment })
       .build(),
     true,
   )
@@ -264,32 +253,52 @@ Use a `topic` field to group commits and reveals into a session. The application
 
 ---
 
-## Timeout Handling
+## Validity Windows (nbf / exp)
 
-Commit-reveal requires both phases to complete. If a party commits but never reveals, the protocol stalls. Handle this with block-based deadlines:
+Commit-reveal requires both phases to complete. Each phase needs an absolute window so the chain can decide when commits are still accepted, when reveals are open, and when the session has expired.
+
+XL1 already standardizes this convention on `TransactionBoundWitness` itself — `nbf` (not-before, inclusive) and `exp` (expiration, exclusive), both `XL1BlockNumber`. Reuse the same field names and the same `BlockDurationZod` shape on commit-reveal session schemas:
 
 ```ts
-interface CommitRevealConfig {
-  /** Block number by which all commits must be submitted */
-  commitDeadline: number
-  /** Block number by which all reveals must be submitted */
-  revealDeadline: number
-}
+import { BlockDurationZod, type XL1BlockNumber } from '@xyo-network/xl1-sdk'
 
-async function checkDeadline(
+export const SessionPayloadZod = z.object({
+  schema: z.literal('network.xyo.session'),
+  sessionId: z.string(),
+  /** Commit window — commits must arrive while current block ∈ [commit.nbf, commit.exp) */
+  commit: BlockDurationZod,
+  /** Reveal window — must satisfy reveal.nbf >= commit.exp */
+  reveal: BlockDurationZod,
+})
+```
+
+`BlockDurationZod` enforces three structural invariants (matching `TransactionDurationValidator`):
+
+1. `nbf >= 0` and `exp >= 0`
+2. `exp > nbf` (strictly — zero-length windows are invalid)
+3. `exp - nbf <= 10000` (max session lifetime, mirroring transaction lifetime cap)
+
+The protocol deliberately does **not** compare `nbf`/`exp` against the current block at structural-validation time — *the consumer is responsible for the "is now within window" check at the point of use* (commit submission, reveal submission, settlement). This matches how `TransactionBoundWitness` handles its own validity window.
+
+```ts
+async function windowState(
   gateway: XyoGateway | XyoGatewayRunner,
-  deadline: number,
-): Promise<'active' | 'expired'> {
+  window: { nbf: XL1BlockNumber; exp: XL1BlockNumber },
+): Promise<'pending' | 'active' | 'expired'> {
   const viewer = gateway.connection.viewer
   if (!viewer) throw new Error('Gateway has no viewer attached')
   const current = Number(await viewer.block.currentBlockNumber())
-  return current >= deadline ? 'expired' : 'active'
+  if (current < window.nbf) return 'pending'
+  if (current >= window.exp) return 'expired'
+  return 'active'
 }
 ```
 
-**What happens on timeout:**
-- If a party fails to **commit** by the deadline: they forfeit (did not participate)
-- If a party fails to **reveal** by the deadline: they forfeit (assumed to be hiding a losing choice). Any staked tokens can be redistributed to parties who did reveal.
+**What happens on expiration:**
+- If a party fails to **commit** by `commit.exp`: they did not participate.
+- If a party fails to **reveal** by `reveal.exp`: their commit is unrevealed. For game-theoretic / symmetric markets, treat unrevealed commits as forfeit and redistribute any stake to revealers. For atomic-exchange settlement, the session simply does not settle — see [Atomic Exchange](atomic-exchange.md).
+
+**Anti-pattern — client-side processing buffer.** Do not pad the deadline check with an arbitrary client-side cushion (e.g. "treat expired as `current >= exp - 5`"). The protocol's structural validators have no buffer concept; tolerance is a chain-consensus concern, not a client one. A buffer added unilaterally by one client diverges from what every other consumer sees.
 
 ---
 

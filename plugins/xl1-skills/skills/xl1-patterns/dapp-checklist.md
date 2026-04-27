@@ -89,8 +89,35 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Salts are never stored on-chain during the commit phase
 - [ ] Salts use `crypto.getRandomValues` with 32+ bytes — not timestamps, counters, or predictable values
 - [ ] Choices are always hashed with a salt — never without
-- [ ] The commit deadline is enforced before the reveal phase opens — late committers cannot see early reveals
+- [ ] Validity windows use `nbf`/`exp` (`BlockDurationZod` from `@xyo-network/xl1-sdk`) — not bespoke `commitDeadline`/`revealDeadline` field names
+- [ ] `reveal.nbf >= commit.exp` — the reveal window does not open until the commit window has closed
+- [ ] No client-side processing buffer is added to deadline checks (matches `TransactionDurationValidator` semantics)
 - [ ] Salts are persisted locally (e.g., `StorageArchivist` with `type: 'local'`) for retrieval during the reveal phase
 - [ ] Commit-reveal verification uses `PayloadBuilder.dataHash` — not a custom hash function
+- [ ] Commits `$sources` to the market/session terms; reveals `$sources` to their commit — building a traversable audit DAG
 
 **Source:** [Commit-Reveal Primitive](commit-reveal.md)
+
+---
+
+## Settlement & Authorities (if applicable)
+
+- [ ] The session payload (market/exchange/auction) declares an `outcomeAuthorities: Address[]` list — never relies on "the market creator" implicitly
+- [ ] Settlement payloads are lean — `{ outcome, terms: <hash> }` shape — supporting evidence (verified reveals, attestations) rides as BW co-payloads
+- [ ] Winners/recipients are *derived* from the settlement BW + verified reveals — not stored inline on the outcome payload
+- [ ] Any cached results view (e.g., `MarketResultsViewPayload`) is clearly marked non-authoritative; `$sources` to the settlement payload it derives from
+- [ ] Settlement gate re-runs the entry gate before signing — never trusts caller-supplied verified state
+- [ ] Settlement gate re-verifies every reveal hash against its commit (`PayloadBuilder.dataHash`) before bundling it into the settlement BW
+
+**Source:** [Commit-Reveal Prediction Markets — Validation Gates](commit-reveal-prediction-markets.md#validation-gates), [Atomic Exchange — Validation Gates](atomic-exchange.md#validation-gates)
+
+---
+
+## Multi-Party Co-Signing (if applicable)
+
+- [ ] Joint commitments use a single multi-signer BoundWitness (`.signers([a, b, ...])`) — not parallel single-signer BWs that a verifier would have to correlate
+- [ ] "All parties must agree" checks use `addressesContainsAll(bw, parties)` from `@xyo-network/boundwitness-validator`
+- [ ] "Any authorized authority may sign" checks use `addressesContainsAny(bw, authorities)`
+- [ ] Multi-sig parties (a party with several addresses) require *all* of that party's addresses to co-sign their secret reveal — not any one of them
+
+**Source:** [Protocol Primitives — Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses), [Atomic Exchange](atomic-exchange.md)
