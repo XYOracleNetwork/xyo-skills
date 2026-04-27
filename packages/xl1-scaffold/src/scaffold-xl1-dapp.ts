@@ -14,7 +14,7 @@ import { nodeTemplate, reactTemplate } from './presets/index.js'
 import {
   expandWithPeers, resolveLatestPnpmByMajor, resolveVersions,
 } from './registry.js'
-import { BASE, type Template } from './template.js'
+import type { Template } from './template.js'
 import {
   copyTemplateFile, ensureTargetDir, resolveTemplatesRoot, runPnpmStep, writeJson,
 } from './writer.js'
@@ -66,11 +66,8 @@ function parseArgs(argv: string[]): Args {
 function buildTsconfig(template: Template) {
   return {
     extends: template.tsconfig.extends,
-    compilerOptions: {
-      ...BASE.tsconfig.compilerOptions,
-      ...template.tsconfig.compilerOptions,
-    },
-    include: BASE.tsconfig.include,
+    compilerOptions: template.tsconfig.compilerOptions,
+    include: template.tsconfig.include,
   }
 }
 
@@ -86,8 +83,7 @@ function buildPackageJson(args: {
     private: true,
     type: 'module',
     packageManager: args.packageManager,
-    // Template wins on key conflict.
-    scripts: { ...BASE.scripts, ...args.template.scripts },
+    scripts: args.template.scripts,
     dependencies: args.dependencies,
     devDependencies: args.devDependencies,
   }
@@ -137,7 +133,7 @@ async function main() {
     template, dependencies, devDependencies, packageManager,
   }))
   writeJson(target, 'tsconfig.json', buildTsconfig(template))
-  for (const f of [...BASE.sharedFiles, ...template.files]) copyTemplateFile(templatesRoot, template.name, f, target)
+  for (const f of template.files) copyTemplateFile(templatesRoot, template.name, f, target)
 
   if (noInstall) {
     console.log('\nSkipped install (--no-install).')
