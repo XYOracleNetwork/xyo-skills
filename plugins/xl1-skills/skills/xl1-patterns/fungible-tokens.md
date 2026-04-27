@@ -129,9 +129,28 @@ None of these payloads carry a `from`. The actor is always the BoundWitness sign
 
 ---
 
+## Pinned Sentinel Addresses
+
+XRC-20 uses two sentinels per operation, following the [Destination as Protocol](chain-data-indexing.md#destination-as-protocol--a-native-xl1-pattern) pattern. Operations are submitted with a single `Transfer` payload whose `transfers` map carries both:
+
+```ts
+import { keccak256, toUtf8Bytes } from 'ethers'
+
+// Pinned: keccak256(utf8('network.xyo.ordinal.token')).slice(-40)
+const XRC20_SENTINEL = 'c17df06bc481b090f7a0e03639fca786df6e8e65'
+
+// Per-payload burn — derived from the operation payload's hash
+const burnFor = (payloadHash: string) =>
+  keccak256(toUtf8Bytes(`network.xyo.ordinal.token|${payloadHash}`)).slice(-40)
+```
+
+The static `XRC20_SENTINEL` makes every XRC-20 operation discoverable via `accountBalanceHistory(XRC20_SENTINEL)` — anyone can list the entire protocol's activity chain-side. The per-payload burn binds dust to the specific operation, providing real-cost semantics.
+
+---
+
 ## Step 2: Deploy a Ticker
 
-Deploys are submitted exactly like any inscription. Anyone can attempt to deploy any ticker. The first finalized deploy for a given `tick` claims it; later deploys for the same ticker exist as inscriptions but produce no token state.
+Deploys are inscriptions claiming a ticker. The first finalized deploy for a given `tick` claims it; later deploys for the same ticker exist as artifacts but produce no token state.
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
@@ -143,8 +162,19 @@ const deploy = asTokenDeployPayload(
   true,
 )
 
+const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
+  .fields({
+    from: walletAddress,
+    epoch: Date.now(),
+    transfers: {
+      [XRC20_SENTINEL]:        '1',
+      [burnFor(deploy._hash)]: '1',
+    },
+  })
+  .build()
+
 await datalakeRunner.insert([deploy])
-const [txHash] = await defaultGateway.addPayloadsToChain([], [deploy])
+const [txHash] = await defaultGateway.addPayloadsToChain([sentinelTransfer], [deploy])
 ```
 
 Ticker ownership is the substrate's ownership of the deploy artifact: whoever signed the BoundWitness that introduced the deploy owns the ticker. Transferring the deploy inscription (via `network.xyo.ordinal.transfer`) transfers ticker ownership.
@@ -163,8 +193,19 @@ const mint = asTokenMintPayload(
   true,
 )
 
+const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
+  .fields({
+    from: walletAddress,
+    epoch: Date.now(),
+    transfers: {
+      [XRC20_SENTINEL]:      '1',
+      [burnFor(mint._hash)]: '1',
+    },
+  })
+  .build()
+
 await datalakeRunner.insert([mint])
-await defaultGateway.addPayloadsToChain([], [mint])
+await defaultGateway.addPayloadsToChain([sentinelTransfer], [mint])
 ```
 
 The indexer credits the signer of the wrapping `TransactionBoundWitness`. Two users submitting byte-identical mint payloads collide on payload hash — that's fine, because mints are events, not artifacts. The wrapping BoundWitnesses differ; the indexer reads them as two separate events with two separate signers. This is what the artifact/event split buys us.
@@ -178,13 +219,24 @@ A single signed payload moves balance from the signer to `to`. No two-step inscr
 ```ts
 const transfer = asTokenTransferPayload(
   new PayloadBuilder({ schema: TokenTransferSchema })
-    .fields({ tick: 'XL1', to: '0xRecipient…', amt: '500' })
+    .fields({ tick: 'XL1', to: 'recipient40HexChars…', amt: '500' })
     .build(),
   true,
 )
 
+const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
+  .fields({
+    from: walletAddress,
+    epoch: Date.now(),
+    transfers: {
+      [XRC20_SENTINEL]:          '1',
+      [burnFor(transfer._hash)]: '1',
+    },
+  })
+  .build()
+
 await datalakeRunner.insert([transfer])
-await defaultGateway.addPayloadsToChain([], [transfer])
+await defaultGateway.addPayloadsToChain([sentinelTransfer], [transfer])
 ```
 
 The indexer enforces that the signer's balance is sufficient at the moment the transfer is replayed. Insufficient-balance transfers are dropped.
@@ -365,6 +417,9 @@ The "drop" pattern is intentional and matches BRC-20: the chain accepted these p
 | Need to expose the indexer over RPC? | Wrap as an XYO diviner module ([Module System](../xyo-knowledge/modules.md)); query payloads return `TickerRecord` or balance lookups |
 | Multiple competing indexers? | Encouraged. Determinism guarantees they converge given the same finalized stream — disagreement is a bug in one of them, not a protocol question |
 | Want per-block snapshots / historical balance queries? | Persist `(blockHeight, address, tick) -> balance` deltas during replay. Out of scope for v1; layered on later |
+| dApp wants to show "user X's XRC-20 activity" without running a global indexer? | Use the dual-sentinel pattern — `accountBalanceHistory(userAddress)` filtered for transactions hitting `XRC20_SENTINEL` returns every XRC-20 op the user submitted ([Scan Strategies §4](chain-data-indexing.md#strategy-4-sentinel-transfer)) |
+| Need a chain-native list of every XRC-20 protocol invocation? | `accountBalanceHistory(XRC20_SENTINEL)` — the static sentinel collects every `Transfer` from any user submitting an XRC-20 op |
+| Want fast "list all holders of a ticker"? | Add a per-ticker `holders: Set<Address>` side-index inside the global indexer ([Scan Strategies §3](chain-data-indexing.md#strategy-3-indexer-maintained-per-address-side-index)) |
 | Need to stop further mints (cap reached, founder pause)? | Out of v1 scope. Either let `max` exhaust naturally or define a dedicated event schema (`network.xyo.ordinal.token.freeze`) |
 
 ---

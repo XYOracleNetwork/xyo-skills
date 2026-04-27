@@ -119,10 +119,14 @@ export const toTransferPayload = zodToFactory(TransferPayloadZod, 'toTransferPay
 
 ## Step 2: Inscribe
 
-Same submit flow as any other application data — datalake first, then chain. See [Chain Data Indexing — Step 2](chain-data-indexing.md) for the rationale on ordering.
+The substrate uses **carrier Path A** (off-chain payload referenced by TransactionBoundWitness) plus **dual sentinel transfers** for free chain-native indexing. See [Chain Data Indexing — Choosing a Carrier](chain-data-indexing.md#choosing-a-carrier--how-to-anchor-off-chain-data-on-chain) and [Destination as Protocol](chain-data-indexing.md#destination-as-protocol--a-native-xl1-pattern) for the full landscape.
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { keccak256, toUtf8Bytes } from 'ethers'
+
+// Pinned protocol sentinel — derived from `keccak256(utf8('network.xyo.ordinal')).slice(-40)`
+const ORDINAL_SENTINEL = '4b210503f8caa8e82d38617997f2eaf612c0ec04'
 
 const inscription = asInscriptionPayload(
   new PayloadBuilder({ schema: InscriptionSchema })
@@ -131,37 +135,72 @@ const inscription = asInscriptionPayload(
   true,
 )
 
-// 1. Persist to the dApp's datalake — makes the bytes retrievable by hash
+// Per-payload burn address — verifiably no key, bound to this specific inscription
+const burnAddress = keccak256(toUtf8Bytes(`network.xyo.ordinal|${inscription._hash}`)).slice(-40)
+
+// One Transfer payload, two recipients: protocol sentinel + per-payload burn
+const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
+  .fields({
+    from: walletAddress,         // chain stores addresses without the 0x prefix
+    epoch: Date.now(),
+    transfers: {
+      [ORDINAL_SENTINEL]: '1',
+      [burnAddress]:      '1',
+    },
+  })
+  .build()
+
+// 1. Persist content to the dApp's datalake
 await datalakeRunner.insert([inscription])
 
-// 2. Commit on-chain — the BoundWitness records the inscription's data hash
-const [txHash] = await defaultGateway.addPayloadsToChain([], [inscription])
+// 2. Commit on-chain: Transfer at block level, inscription off-chain
+const [txHash] = await defaultGateway.addPayloadsToChain([sentinelTransfer], [inscription])
 ```
 
-The inscription ID is the payload's data hash, which equals `inscription._hash` once the payload is built. Treat the data hash as the canonical inscription identifier throughout the application.
+The inscription ID is the payload's data hash, equal to `inscription._hash` once the payload is built. Treat that hash as the canonical inscription identifier throughout the application.
+
+The dual sentinel transfer:
+- Adds the inscription's transaction to `accountBalanceHistory(ORDINAL_SENTINEL)` — anyone can list every ordinal protocol invocation chain-side, no global indexer required.
+- Adds it to `accountBalanceHistory(walletAddress)` — the inscriber and dApps showing "my inscriptions" can find the transaction without scanning every block.
+- Burns 2 AttoXL1 to no-key addresses — verifiable real cost per inscription.
+
+If gas economy is critical and you can run a global indexer ([Step 4](#step-4-build-the-indexer)), you may omit the sentinel transfer and rely on the indexer's per-address side-index. The substrate works either way; sentinels are an optional discoverability enhancement, not a correctness requirement.
 
 ---
 
 ## Step 3: Transfer Ownership
 
-A transfer is signed by the **current owner** (whoever the indexer's ledger shows as the owner of `inscriptionId` at the moment the transfer lands).
+A transfer is signed by the **current owner** (whoever the indexer's ledger shows as the owner of `inscriptionId` at the moment the transfer lands). The same dual-sentinel pattern applies, so transfers are also discoverable via address-scoped balance history.
 
 ```ts
 const transfer = asTransferPayload(
   new PayloadBuilder({ schema: TransferSchema })
     .fields({
-      inscriptionId: '0xabc123…',  // the inscription's data hash
-      to: '0xRecipient…',
+      inscriptionId: 'abc123…',  // the inscription's data hash, no 0x prefix
+      to: 'recipient40HexChars…',
     })
     .build(),
   true,
 )
 
+const burnAddress = keccak256(toUtf8Bytes(`network.xyo.ordinal|${transfer._hash}`)).slice(-40)
+
+const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
+  .fields({
+    from: currentOwnerAddress,
+    epoch: Date.now(),
+    transfers: {
+      [ORDINAL_SENTINEL]: '1',
+      [burnAddress]:      '1',
+    },
+  })
+  .build()
+
 await datalakeRunner.insert([transfer])
-await defaultGateway.addPayloadsToChain([], [transfer])
+await defaultGateway.addPayloadsToChain([sentinelTransfer], [transfer])
 ```
 
-The wallet signs the wrapping `TransactionBoundWitness`. The indexer reads `tx.from` to determine who signed, and rejects the transfer if that address is not the current owner of `inscriptionId`. There is no `from` field on the payload to verify against — by construction, only the BoundWitness signer can claim authorship.
+The wallet signs the wrapping `TransactionBoundWitness`. The indexer reads `tx.from` to determine who signed, and rejects the transfer if that address is not the current owner of `inscriptionId`. There is no `from` field on the transfer payload to verify against — by construction, only the BoundWitness signer can claim authorship.
 
 ---
 
@@ -186,9 +225,12 @@ type ArtifactRecord = {
 
 type IndexerState = {
   artifacts: Map<string, ArtifactRecord>
+  byOwner:   Map<Address, Set<string>>  // per-address side-index — see Scan Strategies §3
   lastProcessedBlock: XL1BlockNumber
 }
 ```
+
+The `byOwner` side-index is maintained alongside `artifacts` during replay. It costs no extra block reads and turns "show me address X's inscriptions" into a single map lookup — see [Scan Strategies — Strategy 3](chain-data-indexing.md#strategy-3-indexer-maintained-per-address-side-index).
 
 ### Replay loop
 
@@ -261,12 +303,18 @@ function registerArtifact(
     payload,
     inscribedAt: blockHeight,
   })
+  addToOwner(state, signer, id)
+}
+
+function addToOwner(state: IndexerState, owner: Address, id: string) {
+  if (!state.byOwner.has(owner)) state.byOwner.set(owner, new Set())
+  state.byOwner.get(owner)!.add(id)
 }
 ```
 
 ### Apply a transfer
 
-Two structural checks: the artifact must exist, and the signer must be the current owner. No payload field carries authorship; the only `from` we accept is the BoundWitness signer.
+Three structural changes: validate target exists, validate signer is current owner, then move the artifact ID from the old owner's side-index to the new owner's. No payload field carries authorship; the only `from` we accept is the BoundWitness signer.
 
 ```ts
 function applyTransfer(
@@ -277,7 +325,10 @@ function applyTransfer(
   const record = state.artifacts.get(payload.inscriptionId)
   if (!record) return                       // unknown target — drop
   if (record.owner !== signer) return       // unauthorized — drop
+
+  state.byOwner.get(record.owner)?.delete(record.id)
   record.owner = payload.to
+  addToOwner(state, payload.to, record.id)
 }
 ```
 
@@ -297,7 +348,7 @@ const intervalId = setInterval(() => {
 
 ## Step 5: Browse
 
-Three browse paths, depending on what the UI needs:
+Four browse paths, picked by what the UI needs and what infrastructure is available. See [Chain Data Indexing — Scan Strategies](chain-data-indexing.md#scan-strategies--reading-indexed-data) for the full taxonomy.
 
 ### All inscriptions of a given content type
 
@@ -310,9 +361,27 @@ const inscriptionsView = await datalakeViewer.next({
 const inscriptions = inscriptionsView.filter(isInscriptionPayload)
 ```
 
-### Ownership-aware browsing
+### Ownership-aware browsing (per-address side-index)
 
-Query the indexer (or its diviner equivalent). The indexer's `artifacts` map is the read model — expose it via a query interface that returns `ArtifactRecord[]` filtered by `owner`, by `creator`, or by ID.
+Query the indexer (or its diviner equivalent). The indexer's `artifacts` map plus a `byOwner: Map<Address, Set<ArtifactId>>` side-index ([Strategy 3](chain-data-indexing.md#strategy-3-indexer-maintained-per-address-side-index)) is the read model — expose it via a query interface that returns `ArtifactRecord[]` filtered by `owner`, by `creator`, or by ID. This is the canonical "show me my inscriptions" path when you control an indexer.
+
+### Free chain-native per-address browsing (sentinel transfers)
+
+If inscriptions were submitted with the dual-sentinel pattern from [Step 2](#step-2-inscribe), per-address browse is free without any indexer infrastructure. Query `accountBalanceHistory(userAddress)`, filter the returned transactions for ones whose `Transfer` has `ORDINAL_SENTINEL` as a recipient, then walk the transaction's `payload_hashes` to recover the inscription:
+
+```ts
+const history = await defaultGateway.connection.viewer?.account.balance
+  .accountBalanceHistory(userAddress)
+
+const myInscriptions = []
+for (const [, tx, transfer] of history ?? []) {
+  if (!transfer.transfers[ORDINAL_SENTINEL]) continue
+  const payloads = await defaultGateway.connection.viewer?.block.payloadsByHash(tx.payload_hashes)
+  myInscriptions.push(...(payloads ?? []).filter(isInscriptionPayload))
+}
+```
+
+Anyone can run this against the chain — it's a chain-native query, no diviner trust required.
 
 ### Read-only without a wallet
 
@@ -330,6 +399,9 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 | Trusting the chain to validate inscription semantics | The chain validates BoundWitness signatures and balance flows only; inscription/transfer rules are off-chain | Indexer enforces rules (target exists, signer is owner) on replay |
 | Committing inscription bytes only to a local archivist before chain submission | The data hash on-chain references bytes nobody else can fetch | Always insert into the dApp's datalake (`RestDataLakeRunner`) before `addPayloadsToChain` |
 | Submitting a transfer signed by an account that isn't the current owner | Indexer drops it silently; on-chain fee is wasted; UX appears broken | Read the indexer's current owner before signing a transfer |
+| Sending the sentinel transfer to the zero address (`0x0000…0000`) | Zero address is the source of native XL1 minting; its history is enormous and noisy, and protocol activity is unfindable in the noise | Use the protocol-derived sentinel computed via `keccak256(utf8(protocolId)).slice(-40)` |
+| Self-transfer (`from === to`) as a sentinel | Likely filtered as no-op at chain validation; behavior is fragile | Send to a no-key derived address (protocol sentinel or per-payload burn) |
+| Publishing a known-key address as the protocol sentinel | Defeats the burn semantic; key-holder could later spend accumulated dust | Always derive sentinels from `keccak256(utf8(seed)).slice(-40)` so no key exists |
 
 ---
 
@@ -343,6 +415,9 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 | Need to invalidate / burn an inscription? | Define an additional event schema (`network.xyo.ordinal.burn`) and have the indexer remove the record. Out of v1 scope |
 | Multiple indexers across operators? | Encouraged. The substrate's rules are deterministic; competing diviners that agree provide social consensus on ledger state. Document the reference implementation; let others replicate |
 | Reorg deeper than expected? | Persist `lastProcessedBlock` only when finalized; the substrate's finalization-only discipline already handles common reorg windows |
+| Need free chain-native per-user discovery without running a global indexer? | Use the dual-sentinel pattern in [Step 2](#step-2-inscribe). `accountBalanceHistory(userAddress)` then surfaces every inscription that user submitted, no diviner required |
+| Need verifiable real cost per inscription? | Per-payload derived burn address — `keccak256(utf8(`network.xyo.ordinal\|${payload._hash}`)).slice(-40)`. Each inscription burns dust to a unique no-key address |
+| Want both protocol-wide free indexing *and* per-payload burn? | Use both sentinels in one Transfer payload's `transfers` map. One extra payload, two recipients |
 
 ---
 
