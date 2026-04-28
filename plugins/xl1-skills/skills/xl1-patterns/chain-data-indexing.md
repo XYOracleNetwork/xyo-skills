@@ -143,6 +143,19 @@ address = keccak256(utf8(seed)).slice(-40)
 
 The seed is whatever's deterministic about the situation. Block + step size for reward escrow. Address + scope for derived receive. Protocol name for application sentinels. Payload hash for per-payload burn destinations. 20 bytes of Keccak output produces an address with no associated private key (with overwhelming probability — keyspace is 2^160).
 
+### Always derive via the helper
+
+The construction above is a **spec**, not a recipe to retype. Application code should call `sentinelAddressFromSchema(schema, payloadHash?)` from `@xyo-network/xl1-sdk`:
+
+```ts
+import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
+
+const sentinel = sentinelAddressFromSchema('network.xyo.ordinal')
+const burn     = sentinelAddressFromSchema('network.xyo.ordinal', payload._hash)
+```
+
+The helper centralizes encoding, prefix, and casing conventions so future tweaks propagate uniformly. Reaching for `keccak256` from ethers directly is an anti-pattern — the spec is published so independent implementations and out-of-band auditors can verify the helper's output, not so that callers re-implement it.
+
 ### Application uses
 
 Two complementary patterns. Use either or both.
@@ -150,20 +163,16 @@ Two complementary patterns. Use either or both.
 **Static protocol sentinel** — derived from the protocol's identifier string. Every transaction in the protocol includes a transfer to this fixed address. Anyone can then query `accountBalanceHistory(SENTINEL)` for a chain-native list of every protocol invocation — no global indexer required.
 
 ```ts
-import { keccak256, toUtf8Bytes } from 'ethers'
+import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
-const ORDINAL_SENTINEL = '0x' + keccak256(toUtf8Bytes('network.xyo.ordinal')).slice(-40)
-// → 0x4b210503f8caa8e82d38617997f2eaf612c0ec04
+const ORDINAL_SENTINEL = sentinelAddressFromSchema('network.xyo.ordinal')
+// → 4b210503f8caa8e82d38617997f2eaf612c0ec04
 ```
 
 **Per-payload derived sentinel** — derived from each payload's hash. The dust transferred there is verifiably burned (no key, address-bound to that specific payload). Strong "real cost" semantic — every inscription costs something irrecoverable.
 
 ```ts
-// Following the chain's idiom:
-const burnAddress = '0x' + keccak256(toUtf8Bytes(`network.xyo.ordinal|${payload._hash}`)).slice(-40)
-
-// Or via the SDK helper (if/when extended to accept Hash inputs):
-// const burnAddress = derivedReceiveAddress(payload._hash, 'network.xyo.ordinal')
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', payload._hash)
 ```
 
 For protocols that want both — free chain-native indexing *and* per-payload burn — include both addresses as recipients in a single `Transfer` payload (the `transfers` field is a map; one extra payload, two recipients).
@@ -174,14 +183,14 @@ The ordinal substrate and XRC-20 reserve these sentinels. They are deterministic
 
 | Protocol | Seed | Pinned address |
 |---|---|---|
-| Ordinal substrate | `network.xyo.ordinal` | `0x4b210503f8caa8e82d38617997f2eaf612c0ec04` |
-| XRC-20 fungible tokens | `network.xyo.ordinal.token` | `0xc17df06bc481b090f7a0e03639fca786df6e8e65` |
+| Ordinal substrate | `network.xyo.ordinal` | `4b210503f8caa8e82d38617997f2eaf612c0ec04` |
+| XRC-20 fungible tokens | `network.xyo.ordinal.token` | `c17df06bc481b090f7a0e03639fca786df6e8e65` |
 
 Verify locally before relying:
 
 ```ts
-import { keccak256, toUtf8Bytes } from 'ethers'
-console.log('0x' + keccak256(toUtf8Bytes('network.xyo.ordinal')).slice(-40))
+import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
+console.log(sentinelAddressFromSchema('network.xyo.ordinal'))
 ```
 
 ### What not to use as a sentinel
@@ -510,18 +519,19 @@ Inscribe a small `Transfer` alongside the application payload, with the destinat
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
-import { keccak256, toUtf8Bytes } from 'ethers'
+import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
-const ORDINAL_SENTINEL = '0x4b210503f8caa8e82d38617997f2eaf612c0ec04' as Address
-const burnAddress      = ('0x' + keccak256(toUtf8Bytes(`network.xyo.ordinal|${appPayload._hash}`)).slice(-40)) as Address
+// Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal')
+const ORDINAL_SENTINEL = '4b210503f8caa8e82d38617997f2eaf612c0ec04' as Address
+const burnAddress      = sentinelAddressFromSchema('network.xyo.ordinal', appPayload._hash)
 
 const transfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({
     from: walletAddress,
     epoch: Date.now(),
     transfers: {
-      [ORDINAL_SENTINEL.slice(2)]: '1',  // chain stores addresses without the 0x prefix
-      [burnAddress.slice(2)]:      '1',
+      [ORDINAL_SENTINEL]: '1',  // chain stores addresses without the 0x prefix
+      [burnAddress]:      '1',
     },
   })
   .build()

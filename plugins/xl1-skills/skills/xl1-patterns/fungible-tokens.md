@@ -134,14 +134,14 @@ None of these payloads carry a `from`. The actor is always the BoundWitness sign
 XRC-20 uses two sentinels per operation, following the [Destination as Protocol](chain-data-indexing.md#destination-as-protocol--a-native-xl1-pattern) pattern. Operations are submitted with a single `Transfer` payload whose `transfers` map carries both:
 
 ```ts
-import { keccak256, toUtf8Bytes } from 'ethers'
+import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
-// Pinned: keccak256(utf8('network.xyo.ordinal.token')).slice(-40)
+// Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal.token')
 const XRC20_SENTINEL = 'c17df06bc481b090f7a0e03639fca786df6e8e65'
 
 // Per-payload burn — derived from the operation payload's hash
 const burnFor = (payloadHash: string) =>
-  keccak256(toUtf8Bytes(`network.xyo.ordinal.token|${payloadHash}`)).slice(-40)
+  sentinelAddressFromSchema('network.xyo.ordinal.token', payloadHash)
 ```
 
 The static `XRC20_SENTINEL` makes every XRC-20 operation discoverable via `accountBalanceHistory(XRC20_SENTINEL)` — anyone can list the entire protocol's activity chain-side. The per-payload burn binds dust to the specific operation, providing real-cost semantics.
