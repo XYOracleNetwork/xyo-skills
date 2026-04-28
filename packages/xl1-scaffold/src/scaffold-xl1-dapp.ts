@@ -94,9 +94,12 @@ async function resolveVersionsForTemplate(template: Template) {
   const runtime = [...template.deps.runtime, ...(template.deps.extras ?? [])]
   const expandedRuntime = await expandWithPeers(runtime, template.deps.dev)
   console.log(`  ${expandedRuntime.length} runtime deps (${template.deps.runtime.length} direct + peers + extras)`)
+  const pins = template.deps.versions ?? {}
+  const pinCount = Object.keys(pins).length
+  if (pinCount > 0) console.log(`  ${pinCount} pinned version(s): ${Object.keys(pins).toSorted().join(', ')}`)
   const [dependencies, devDependencies, pnpmVersion] = await Promise.all([
-    resolveVersions(expandedRuntime),
-    resolveVersions(template.deps.dev),
+    resolveVersions(expandedRuntime, pins),
+    resolveVersions(template.deps.dev, pins),
     resolveLatestPnpmByMajor(PNPM_MAJOR),
   ])
   const packageManager = `pnpm@${pnpmVersion}`

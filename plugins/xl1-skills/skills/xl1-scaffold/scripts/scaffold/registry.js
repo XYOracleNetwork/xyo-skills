@@ -14,8 +14,16 @@ async function fetchLatestVersion(pkg) {
         throw new Error(`no version in registry response for ${pkg}`);
     return body.version;
 }
-export async function resolveVersions(packages) {
-    const entries = await Promise.all(packages.map(async (pkg) => [pkg, `^${await fetchLatestVersion(pkg)}`]));
+// Resolves a list of package names to a { name → version-spec } map.
+// Packages present in `pins` use the pinned value verbatim; the rest get
+// `^<latest>` from the npm registry. Pins are written as-is so callers
+// retain full control over the specifier (`~1.2.3`, `1.2.3`, `>=1 <2`, etc.).
+export async function resolveVersions(packages, pins = {}) {
+    const entries = await Promise.all(packages.map(async (pkg) => {
+        if (pkg in pins)
+            return [pkg, pins[pkg]];
+        return [pkg, `^${await fetchLatestVersion(pkg)}`];
+    }));
     return Object.fromEntries(entries);
 }
 // @xyo-network/sdk-js and xl1-sdk declare their runtime deps (ajv, zod, ethers

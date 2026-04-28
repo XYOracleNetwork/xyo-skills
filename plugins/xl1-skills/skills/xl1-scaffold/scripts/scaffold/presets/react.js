@@ -1,5 +1,5 @@
 import { extendBase } from './base.js';
-export const reactTemplate = extendBase({
+const reactTemplateOverrides = {
     name: 'react',
     description: 'React + Vite + TypeScript XL1 dApp',
     deps: {
@@ -9,6 +9,8 @@ export const reactTemplate = extendBase({
             '@xyo-network/sdk-js',
             '@xyo-network/xl1-sdk',
             '@xyo-network/react-chain-client',
+            '@xyo-network/archivist-storage',
+            '@xyo-network/archivist-indexeddb',
         ],
         // Peers-of-peers (emotion is peer of @mui/material) and non-peer extras.
         // The 'events' polyfill covers @metamask/safe-event-emitter's direct
@@ -30,6 +32,9 @@ export const reactTemplate = extendBase({
             'vite-plugin-svgr',
             'vite-plugin-top-level-await',
         ],
+        versions: {
+            'typescript': '^5', '@mui/material': '^7', '@mui/icons-material': '^7',
+        },
     },
     tsconfig: {
         extends: '@xylabs/tsconfig-react',
@@ -49,5 +54,6 @@ export const reactTemplate = extendBase({
         { src: 'src/App.tsx', dest: 'src/App.tsx' },
         { src: 'src/vite-env.d.ts', dest: 'src/vite-env.d.ts' },
     ],
-});
+};
+export const reactTemplate = extendBase(reactTemplateOverrides);
 //# sourceMappingURL=react.js.map
