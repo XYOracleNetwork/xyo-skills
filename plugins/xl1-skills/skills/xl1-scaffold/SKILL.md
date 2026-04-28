@@ -66,7 +66,7 @@ After the scaffold reports success:
 
 | Flag | Values | Default | Notes |
 |---|---|---|---|
-| `--template`, `-t` | `react`, `node` | `react` | Also accepts `--template react` (space form) |
+| `--template`, `-t` | `react`, `node`, `express` | `react` | Also accepts `--template react` (space form). `express` extends `node` with an Express HTTP server bound to `process.env.PORT \|\| 3000` and a `Hello world` route at `/`. |
 | `--target` | path | positional[0] or `src` | Can also pass as first positional arg |
 | `--force` | — | off | Overwrite files in a non-empty target dir |
 | `--no-install` | — | off | Write files only; skip `pnpm install` and verification |
