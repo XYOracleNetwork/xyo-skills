@@ -11,45 +11,41 @@
 // Pass --verbose to print what each entry was classified as and why.
 
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, relative, resolve } from 'node:path'
+
+import { findWorkspaceRoot, scaffoldRoot } from './paths.mjs'
 
 const VERBOSE = process.argv.includes('--verbose')
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const SCAFFOLD_ROOT = resolve(HERE, '..')
-const SRC = resolve(SCAFFOLD_ROOT, 'dist')
+// ---------------------------------------------------------------------------
+// 1. Resolve & prepare
+// ---------------------------------------------------------------------------
 
-// Walk up from the scaffold package to find the workspace root.
-function findWorkspaceRoot(startDir) {
-  let dir = startDir
-  while (dir !== dirname(dir)) {
-    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir
-    dir = dirname(dir)
+function prepareSync() {
+  const SCAFFOLD_ROOT = scaffoldRoot(import.meta.url)
+  const src = resolve(SCAFFOLD_ROOT, 'dist')
+  const workspaceRoot = findWorkspaceRoot(SCAFFOLD_ROOT)
+  const dest = resolve(workspaceRoot, 'plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold')
+
+  if (!existsSync(src)) {
+    console.error(`Source dir missing: ${src}. Run tsc first.`)
+    process.exit(1)
   }
-  throw new Error(`pnpm-workspace.yaml not found walking up from ${startDir}`)
+
+  // Clean slate — prevents stale files lingering when scaffold src is renamed or deleted.
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true })
+  mkdirSync(dest, { recursive: true })
+
+  return { workspaceRoot, src, dest }
 }
 
-const WORKSPACE_ROOT = findWorkspaceRoot(SCAFFOLD_ROOT)
-const DEST = resolve(WORKSPACE_ROOT, 'plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold')
-
-if (!existsSync(SRC)) {
-  console.error(`Source dir missing: ${SRC}. Run tsc first.`)
-  process.exit(1)
-}
-
-// Clean slate — prevents stale files from lingering when scaffold src is renamed or deleted.
-if (existsSync(DEST)) rmSync(DEST, { recursive: true, force: true })
-mkdirSync(DEST, { recursive: true })
-
 // ---------------------------------------------------------------------------
-// Filter rules — declarative. Add a new SKIP_RULE entry to exclude a class of
-// files; add to BUNDLE_DIRS for a directory that should be copied wholesale.
+// 2. Filter & copy
+//
+// Add a SKIP_RULES entry to exclude a class of files; add to BUNDLE_DIRS for
+// a directory copied wholesale. Each rule's `name` is what --verbose prints.
 // ---------------------------------------------------------------------------
 
-// Skip predicates evaluated in order. First matching rule wins; the rule's
-// `name` is what gets logged in --verbose mode. Each `test` receives the
-// entry shape { name, srcPath } and returns true to skip.
 const SKIP_RULES = [
   {
     name: 'declaration & sourcemap files',
@@ -60,8 +56,8 @@ const SKIP_RULES = [
     test: ({ name }) => /\.spec\.[a-z]+(\.map)?$/.test(name),
   },
   {
-    // tsc emits one .js per .ts even when the source is types-only — produces a
-    // useless `export {};` stub. Detect and skip.
+    // tsc emits one .js per .ts even when the source is types-only —
+    // produces a useless `export {};` stub.
     name: 'types-only stubs',
     test: ({ srcPath }) => {
       if (!srcPath.endsWith('.js')) return false
@@ -74,8 +70,8 @@ const SKIP_RULES = [
     },
   },
   {
-    // Catches both *.spec.js (caught earlier by pattern) and test helpers like
-    // shared-assertions.js that import vitest without following the spec naming.
+    // Catches *.spec.js (already caught by name pattern) AND test helpers
+    // like shared-assertions.js that don't follow the spec naming.
     name: 'test code (imports vitest)',
     test: ({ srcPath }) => {
       if (!srcPath.endsWith('.js')) return false
@@ -84,21 +80,21 @@ const SKIP_RULES = [
   },
 ]
 
-// Directories whose contents are copied as-is (no per-file filtering).
 const BUNDLE_DIRS = new Set(['templates'])
 
 function findSkipRule(entry) {
   return SKIP_RULES.find(rule => rule.test(entry))
 }
 
-function logDecision(action, srcPath, reason) {
+function logDecision(action, srcPath, reason, srcRoot) {
   if (!VERBOSE) return
-  const rel = relative(SRC, srcPath) || '.'
+  const rel = relative(srcRoot, srcPath) || '.'
   const detail = reason ? `  (${reason})` : ''
   console.log(`  ${action.padEnd(7)} ${rel}${detail}`)
 }
 
-function copyFiltered(src, dest) {
+function copyFiltered(src, dest, opts) {
+  const { srcRoot } = opts
   for (const entry of readdirSync(src, { withFileTypes: true })) {
     const srcPath = join(src, entry.name)
     const destPath = join(dest, entry.name)
@@ -107,36 +103,39 @@ function copyFiltered(src, dest) {
       mkdirSync(destPath, { recursive: true })
       if (BUNDLE_DIRS.has(entry.name)) {
         cpSync(srcPath, destPath, { recursive: true })
-        logDecision('bundle', srcPath, 'BUNDLE_DIRS')
+        logDecision('bundle', srcPath, 'BUNDLE_DIRS', srcRoot)
       } else {
-        logDecision('recurse', srcPath)
-        copyFiltered(srcPath, destPath)
+        logDecision('recurse', srcPath, undefined, srcRoot)
+        copyFiltered(srcPath, destPath, opts)
       }
       continue
     }
 
     const skipRule = findSkipRule({ name: entry.name, srcPath })
     if (skipRule) {
-      logDecision('skip', srcPath, skipRule.name)
+      logDecision('skip', srcPath, skipRule.name, srcRoot)
       continue
     }
 
     cpSync(srcPath, destPath)
-    logDecision('copy', srcPath)
+    logDecision('copy', srcPath, undefined, srcRoot)
   }
 }
 
-copyFiltered(SRC, DEST)
+// ---------------------------------------------------------------------------
+// 3. Post-copy fixups
+// ---------------------------------------------------------------------------
 
-// Mark the entry executable. The skill invokes via `node <path>` so this isn't
-// strictly required, but it means direct exec (via shebang) also works and
-// avoids "permission denied" if anything along the chain tries that path.
-chmodSync(join(DEST, 'scaffold-xl1-dapp.js'), 0o755)
+function finalize(dest, workspaceRoot) {
+  // Mark the entry executable. The skill invokes via `node <path>` so this
+  // isn't strictly required, but it lets direct exec (via shebang) also work
+  // and avoids "permission denied" if anything tries that path.
+  chmodSync(join(dest, 'scaffold-xl1-dapp.js'), 0o755)
 
-// Re-emit README so it survives the rmSync above.
-writeFileSync(
-  join(DEST, 'README.md'),
-  `# xl1-scaffold/scripts/scaffold/ — generated
+  // Re-emit README so it survives the rmSync done in prepareSync.
+  writeFileSync(
+    join(dest, 'README.md'),
+    `# xl1-scaffold/scripts/scaffold/ — generated
 
 Do not hand-edit. This directory is regenerated by:
 
@@ -148,6 +147,15 @@ Source of truth: [\`packages/xl1-scaffold/\`](../../../../../packages/xl1-scaffo
 
 CI enforces sync via \`git diff --exit-code plugins/xl1-skills/skills/xl1-scaffold/scripts\`.
 `,
-)
+  )
 
-console.log(`Synced scaffold → ${relative(WORKSPACE_ROOT, DEST)}`)
+  console.log(`Synced scaffold → ${relative(workspaceRoot, dest)}`)
+}
+
+// ---------------------------------------------------------------------------
+// Orchestration
+// ---------------------------------------------------------------------------
+
+const { workspaceRoot, src, dest } = prepareSync()
+copyFiltered(src, dest, { srcRoot: src })
+finalize(dest, workspaceRoot)

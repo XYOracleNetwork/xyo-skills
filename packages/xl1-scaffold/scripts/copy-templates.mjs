@@ -3,11 +3,11 @@
 // scaffold script is self-contained.
 
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const ROOT = resolve(HERE, '..')
+import { scaffoldRoot } from './paths.mjs'
+
+const ROOT = scaffoldRoot(import.meta.url)
 const SRC = resolve(ROOT, 'templates')
 const DEST = resolve(ROOT, 'dist/templates')
 
