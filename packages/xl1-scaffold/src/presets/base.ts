@@ -34,7 +34,7 @@ export const baseTemplate: Template = {
   nextSteps: ['pnpm dev'],
 }
 
-type Override = DeepPartial<Template> & Pick<Template, 'name' | 'description'>
+export type Override = DeepPartial<Template> & Pick<Template, 'name' | 'description'>
 
 export function extendBase(override: Override): Template {
   return deepMerge(baseTemplate, override)

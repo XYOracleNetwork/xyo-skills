@@ -1,6 +1,7 @@
+import type { Override } from './base.js'
 import { extendBase } from './base.js'
 
-export const nodeTemplate = extendBase({
+const nodeTemplateOverrides: Override = {
   name: 'node',
   description: 'Node.js + TypeScript XL1 service/CLI',
   deps: {
@@ -25,4 +26,6 @@ export const nodeTemplate = extendBase({
     { src: 'src/index.ts', dest: 'src/index.ts' },
   ],
   smokeTest: { pnpmScript: 'start' },
-})
+}
+
+export const nodeTemplate = extendBase(nodeTemplateOverrides)

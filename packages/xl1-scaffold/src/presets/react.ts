@@ -1,6 +1,7 @@
+import type { Override } from './base.js'
 import { extendBase } from './base.js'
 
-export const reactTemplate = extendBase({
+const reactTemplateOverrides: Override = {
   name: 'react',
   description: 'React + Vite + TypeScript XL1 dApp',
   deps: {
@@ -33,6 +34,9 @@ export const reactTemplate = extendBase({
       'vite-plugin-svgr',
       'vite-plugin-top-level-await',
     ],
+    versions: {
+      'typescript': '^5', '@mui/material': '^7', '@mui/icons-material': '^7',
+    },
   },
   tsconfig: {
     extends: '@xylabs/tsconfig-react',
@@ -52,4 +56,6 @@ export const reactTemplate = extendBase({
     { src: 'src/App.tsx', dest: 'src/App.tsx' },
     { src: 'src/vite-env.d.ts', dest: 'src/vite-env.d.ts' },
   ],
-})
+}
+
+export const reactTemplate = extendBase(reactTemplateOverrides)
