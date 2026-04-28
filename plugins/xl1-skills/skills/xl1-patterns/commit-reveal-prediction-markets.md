@@ -1,10 +1,10 @@
 # Commit-Reveal Prediction Markets
 
-Read this pattern when building a game, prediction market, or any application where participants stake on hidden choices and outcomes are settled on-chain. This is a composite pattern that combines the [Commit-Reveal Primitive](commit-reveal.md), [Chain Data Indexing](chain-data-indexing.md), and [In-Page Data Lakes](in-page-datalakes.md) into a complete recipe.
+Read this pattern when building a game, prediction market, or any application where participants stake on hidden choices and outcomes are settled on-chain. This is a composite pattern that combines the [Commit-Reveal Primitive](commit-reveal.md), [Chain Data Indexing](chain-data-indexing-protocol.md), and [In-Page Data Lakes](in-page-datalakes.md) into a complete recipe.
 
 **Builds on:**
 - [Commit-Reveal Primitive](commit-reveal.md) — two-phase fairness protocol
-- [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling
+- [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based querying and polling
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browsing without wallet
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — transaction submission, React integration
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, bound witnesses, hashing
@@ -415,7 +415,7 @@ UIs that consume the view **must** treat it as advisory. If `view.settlement` do
 
 ## Querying Market State
 
-Use the [Chain Data Indexing](chain-data-indexing.md) pattern to reconstruct market state from on-chain payloads. Group by `marketId` to build a complete view:
+Use the [Chain Data Indexing](chain-data-indexing-protocol.md) pattern to reconstruct market state from on-chain payloads. Group by `marketId` to build a complete view:
 
 ```ts
 import { isPayloadOfSchemaType } from '@xyo-network/sdk-js'

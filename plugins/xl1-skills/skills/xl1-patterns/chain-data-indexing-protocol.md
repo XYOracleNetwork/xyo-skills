@@ -1,18 +1,23 @@
-# Chain Data Indexing
+# Chain Data Indexing — Protocol
 
-Read this pattern when your dApp needs to retrieve, filter, or watch application-specific data from the XL1 chain.
+Conceptual rules for retrieving, filtering, and watching application-specific data on the XL1 chain. This is the protocol-level companion to two role-specific files:
+
+- [Chain Data Indexing — Client](chain-data-indexing-client.md) — browser-side consumption of indexed data (React hooks, polling intervals)
+- [Chain Data Indexing — Service](chain-data-indexing-service.md) — long-running operator-side indexer (process model, persistence, restart, exposing results)
+
+This file is environment-agnostic. It documents schemas, anchoring choices, and scan strategies that both clients and services rely on. The two role files apply these rules to their respective deployment contexts.
 
 **Builds on:**
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — RPC viewer methods, transports
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, schemas, hashing
-- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `useProvidedGateway()` for gateway access in React
+- [Gateway Usage](gateway-usage.md) — cross-environment notation for `gateway.connection.viewer.*` reads
 
 ---
 
 ## The Problem
 
-Your dApp submits application payloads (game moves, attestations, predictions) as off-chain data via `addPayloadsToChain`. Later, you need to retrieve them — filtered by schema, scoped to specific addresses, or paginated for display. The chain stores everything; your app only cares about its own data.
+An application submits payloads (game moves, attestations, predictions) as off-chain data via `addPayloadsToChain`. Later, the application needs to retrieve them — filtered by schema, scoped to specific addresses, or paginated for display. The chain stores everything; your app only cares about its own data.
 
 ---
 
@@ -93,7 +98,7 @@ const movePayload: MovePayload = asMovePayload(
 await datalakeRunner.insert([movePayload])
 
 // 2. Then submit the transaction — the BoundWitness references the payload by hash
-const [txHash, signedTx] = await defaultGateway.addPayloadsToChain([], [movePayload])
+const [txHash, signedTx] = await gateway.addPayloadsToChain([], [movePayload])
 ```
 
 After both steps, the payload is:
@@ -228,7 +233,7 @@ The standard `addPayloadsToChain` flow. The payload bytes live in the datalake; 
 
 ```ts
 await datalakeRunner.insert([myPayload])
-const [txHash] = await defaultGateway.addPayloadsToChain([], [myPayload])
+const [txHash] = await gateway.addPayloadsToChain([], [myPayload])
 ```
 
 **Properties.** Hash on chain via `tx.payload_hashes[i]`, schema in `tx.payload_schemas[i]`. One payload of gas. The wrapping TransactionBoundWitness's `from` is the authorship anchor.
@@ -246,7 +251,7 @@ const hashCommit = new PayloadBuilder({ schema: 'network.xyo.hash' })
   .fields({ hash: payload._hash, schema: payload.schema })
   .build()
 await datalakeRunner.insert([payload])
-const [txHash] = await defaultGateway.addPayloadsToChain([hashCommit], [payload])
+const [txHash] = await gateway.addPayloadsToChain([hashCommit], [payload])
 ```
 
 **Properties.** Hash visible at block level as a first-class HashPayload, separable from the wrapping transaction. Two payloads of gas. Indexers can scan block-level HashPayloads directly without resolving transactions.
@@ -268,7 +273,7 @@ const witness = await new BoundWitnessBuilder()
   .payloads([content])
   .build()
 await datalakeRunner.insert([content, witness[0]])
-const [txHash] = await defaultGateway.addPayloadsToChain([witness[0]], [content])
+const [txHash] = await gateway.addPayloadsToChain([witness[0]], [content])
 ```
 
 **Properties.** BoundWitness is first-class at block level, signed by all listed parties. 2+ payloads of gas. Co-signers' signatures are part of the on-chain commitment, separate from the gas payer's transaction signature.
@@ -292,7 +297,7 @@ Chain state is read through sub-viewers on `gateway.connection.viewer`. `connect
 Use the transaction sub-viewer when you need full transaction context (who signed, when, block number):
 
 ```ts
-const tx = await defaultGateway.connection.viewer?.transaction.byHash(txHash)
+const tx = await gateway.connection.viewer?.transaction.byHash(txHash)
 // tx is SignedHydratedTransactionWithHashMeta | null
 // tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
 ```
@@ -304,7 +309,7 @@ The gateway's `ViewerWithDataLake` transparently resolves off-chain payloads —
 When you need to find all payloads of a given type regardless of which transaction included them, walk the chain and filter by schema. The gateway's `ViewerWithDataLake` resolves off-chain payloads by hash transparently, so each block read returns hydrated payloads — you do not need to call the datalake separately:
 
 ```ts
-const viewer = defaultGateway.connection.viewer
+const viewer = gateway.connection.viewer
 if (!viewer) throw new Error('Gateway has no viewer attached')
 
 const head = Number(await viewer.finalization.headNumber())
@@ -326,7 +331,7 @@ This is the same engine that drives Strategy 1 below — see [Polling for New Da
 When you already have a hash (from a transaction's `payload_hashes`), retrieve the payload directly:
 
 ```ts
-const payloads = await defaultGateway.connection.viewer?.block.payloadsByHash(hashes)
+const payloads = await gateway.connection.viewer?.block.payloadsByHash(hashes)
 ```
 
 ---
@@ -379,8 +384,10 @@ The example below uses `currentBlockNumber()` for simplicity (showing recent pay
 ```ts
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
 
-// Use defaultGateway from useProvidedGateway() — not a bare rpc variable.
-// The gateway is the SDK's typed client; reach RPC viewers via connection.viewer.
+// `gateway` is whatever your environment gives you — the React-context
+// gateway in a browser dApp, the result of basicRemoteViewerLocator in
+// a Node service, or any other XyoGateway instance. Reach viewer methods
+// via connection.viewer; never call RPC by hand.
 async function pollForNewData(
   gateway: XyoGateway | XyoGatewayRunner,
   lastSeenBlock: number,
@@ -410,37 +417,10 @@ async function pollForNewData(
 }
 ```
 
-For React dApps, wrap this in a hook with an interval:
+The `pollForNewData` function above is environment-agnostic — it takes a gateway as a parameter and works equally in a browser, a Node service, or a CLI. For role-specific wrappers:
 
-```ts
-function useChainData(schemas: Schema[], intervalMs = 5000) {
-  const { defaultGateway } = useProvidedGateway()
-  const [data, setData] = useState<Payload[]>([])
-  const lastBlockRef = useRef(0)
-
-  useEffect(() => {
-    if (!defaultGateway) return
-
-    const poll = async () => {
-      const { payloads, latestBlock } = await pollForNewData(
-        defaultGateway,
-        lastBlockRef.current,
-        schemas,
-      )
-      if (payloads.length > 0) {
-        setData(prev => [...prev, ...payloads])
-      }
-      lastBlockRef.current = latestBlock
-    }
-
-    const id = setInterval(poll, intervalMs)
-    poll() // initial fetch
-    return () => clearInterval(id)
-  }, [defaultGateway, schemas, intervalMs])
-
-  return data
-}
-```
+- **Browser clients** (React hooks with `setInterval`, capability detection, lifting state into context) → see [Chain Data Indexing — Client](chain-data-indexing-client.md)
+- **Long-running indexers** (sync loop with checkpointing, finalized-only replay) → see [Chain Data Indexing — Service](chain-data-indexing-service.md)
 
 ---
 
@@ -470,7 +450,7 @@ The reference indexer pattern. Poll `viewer.finalization.headNumber()`, iterate 
 Use `viewer.account.balance.accountBalanceHistory(address, { range })`. Returns hydrated `[block, tx, transfer]` tuples for every transaction containing a `Transfer` payload involving the address.
 
 ```ts
-const history = await defaultGateway.connection.viewer?.account.balance
+const history = await gateway.connection.viewer?.account.balance
   .accountBalanceHistory(address, { range: [startBlock, endBlock] })
 
 for (const [block, tx, transfer] of history ?? []) {
@@ -532,7 +512,7 @@ const transfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .build()
 
 await datalakeRunner.insert([appPayload])
-await defaultGateway.addPayloadsToChain([transfer], [appPayload])
+await gateway.addPayloadsToChain([transfer], [appPayload])
 ```
 
 The single `Transfer` payload carries both recipients via the `transfers` map — only one extra payload of gas, two sentinel destinations covered.

@@ -6,7 +6,7 @@ Read this pattern when your React dApp needs to access chain data or the datalak
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — networks, viewer API, transports
-- [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling patterns
+- [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based querying and polling patterns
 
 ---
 
@@ -395,5 +395,5 @@ Hashes and addresses surface throughout in-page datalake views (game IDs, player
 | Component needs to submit a chain transaction? | Guard with `'addPayloadsToChain' in defaultGateway` check, require wallet connection |
 | Does the wallet's datalake cover the dApp's needs? | **Don't assume so.** The wallet and dApp are independent datalake clients. They may point to the same, different, or no endpoints. Always write to the dApp's datalake explicitly. |
 | Display data to unauthenticated users? | Place read components outside the wallet connection gate |
-| Need to poll for updates? | Use the polling pattern from [Chain Data Indexing](chain-data-indexing.md) — works with in-page gateway |
+| Need to poll for updates? | Use the polling pattern from [Chain Data Indexing](chain-data-indexing-protocol.md) — works with in-page gateway |
 | Which network for development? | Use Sequence (beta) — live chain, no real tokens. See [Gateway](../xl1-knowledge/gateway.md) |
