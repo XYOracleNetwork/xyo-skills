@@ -2,7 +2,7 @@
 
 How to construct an XL1 gateway in a non-browser environment — backend services, indexers, CLIs, scheduled jobs, tests.
 
-**Scope:** environment-specific *construction*. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and [Gateway Usage](../xl1-patterns/gateway-usage.md) for cross-environment recipes.
+**Scope:** environment-specific *construction*. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and [Gateway](gateway.md) for cross-environment recipes.
 
 **Key npm packages:**
 - `@xyo-network/xl1-providers` — `basicRemoteViewerLocator`, environment-specific provider bundles
@@ -81,6 +81,6 @@ Constructing an `XyoGatewayRunner` in Node — wiring an in-memory signer (seed 
 ## Cross-References
 
 - [Gateway](gateway.md) — generic concepts, viewer API, networks, transports, anti-patterns
-- [Gateway Usage](../xl1-patterns/gateway-usage.md) — cross-environment recipes (read latest block, capability detection, datalake reads)
+- [Gateway](gateway.md) — cross-environment recipes (read latest block, capability detection, datalake reads)
 - [Datalakes](datalakes.md) — `createRestDataLakeRunner` / `createRestDataLakeViewer` are the same in Node as in the browser
 - [Identity & Signing](../xyo-knowledge/identity.md) — `Account`, `HDWallet`, mnemonic / seed-phrase construction

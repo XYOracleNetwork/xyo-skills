@@ -2,7 +2,7 @@
 
 How to construct an XL1 gateway in a browser — React dApps, browser-extension-driven flows, in-page read-only access. The XL1 browser wallet is the mechanism that publishes a write-capable gateway to the page; this file covers the wallet, the React providers that wrap it, and the hook dApps use to reach the gateway.
 
-**Scope:** environment-specific *construction* of a browser-side gateway. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and [Gateway Usage](../xl1-patterns/gateway-usage.md) for cross-environment recipes. For browser UX patterns built on top of the gateway (wallet connection UI, display conventions, capability-aware components), see [Browser UX](../xl1-patterns/browser-ux.md).
+**Scope:** environment-specific *construction* of a browser-side gateway. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and [Gateway](gateway.md) for cross-environment recipes. For browser UX patterns built on top of the gateway (wallet connection UI, display conventions, capability-aware components), see [Browser UX](../xl1-patterns/browser-ux.md).
 
 For the Node / server-side equivalent, see [Node Gateway](gateway-node.md). Identity primitives that work in any environment (`Account.create({ mnemonic })`, `HDWallet.fromPhrase`) live in [Identity & Signing](../xyo-knowledge/identity.md).
 
@@ -94,7 +94,7 @@ function MyComponent() {
 }
 ```
 
-For the methods to call on `defaultGateway` once you have it, see [Gateway Usage](../xl1-patterns/gateway-usage.md). For UX patterns built on top of the gateway — wallet connection UI, lifting the connected address, capability-aware components, display conventions — see [Browser UX](../xl1-patterns/browser-ux.md).
+For the methods to call on `defaultGateway` once you have it, see [Gateway](gateway.md). For UX patterns built on top of the gateway — wallet connection UI, lifting the connected address, capability-aware components, display conventions — see [Browser UX](../xl1-patterns/browser-ux.md).
 
 ---
 
@@ -115,7 +115,7 @@ For the methods to call on `defaultGateway` once you have it, see [Gateway Usage
 ## Cross-References
 
 - [Gateway](gateway.md) — generic concepts, viewer API, networks, transports, anti-patterns
-- [Gateway Usage](../xl1-patterns/gateway-usage.md) — reading state, submitting transactions, capability detection, datalake access
+- [Gateway](gateway.md) — reading state, submitting transactions, capability detection, datalake access
 - [Browser UX](../xl1-patterns/browser-ux.md) — UX patterns built on top of the gateway
 - [Node Gateway](gateway-node.md) — server-side construction
 - [Identity & Signing](../xyo-knowledge/identity.md) — `Account`, `HDWallet`, mnemonic / seed-phrase construction

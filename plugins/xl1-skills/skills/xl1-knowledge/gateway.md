@@ -1,16 +1,17 @@
 # Gateway
 
-The generic gateway reference — what it is, the JSON-RPC surface, networks, transports, and the API exposed by `connection.viewer`. Environment-specific construction lives in sibling files:
+The env-agnostic gateway file — what the gateway is, the JSON-RPC surface, networks, the `connection.viewer` API, transaction methods, datalake access, and anti-patterns. Reference + cross-environment recipes in one place.
+
+Environment-specific construction lives in sibling files:
 
 - [Browser Gateway](gateway-browser.md) — React providers, the wallet extension, `useProvidedGateway`
 - [Node Gateway](gateway-node.md) — server-side construction via `basicRemoteViewerLocator`
 
-For cross-environment recipes (read latest block, submit + confirm, datalake access, capability detection, anti-patterns) see [Gateway Usage](../xl1-patterns/gateway-usage.md).
-
 **Key npm packages:**
 - `@xyo-network/xl1-providers` — Browser, Node, and Neutral provider implementations
+- `@xyo-network/xl1-sdk` — `createRestDataLakeRunner`, `createRestDataLakeViewer`, network constants
 
-Note: The gateway API server itself is part of the `xyo-chain` runtime repo (not published as a standalone npm package). The package above covers the client-side provider interfaces needed for dApp development.
+Note: The gateway API server itself is part of the `xyo-chain` runtime repo (not published as a standalone npm package). The packages above cover the client-side provider interfaces needed for dApp development.
 
 ---
 
@@ -46,11 +47,57 @@ For dApp development, start with **Sequence** (beta) to test against a live chai
 
 ---
 
-## Gateway Viewer API
+## Getting a Gateway
 
-Chain state is read through sub-viewers on `gateway.connection.viewer`. See [Gateway Usage](../xl1-patterns/gateway-usage.md) for full code examples. For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
+The construction step is environment-specific. Pick the file that matches your runtime:
 
-**`connection.viewer` is optional** (`XyoViewer | undefined`). The in-page gateway populates it once it finishes resolving, but a wallet-only or runner-only gateway may not have a viewer. Always guard access with `?.` or an explicit null check.
+- **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider`, then call `useProvidedGateway()` in components. See [Browser Gateway](gateway-browser.md).
+- **Node / server-side** — call `basicRemoteViewerLocator` and resolve `XyoGatewayMoniker`. See [Node Gateway](gateway-node.md).
+- **Tests** — use `MemoryRpcTransport` (see [Transports](#transports) below).
+
+The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `locator.getInstance<XyoGateway>(XyoGatewayMoniker)`. Both expose the same method surface.
+
+The type is a union:
+- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, when documented).
+- **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway (browser) or `basicRemoteViewerLocator` (Node).
+- **`undefined` / `null`** — loading or no gateway available (React context only).
+
+---
+
+## Connection Properties
+
+The gateway object (`XyoGateway` or `XyoGatewayRunner`) exposes chain access through `gateway.connection`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `.viewer` | `XyoViewer \| undefined` | Read-only chain state (sub-viewers for blocks, transactions, balances, etc.) |
+| `.storage` | `DataLakeViewer \| undefined` | Read-only datalake attached to this connection. May not point to the dApp's desired endpoint. |
+| `.runner` | `XyoRunner \| undefined` | Low-level runner (internal — use gateway methods instead) |
+| `.network` | `XyoNetwork \| undefined` | Network metadata |
+
+**`connection.storage` is not the recommended datalake path.** It is a read-only `DataLakeViewer` populated from the connection's configuration — it cannot write, and it may not point to the endpoint the dApp wants to use. For datalake access, see [Accessing the Datalake](#accessing-the-datalake) below and [Datalakes](datalakes.md).
+
+---
+
+## Reading Chain State
+
+Chain state is read through sub-viewers on `gateway.connection.viewer`. **`connection.viewer` is optional** (`XyoViewer | undefined`). The in-page gateway populates it once it finishes resolving, but a wallet-only or runner-only gateway may not have a viewer. Always guard access with `?.` or an explicit null check.
+
+For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
+
+### Sub-viewer summary
+
+| Sub-viewer | When to use |
+|------------|-------------|
+| `.block` | Query blocks, get latest block number (for polling/deadlines), resolve off-chain payloads by hash |
+| `.transaction` | Look up transactions by hash or by position within a block |
+| `.account.balance` | Check XL1 balances, batch balance lookups, balance history |
+| `.finalization` | Get the latest **finalized** (irreversible) block — use when you need confirmed state rather than latest |
+| `.mempool` | Inspect pending blocks/transactions not yet included in the chain |
+| `.stake` | Look up staking positions by ID, staker, or staked address |
+| `.networkStake` | Network-level staking aggregates |
+| `.step` | Step/epoch boundaries and progression |
+| `.time` | Time synchronization between client and chain |
 
 ### Block Queries — `connection.viewer.block`
 
@@ -65,12 +112,25 @@ Chain state is read through sub-viewers on `gateway.connection.viewer`. See [Gat
 | Resolve off-chain payloads referenced in a transaction | `.block.payloadsByHash(hashes)` |
 | Get the chain ID at a given block height | `.block.chainId(blockNumber?)` |
 
+```ts
+const viewer = gateway?.connection.viewer
+if (!viewer) return // gateway not ready or no viewer attached
+
+const currentBlock = Number(await viewer.block.currentBlockNumber())
+```
+
 ### Transaction Queries — `connection.viewer.transaction`
 
 | When you need to... | Use |
 |---------------------|-----|
 | Look up a transaction by its hash (e.g., after `addPayloadsToChain`) | `.transaction.byHash(txHash)` |
 | Look up a transaction by its position within a block | `.transaction.byBlockNumberAndIndex(n, i)` or `.transaction.byBlockHashAndIndex(hash, i)` |
+
+```ts
+const tx = await gateway?.connection.viewer?.transaction.byHash(txHash)
+// tx: SignedHydratedTransactionWithHashMeta | null
+// tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
+```
 
 ### Account Balances — `connection.viewer.account.balance`
 
@@ -79,6 +139,11 @@ Chain state is read through sub-viewers on `gateway.connection.viewer`. See [Gat
 | Check a single account's XL1 balance | `.account.balance.accountBalance(address)` |
 | Check multiple account balances in one call | `.account.balance.accountBalances(addresses)` |
 | Show balance history over time (charts, audit trails) | `.account.balance.accountBalanceHistory(address)` |
+
+```ts
+const balance = await gateway?.connection.viewer?.account.balance.accountBalance(address)
+// balance: AttoXL1
+```
 
 ### Finalization — `connection.viewer.finalization`
 
@@ -114,9 +179,11 @@ Use finalization viewers when you need confirmed state. Use block viewers when y
 | `.step` | Querying step/epoch boundaries and progression |
 | `.time` | Time synchronization between client and chain |
 
-### Transaction Methods — on `XyoGatewayRunner` directly
+---
 
-Transaction submission is done through high-level methods on the gateway itself (not through `connection.viewer`). These require a wallet connection:
+## Submitting Transactions
+
+Transaction submission is done through high-level methods on the gateway itself (not through `connection.viewer`). These exist only on `XyoGatewayRunner` (write-capable gateway). Always check capability first — see [Detecting Capabilities](#detecting-capabilities).
 
 | When you need to... | Use |
 |---------------------|-----|
@@ -126,22 +193,71 @@ Transaction submission is done through high-level methods on the gateway itself 
 | Send XL1 tokens to multiple addresses | `gateway.sendMany(transfers)` |
 | Wait for a submitted transaction to be included in a block | `gateway.confirmSubmittedTransaction(txHash)` |
 
-See [Gateway Usage — Submitting Transactions](../xl1-patterns/gateway-usage.md) for details.
+### Adding application data to the chain
+
+```ts
+if (gateway && 'addPayloadsToChain' in gateway) {
+  // onChain: AllowedBlockPayload[] — system types only
+  // offChain: Payload[] — application data of any schema
+  const [txHash, signedTx] = await gateway.addPayloadsToChain([], appPayloads)
+}
+```
+
+This single call builds a `TransactionBoundWitness`, signs it (in the browser this triggers the wallet popup; in Node the in-memory signer signs directly), and broadcasts to the network.
+
+### Token transfers
+
+```ts
+const txHash = await gateway.send(toAddress, amount)
+const txHash = await gateway.sendMany({ [addr1]: amount1, [addr2]: amount2 })
+```
+
+### Pre-built transactions
+
+```ts
+const [txHash, signedTx] = await gateway.addTransactionToChain(unsignedTx, offChainPayloads)
+```
+
+### Transaction confirmation
+
+```ts
+const confirmedTx = await gateway.confirmSubmittedTransaction(txHash)
+```
 
 ---
 
-## Connection Properties
+## Detecting Capabilities
 
-The gateway object (`XyoGateway` or `XyoGatewayRunner`) exposes chain access through `gateway.connection`:
+Check whether the gateway supports write operations before attempting transactions:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `.viewer` | `XyoViewer \| undefined` | Read-only chain state (sub-viewers for blocks, transactions, balances, etc.) |
-| `.storage` | `DataLakeViewer \| undefined` | Read-only datalake attached to this connection. May not point to the dApp's desired endpoint. |
-| `.runner` | `XyoRunner \| undefined` | Low-level runner (internal — use gateway methods instead) |
-| `.network` | `XyoNetwork \| undefined` | Network metadata |
+```ts
+const canSubmitToChain = gateway && 'addPayloadsToChain' in gateway
+const canRead = !!gateway
 
-**`connection.storage` is not the recommended datalake path.** It is a read-only `DataLakeViewer` populated from the connection's configuration — it cannot write, and it may not point to the endpoint the dApp wants to use. For datalake access, create standalone `RestDataLakeRunner` / `RestDataLakeViewer` clients. See [Gateway Usage — Accessing the Datalake](../xl1-patterns/gateway-usage.md) and [Datalakes](datalakes.md).
+// Chain reads: work for any gateway (read-only or write-capable)
+// Datalake reads/writes: work via the dApp's own HTTP client, independent of the gateway
+// Chain transactions: require an XyoGatewayRunner (wallet-connected in browser, signer-wired in Node)
+```
+
+---
+
+## Accessing the Datalake
+
+**The datalake is independent of the gateway.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Use the `createRestDataLakeRunner` / `createRestDataLakeViewer` factory helpers from `@xyo-network/xl1-sdk` — do not look for a `.datalake` property on the gateway.
+
+```ts
+import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
+
+const runner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
+await runner.insert(payloads)
+
+const viewer = await createRestDataLakeViewer('https://api.archivist.xyo.network/dataLake')
+const results = await viewer.get(hashes)
+```
+
+For the typical read flow you do not need to construct a viewer at all — `gateway.connection.viewer.block.*` goes through `ViewerWithDataLake`, which resolves off-chain payloads from the datalake transparently. Construct one only when you have hashes from outside the gateway path.
+
+The wallet and dApp are independent datalake clients — they may point to different endpoints, or either may have no datalake at all. For the full breakdown (factory internals, two-client semantics, endpoint independence), see [Datalakes](datalakes.md).
 
 ---
 
@@ -191,3 +307,15 @@ pnpm run-api
 | `XL1_ACTORS__API_*` | API server configuration |
 | `XL1_STORAGE__ROOT` | LMDB data directory |
 | `XL1_STORAGE__MONGO__*` | MongoDB connection settings |
+
+---
+
+## Anti-Patterns
+
+| Anti-Pattern | Why it fails | Do this instead |
+|---|---|---|
+| Calling RPC methods directly (raw `fetch` to `/rpc`, manual JSON-RPC payloads) | Loses type safety, provenance, and transport abstraction | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
+| `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use `createRestDataLakeRunner` / `createRestDataLakeViewer` |
+| `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use `createRestDataLakeRunner` |
+| Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |
+| `datalakeViewer.next(...)` to browse or scan a remote XL1 datalake | XL1 datalakes have no cursor pagination — `.next()` is an unbounded scan with no chain context | Iterate the chain via `viewer.block.*`, then read the datalake by hash. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) and [Datalakes — How to read](datalakes.md) |

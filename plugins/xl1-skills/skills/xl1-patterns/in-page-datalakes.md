@@ -88,7 +88,7 @@ function App() {
 
 ## Datalake Client Setup
 
-The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
 
 ```ts
 import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'

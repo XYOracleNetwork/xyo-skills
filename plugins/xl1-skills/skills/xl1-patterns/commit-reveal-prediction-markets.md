@@ -163,7 +163,7 @@ The settlement gate explicitly **re-runs** the reveal-gate hash check on every r
 
 ## Datalake Setup
 
-The phase functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+The phase functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
 
 ```ts
 import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'

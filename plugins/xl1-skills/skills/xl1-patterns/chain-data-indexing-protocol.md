@@ -11,7 +11,7 @@ This file is environment-agnostic. It documents schemas, anchoring choices, and 
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — RPC viewer methods, transports
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, schemas, hashing
-- [Gateway Usage](gateway-usage.md) — cross-environment notation for `gateway.connection.viewer.*` reads
+- [Gateway](../xl1-knowledge/gateway.md) — env-agnostic gateway reference + recipes (viewer API, transactions, datalake access)
 
 ---
 
@@ -84,7 +84,7 @@ Application data goes in the `offChain` parameter of `addPayloadsToChain`, but *
 import { PayloadBuilder } from '@xyo-network/sdk-js'
 import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
 
-// See Gateway Usage — Accessing the Datalake for full setup details
+// See Gateway — Accessing the Datalake for full setup details
 const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
 
 const movePayload: MovePayload = asMovePayload(

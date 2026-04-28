@@ -2,11 +2,11 @@
 
 How to build user-facing dApp UIs idiomatically — wallet connection, display conventions, capability-aware components, and the structural patterns that keep React + XL1 dApps consistent.
 
-**Scope:** browser-side UX patterns only. For browser-side gateway *construction* (the wallet extension, providers, hooks), see [Browser Gateway](../xl1-knowledge/gateway-browser.md). For the cross-environment gateway API surface, see [Gateway Usage](gateway-usage.md).
+**Scope:** browser-side UX patterns only. For browser-side gateway *construction* (the wallet extension, providers, hooks), see [Browser Gateway](../xl1-knowledge/gateway-browser.md). For the env-agnostic gateway API surface, see [Gateway](../xl1-knowledge/gateway.md).
 
 **Builds on:**
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, `useProvidedGateway`
-- [Gateway Usage](gateway-usage.md) — capability detection, transaction submission
+- [Gateway](../xl1-knowledge/gateway.md) — capability detection, transaction submission, viewer API
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browsing patterns
 
 ---

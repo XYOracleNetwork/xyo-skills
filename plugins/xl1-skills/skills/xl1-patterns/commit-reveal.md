@@ -110,7 +110,7 @@ function generateSalt(): string {
 
 ### Datalake Setup
 
-The functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+The functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
 
 ```ts
 import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
