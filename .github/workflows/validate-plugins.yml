@@ -117,6 +117,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Reads engines.node from the root package.json so CI tracks the
+          # version requirement automatically — bump engines and CI follows.
+          node-version-file: "package.json"
+
       - name: Enable corepack
         run: corepack enable
 
