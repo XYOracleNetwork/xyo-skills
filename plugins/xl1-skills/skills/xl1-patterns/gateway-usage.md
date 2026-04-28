@@ -193,11 +193,15 @@ const context = getTestProviderContext()
 const datalakeViewer = await RestDataLakeViewer.create({
   context,
   endpoint: 'https://api.archivist.xyo.network/dataLake',
-  allowedSchemas: [MySchema],
 } satisfies RestDataLakeViewerParams)
 
-const results = await datalakeViewer.next()
+// Read by hash. Discover hashes by walking the chain — see Chain Data
+// Indexing for the recommended scan strategies. Do not use .next() to
+// browse the datalake (XL1 datalakes have no cursor pagination).
+const results = await datalakeViewer.get(hashes)
 ```
+
+For the typical read flow you do not need to construct a `RestDataLakeViewer` at all — `gateway.connection.viewer.block.*` goes through `ViewerWithDataLake`, which resolves off-chain payloads from the datalake transparently. Construct one only when you have hashes from outside the gateway path (e.g., a hash stored client-side or received out-of-band).
 
 ### The `context` parameter
 
@@ -266,3 +270,4 @@ Start with **Sequence** (beta) to test against a live chain, then switch to **Ma
 | `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use standalone `RestDataLakeRunner`/`RestDataLakeViewer` |
 | `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use standalone `RestDataLakeRunner` |
 | Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |
+| `datalakeViewer.next(...)` to browse or scan a remote XL1 datalake | XL1 datalakes have no cursor pagination — `.next()` is an unbounded scan with no chain context | Iterate the chain via `viewer.block.*`, then read the datalake by hash. See [Chain Data Indexing](chain-data-indexing.md) and [Datalakes — How to read](../xl1-knowledge/datalakes.md) |

@@ -358,14 +358,23 @@ Four browse paths, picked by what the UI needs and what infrastructure is availa
 
 ### All inscriptions of a given content type
 
-Filter the datalake by schema; render directly. No indexer required for read-only display of inscription content.
+Walk the chain and filter by schema. `ViewerWithDataLake` hydrates off-chain payloads transparently, so each block read returns hydrated inscription payloads — no separate datalake call. For an explorer-style "all inscriptions ever" view, persist `lastSeenBlock` between sessions so each load only walks new blocks; for a recent-window view, walk from `head - WINDOW`.
 
 ```ts
-const inscriptionsView = await datalakeViewer.next({
-  allowedSchemas: [InscriptionSchema],
-})
-const inscriptions = inscriptionsView.filter(isInscriptionPayload)
+const viewer = defaultGateway.connection.viewer
+if (!viewer) throw new Error('Gateway has no viewer attached')
+
+const head = Number(await viewer.finalization.headNumber())
+const inscriptions: Payload[] = []
+for (let n = lastSeenBlock + 1; n <= head; n++) {
+  const hydrated = await viewer.block.blockByNumber(n)
+  if (!hydrated) continue
+  const [, payloads] = hydrated
+  inscriptions.push(...payloads.filter(isInscriptionPayload))
+}
 ```
+
+Do not reach for `datalakeViewer.next({ allowedSchemas: [InscriptionSchema] })` — the XL1 datalake is content-addressed and has no cursor pagination, so `.next()` is an unbounded scan with no chain context. See [Datalakes — How to read](../xl1-knowledge/datalakes.md).
 
 ### Ownership-aware browsing (per-address side-index)
 

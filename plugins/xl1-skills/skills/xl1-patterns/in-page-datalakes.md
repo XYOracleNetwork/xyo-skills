@@ -88,7 +88,7 @@ function App() {
 
 ## Datalake Client Setup
 
-The datalake is independent of the gateway — it is the dApp's own HTTP client. Create standalone `RestDataLakeViewer` (reads) and `RestDataLakeRunner` (writes) instances that all components share. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
 
 ```ts
 import { RestDataLakeViewer, RestDataLakeRunner, type RestDataLakeViewerParams, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
@@ -97,21 +97,21 @@ import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
 const context = getTestProviderContext()
 const DATALAKE_ENDPOINT = 'https://api.archivist.xyo.network/dataLake'
 
-// Read — no wallet needed, works for any visitor
-const datalakeViewer = await RestDataLakeViewer.create({
-  context,
-  endpoint: DATALAKE_ENDPOINT,
-  allowedSchemas: [ResultSchema, MoveSchema],
-} satisfies RestDataLakeViewerParams)
-
 // Write — no wallet needed, dApp can insert payloads for any visitor
 const datalakeRunner = await RestDataLakeRunner.create({
   context,
   endpoint: DATALAKE_ENDPOINT,
 } satisfies RestDataLakeRunnerParams)
+
+// Optional read client — only needed for hash-fetches outside the gateway
+// path. Do not call .next() on this; use .get(hashes) only.
+const datalakeViewer = await RestDataLakeViewer.create({
+  context,
+  endpoint: DATALAKE_ENDPOINT,
+} satisfies RestDataLakeViewerParams)
 ```
 
-The examples below use `datalakeViewer` and `datalakeRunner` — these are the instances created above, not properties on the gateway.
+The examples below use `datalakeRunner` for writes and `gateway.connection.viewer` for reads — `datalakeViewer` only appears for the rare out-of-band hash-fetch case.
 
 ---
 
@@ -127,14 +127,24 @@ function GameHistory() {
   const [games, setGames] = useState<GameResult[]>([])
 
   useEffect(() => {
-    if (!defaultGateway) return
+    const viewer = defaultGateway?.connection.viewer
+    if (!viewer) return
 
-    // datalakeViewer is a standalone RestDataLakeViewer — see setup above
     const loadHistory = async () => {
-      const payloads = await datalakeViewer.next({
-        allowedSchemas: [ResultSchema],
-      })
-      setGames(payloads.filter(isResultPayload))
+      // Iterate the chain to find Result payloads. ViewerWithDataLake
+      // hydrates off-chain payloads transparently — no separate datalake
+      // call. For production: persist a checkpoint and walk only from
+      // there to head; see Chain Data Indexing for the rigorous pattern.
+      const head = Number(await viewer.finalization.headNumber())
+      const startBlock = Math.max(0, head - HISTORY_LOOKBACK_BLOCKS)
+      const results: GameResult[] = []
+      for (let n = startBlock; n <= head; n++) {
+        const hydrated = await viewer.block.blockByNumber(n)
+        if (!hydrated) continue
+        const [, payloads] = hydrated
+        results.push(...payloads.filter(isResultPayload))
+      }
+      setGames(results)
     }
 
     loadHistory()
@@ -192,14 +202,22 @@ function Leaderboard() {
     if (!defaultGateway) return
 
     const loadLeaders = async () => {
-      // datalakeViewer is a standalone RestDataLakeViewer — see setup above
-      const results = await datalakeViewer.next({
-        allowedSchemas: [ResultSchema],
-      })
+      // Walk finalized blocks for Result payloads. ViewerWithDataLake
+      // resolves off-chain payloads transparently as the walk proceeds.
+      const viewer = defaultGateway.connection.viewer
+      if (!viewer) return
+      const head = Number(await viewer.finalization.headNumber())
+      const startBlock = Math.max(0, head - HISTORY_LOOKBACK_BLOCKS)
+      const results: ResultPayload[] = []
+      for (let n = startBlock; n <= head; n++) {
+        const hydrated = await viewer.block.blockByNumber(n)
+        if (!hydrated) continue
+        const [, payloads] = hydrated
+        results.push(...payloads.filter(isResultPayload))
+      }
 
       // Build leaderboard from raw payloads
       const board = results
-        .filter(isResultPayload)
         .reduce((acc, r) => {
           acc[r.winner] = (acc[r.winner] ?? 0) + 1
           return acc
@@ -291,7 +309,7 @@ Each browser session is isolated — payloads submitted by Player A are invisibl
 
 1. **Local archivist (`IndexedDbArchivist`)** — a browser-side archivist backed by IndexedDB. Updated immediately when this browser submits a payload. Provides instant UI feedback without a network round-trip, survives page refresh, and supports schema-based filtering and cursor pagination. Deduplication by data hash is built in — inserting the same payload twice is a no-op. Use the `inserted` event to drive React state updates. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
 
-2. **Remote datalake (dApp-configured)** — the dApp's own datalake endpoint, configured independently of the wallet's datalake. Use `RestDataLakeRunner` (for writes) and `RestDataLakeViewer` (for reads) from `@xyo-network/xl1-sdk`. The dApp pushes payloads here on every submit and polls periodically to discover payloads from other players. Polled results are inserted into the local archivist — deduplication is automatic. Because this is the dApp's own HTTP connection, it works with or without a wallet — and the dApp controls exactly where the data goes.
+2. **Remote datalake (dApp-configured)** — the dApp's own datalake endpoint, configured independently of the wallet's datalake. Use `RestDataLakeRunner` from `@xyo-network/xl1-sdk` for writes (every submit). For reads, **iterate the chain** via `gateway.connection.viewer.block.*` — the gateway's `ViewerWithDataLake` resolves off-chain payloads from the datalake transparently as you walk. Insert the freshly walked payloads into the local archivist — deduplication is automatic. Use `RestDataLakeViewer.get(hashes)` directly only when you have hashes from outside the gateway path. Because this is the dApp's own HTTP layer, writes work with or without a wallet, and reads work entirely without one.
 
 ### Creating the local archivist
 
@@ -337,13 +355,26 @@ Steps 1 and 2 are dApp-controlled and work without a wallet. Step 3 requires the
 
 ### Poll flow
 
-On a 5-second interval, fetch payloads from the remote datalake filtered by the application's schemas using `RestDataLakeViewer`. Insert into the local archivist — deduplication by data hash is automatic:
+On a 5-second interval, walk new finalized blocks since `lastSeenBlock`, filter by the application's schemas, and insert into the local archivist. The gateway's `ViewerWithDataLake` resolves off-chain payloads transparently, so a single block read returns hydrated payloads. Deduplication by data hash is automatic in the local archivist:
 
 ```ts
-// datalakeViewer is a standalone RestDataLakeViewer — see Datalake Client Setup above
-const remote = await datalakeViewer.next({ allowedSchemas: appSchemas })
-await localArchivist.insert(remote) // duplicates are ignored
+const viewer = defaultGateway.connection.viewer
+if (!viewer) return
+const head = Number(await viewer.finalization.headNumber())
+if (head <= lastSeenBlockRef.current) return
+
+const fresh: Payload[] = []
+for (let n = lastSeenBlockRef.current + 1; n <= head; n++) {
+  const hydrated = await viewer.block.blockByNumber(n)
+  if (!hydrated) continue
+  const [, payloads] = hydrated
+  fresh.push(...payloads.filter(p => appSchemas.includes(p.schema as Schema)))
+}
+await localArchivist.insert(fresh) // duplicates are ignored
+lastSeenBlockRef.current = head
 ```
+
+**Why not `datalakeViewer.next({ allowedSchemas })`?** Remote XL1 datalakes do not implement cursor pagination — `.next()` is an unbounded scan with no chain context (no block number, no signer, no finalization guarantee). Walking the chain is bounded, ordered, finalization-aware, and gives you the signer/transaction context for free. The local `IndexedDbArchivist.next()` *is* still the right tool for the UI to read its own cache (real cursor, real pagination); only the *remote* leg changes.
 
 ### Why both layers
 
@@ -353,7 +384,7 @@ await localArchivist.insert(remote) // duplicates are ignored
 | Cross-player visibility | No | Yes | Yes |
 | Works offline | Yes | No | Graceful degradation |
 | Survives page refresh | Yes (IndexedDB) | Via remote query | Yes |
-| Schema-filtered queries | Yes (built-in index) | Yes (allowedSchemas) | Yes |
+| Schema-filtered queries | Yes (built-in index) | Yes (filter during chain walk) | Yes |
 
 ---
 

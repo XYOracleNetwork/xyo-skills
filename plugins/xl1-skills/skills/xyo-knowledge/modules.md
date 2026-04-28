@@ -37,6 +37,8 @@ interface ArchivistFunctions {
 
 **Implementations:** MemoryArchivist, IndexedDbArchivist, StorageArchivist, LevelDB, LMDB, MongoDB, Cookie, Firebase
 
+**`.next()` is implementation-dependent.** Local browser archivists (IndexedDbArchivist, MemoryArchivist) implement real cursor pagination. The XL1 remote datalake does not — for XL1 chain reads, iterate the chain to discover hashes, then fetch by hash via `get()`. See [Datalakes — How to read](../xl1-knowledge/datalakes.md).
+
 #### Browser Archivist Selection
 
 | Archivist | Backing Store | Capacity | Schema Filtering | Persistence | Best For |
