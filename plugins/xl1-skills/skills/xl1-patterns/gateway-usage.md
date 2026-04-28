@@ -231,13 +231,13 @@ XL1 has three networks. The `gatewayName` prop on providers selects the network:
 | **Local** | `'local'` | Local development with `xl1 start api` |
 
 ```tsx
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { MainNetwork, SequenceNetwork } from '@xyo-network/xl1-sdk'
 
 // Production
 <WalletGatewayProvider gatewayName={MainNetwork.id}>
 
 // Development
-<WalletGatewayProvider gatewayName="sequence">
+<WalletGatewayProvider gatewayName={SequenceNetwork.id}>
 ```
 
 Start with **Sequence** (beta) to test against a live chain, then switch to **Mainnet** for production.
