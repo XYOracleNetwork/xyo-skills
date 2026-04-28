@@ -171,6 +171,17 @@ To test how your skill are picked up you can ask in a plan:
 
 > Make me a plan to build a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.  Be sure the plan includes the relevant skills you will use and how you will use them
 
+## Releases
+
+Versioning is automated by [release-please](https://github.com/googleapis/release-please) on top of Gitflow:
+
+1. Use [conventional commit](https://www.conventionalcommits.org/) prefixes (`feat:`, `fix:`, `feat!:` for breaking, etc.) — release-please reads them to determine the bump and generate the changelog.
+2. PR `develop` → `main` and merge when ready to release.
+3. Release-please opens a Release PR against `main` with version bumps and a regenerated `CHANGELOG.md`. Review and merge it — the git tag and GitHub Release are created automatically.
+4. A `main → develop` sync PR is opened automatically; merge it to keep `develop` aligned for the next cycle.
+
+`plugins/xl1-skills/.claude-plugin/plugin.json` is the version source of truth. `.claude-plugin/marketplace.json` and `version.txt` are kept in lockstep automatically — don't edit them by hand.
+
 ## License
 
 MIT
