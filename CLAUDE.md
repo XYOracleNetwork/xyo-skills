@@ -38,6 +38,12 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 
 **Branching:** Gitflow with `develop` as the integration branch. Feature branches use `feature/<description>` off `develop`. Never rewrite git history (no amend, rebase, or force push).
 
+**Releases:** Automated by [release-please](https://github.com/googleapis/release-please).
+- Use conventional commit prefixes (`feat:`, `fix:`, `docs:`, `chore:`, `feat!:` for breaking) — release-please reads them to decide bump size and write `CHANGELOG.md`.
+- To ship: PR `develop` → `main` and merge. Release-please then opens a Release PR against `main` that bumps `plugins/xl1-skills/.claude-plugin/plugin.json` (source of truth), both version fields in `.claude-plugin/marketplace.json`, `version.txt`, and the manifest. Merging that PR tags and publishes the release.
+- The `sync-main-to-develop.yml` workflow then auto-opens a `main → develop` PR. Merge it to keep `develop` aligned for the next cycle.
+- Don't bump versions by hand — release-please owns those files. Anchored at `b1bc7eb`; older `feat:`/`fix:` commits are not rolled forward.
+
 **CI:** The `validate-plugins.yml` workflow runs on push/PR to `main` and `develop`. It validates:
 - `marketplace.json` structure and required fields
 - Each plugin directory exists with a valid `plugin.json`
