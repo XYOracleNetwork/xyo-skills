@@ -46,7 +46,7 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 | Calling gateway methods by string name or raw HTTP | The gateway has no `.call()` method — use the typed sub-viewer API | `defaultGateway.connection.viewer?.<sub-viewer>.<method>(...)` — see [Gateway Usage](../xl1-patterns/gateway-usage.md) |
 | Manual BoundWitness field construction | Parallel array invariants easily broken | `BoundWitnessBuilder` |
 | Raw object literal `{ schema: '...', field: val }` | Skips meta field management and validation | `PayloadBuilder` |
-| Using `datalakeRunner`/`datalakeViewer` without creating them | These are not globals — they must be instantiated with a context | `RestDataLakeRunner.create({ context: getTestProviderContext(), endpoint })` — see [Gateway Usage](../xl1-patterns/gateway-usage.md) |
+| Using `datalakeRunner`/`datalakeViewer` without creating them | These are not globals — they must be instantiated | `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` from `@xyo-network/xl1-sdk` — see [Gateway Usage](../xl1-patterns/gateway-usage.md) |
 
 ### When native constructs are acceptable
 

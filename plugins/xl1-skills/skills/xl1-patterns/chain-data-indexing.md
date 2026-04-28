@@ -77,15 +77,10 @@ Application data goes in the `offChain` parameter of `addPayloadsToChain`, but *
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
-import { RestDataLakeRunner, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
 
 // See Gateway Usage — Accessing the Datalake for full setup details
-const context = getTestProviderContext()
-const datalakeRunner = await RestDataLakeRunner.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-} satisfies RestDataLakeRunnerParams)
+const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
 
 const movePayload: MovePayload = asMovePayload(
   new PayloadBuilder({ schema: MoveSchema })

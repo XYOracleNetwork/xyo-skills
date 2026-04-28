@@ -164,21 +164,16 @@ const confirmedTx = await gateway.confirmSubmittedTransaction(txHash)
 
 ## Accessing the Datalake
 
-**The datalake is independent of the gateway.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Use standalone `RestDataLakeRunner` and `RestDataLakeViewer` from `@xyo-network/xl1-sdk` — do not look for a `.datalake` property on the gateway.
+**The datalake is independent of the gateway.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Use the `createRestDataLakeRunner` / `createRestDataLakeViewer` factory helpers from `@xyo-network/xl1-sdk` — do not look for a `.datalake` property on the gateway.
 
 > **Note:** `gateway.connection.storage` exists as a read-only `DataLakeViewer` when the connection is configured with a datalake endpoint. However, it is not the recommended path for dApp code — it is read-only, and it may not point to the datalake endpoint the dApp intends to use. Always create standalone datalake clients.
 
 ### Creating a datalake runner (writes)
 
 ```ts
-import { RestDataLakeRunner, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
 
-const context = getTestProviderContext()
-const datalakeRunner = await RestDataLakeRunner.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-} satisfies RestDataLakeRunnerParams)
+const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
 
 await datalakeRunner.insert(payloads)
 ```
@@ -186,14 +181,9 @@ await datalakeRunner.insert(payloads)
 ### Creating a datalake viewer (reads)
 
 ```ts
-import { RestDataLakeViewer, type RestDataLakeViewerParams } from '@xyo-network/xl1-sdk'
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+import { createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
 
-const context = getTestProviderContext()
-const datalakeViewer = await RestDataLakeViewer.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-} satisfies RestDataLakeViewerParams)
+const datalakeViewer = await createRestDataLakeViewer('https://api.archivist.xyo.network/dataLake')
 
 // Read by hash. Discover hashes by walking the chain — see Chain Data
 // Indexing for the recommended scan strategies. Do not use .next() to
@@ -201,19 +191,11 @@ const datalakeViewer = await RestDataLakeViewer.create({
 const results = await datalakeViewer.get(hashes)
 ```
 
-For the typical read flow you do not need to construct a `RestDataLakeViewer` at all — `gateway.connection.viewer.block.*` goes through `ViewerWithDataLake`, which resolves off-chain payloads from the datalake transparently. Construct one only when you have hashes from outside the gateway path (e.g., a hash stored client-side or received out-of-band).
+For the typical read flow you do not need to construct a viewer at all — `gateway.connection.viewer.block.*` goes through `ViewerWithDataLake`, which resolves off-chain payloads from the datalake transparently. Construct one only when you have hashes from outside the gateway path (e.g., a hash stored client-side or received out-of-band).
 
-### The `context` parameter
+### How the factories build the client
 
-Both `RestDataLakeRunner.create()` and `RestDataLakeViewer.create()` require a `context: CreatableProviderContext` parameter. Create it with `getTestProviderContext()` from `@xyo-network/xl1-protocol-sdk/test`:
-
-```ts
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
-
-const context = getTestProviderContext()
-```
-
-This is a sub-path import — an exception to the root barrel rule. `getTestProviderContext` is the current recommended way to create a provider context for standalone datalake clients in dApp code.
+`createRestDataLakeRunner(endpoint)` returns a `RestDataLakeRunner`; `createRestDataLakeViewer(endpoint)` returns a `RestDataLakeViewer`. Each helper wraps a default `BaseConfig` provider context (`baseConfigFactoryLocator`) and registers the datalake provider on a frozen locator before resolving the instance — dApp code no longer needs to construct a provider context manually. If you have a custom locator or need to share a provider context across multiple modules, fall back to `RestDataLakeRunner.create({ context, endpoint })` / `RestDataLakeViewer.create({ context, endpoint })` directly; for standalone dApp use, prefer the factories.
 
 ### Datalake endpoints and independence
 
@@ -267,7 +249,7 @@ Start with **Sequence** (beta) to test against a live chain, then switch to **Ma
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
 | Calling RPC methods directly (raw `fetch` to `/rpc`, manual JSON-RPC payloads) | Loses type safety, provenance, and transport abstraction | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
-| `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use standalone `RestDataLakeRunner`/`RestDataLakeViewer` |
-| `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use standalone `RestDataLakeRunner` |
+| `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use `createRestDataLakeRunner` / `createRestDataLakeViewer` |
+| `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use `createRestDataLakeRunner` |
 | Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |
 | `datalakeViewer.next(...)` to browse or scan a remote XL1 datalake | XL1 datalakes have no cursor pagination — `.next()` is an unbounded scan with no chain context | Iterate the chain via `viewer.block.*`, then read the datalake by hash. See [Chain Data Indexing](chain-data-indexing.md) and [Datalakes — How to read](../xl1-knowledge/datalakes.md) |

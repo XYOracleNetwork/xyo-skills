@@ -91,24 +91,16 @@ function App() {
 The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
 
 ```ts
-import { RestDataLakeViewer, RestDataLakeRunner, type RestDataLakeViewerParams, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
 
-const context = getTestProviderContext()
 const DATALAKE_ENDPOINT = 'https://api.archivist.xyo.network/dataLake'
 
 // Write — no wallet needed, dApp can insert payloads for any visitor
-const datalakeRunner = await RestDataLakeRunner.create({
-  context,
-  endpoint: DATALAKE_ENDPOINT,
-} satisfies RestDataLakeRunnerParams)
+const datalakeRunner = await createRestDataLakeRunner(DATALAKE_ENDPOINT)
 
 // Optional read client — only needed for hash-fetches outside the gateway
 // path. Do not call .next() on this; use .get(hashes) only.
-const datalakeViewer = await RestDataLakeViewer.create({
-  context,
-  endpoint: DATALAKE_ENDPOINT,
-} satisfies RestDataLakeViewerParams)
+const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
 ```
 
 The examples below use `datalakeRunner` for writes and `gateway.connection.viewer` for reads — `datalakeViewer` only appears for the rare out-of-band hash-fetch case.

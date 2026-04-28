@@ -113,14 +113,9 @@ function generateSalt(): string {
 The functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
 
 ```ts
-import { RestDataLakeRunner, type RestDataLakeRunnerParams } from '@xyo-network/xl1-sdk'
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
 
-const context = getTestProviderContext()
-const datalakeRunner = await RestDataLakeRunner.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-} satisfies RestDataLakeRunnerParams)
+const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
 ```
 
 ### Submitting the Commit

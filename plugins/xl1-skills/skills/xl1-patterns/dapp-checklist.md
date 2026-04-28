@@ -20,7 +20,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 ## Datalake
 
 - [ ] Datalake clients are standalone `RestDataLakeRunner` / `RestDataLakeViewer` — not accessed via `gateway.datalake` (doesn't exist) or `gateway.connection.storage` (read-only, may point elsewhere)
-- [ ] Datalake clients are instantiated with `getTestProviderContext()` from `@xyo-network/xl1-protocol-sdk/test`
+- [ ] Datalake clients are constructed with the `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` factories from `@xyo-network/xl1-sdk` — not by calling `.create({ context, endpoint })` directly
 - [ ] Off-chain payloads are inserted into the dApp's datalake **before** submitting the transaction — the wallet does not do this automatically
 - [ ] The dApp does not assume the wallet's datalake covers its persistence needs — wallet and dApp are independent datalake clients
 

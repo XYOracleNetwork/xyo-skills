@@ -31,7 +31,7 @@ There are two actors that can read from and write to datalakes, each with its ow
 
 1. **The browser wallet** — the wallet extension has its own datalake configuration. When a transaction is submitted through the wallet, it can persist payloads to whichever datalake(s) it is configured for. The dApp does not control this.
 
-2. **The dApp/page** — the application code sets up its own datalake connection(s) via `RestDataLakeRunner` (writes) and `RestDataLakeViewer` (reads) from `@xyo-network/xl1-sdk`, pointing at whatever endpoint(s) it chooses. This is plain HTTP, completely independent of the wallet.
+2. **The dApp/page** — the application code sets up its own datalake connection(s) via `createRestDataLakeRunner` (writes) and `createRestDataLakeViewer` (reads) from `@xyo-network/xl1-sdk`, pointing at whatever endpoint(s) it chooses. This is plain HTTP, completely independent of the wallet.
 
 These two configurations are **independent**. The relationship between them is a deployment choice:
 
@@ -44,29 +44,20 @@ These two configurations are **independent**. The relationship between them is a
 **Do not assume one covers the other.** The wallet may or may not write to a datalake the dApp can see, and vice versa. If the dApp needs payload data to be available for querying, it must write to its own datalake — regardless of what the wallet does.
 
 ```ts
-import {
-  RestDataLakeRunner,
-  RestDataLakeViewer,
-  type RestDataLakeRunnerParams,
-  type RestDataLakeViewerParams,
-} from '@xyo-network/xl1-sdk'
+import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
 
 // dApp-configured datalake — independent of the wallet's datalake config
-const runner = await RestDataLakeRunner.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-} satisfies RestDataLakeRunnerParams)
+const runner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
 await runner.insert(payloads)
 
-const viewer = await RestDataLakeViewer.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-} satisfies RestDataLakeViewerParams)
+const viewer = await createRestDataLakeViewer('https://api.archivist.xyo.network/dataLake')
 
 // Read by hash. Hashes come from the chain — see Chain Data Indexing
 // for how to discover them by walking blocks/transactions.
 const results = await viewer.get(hashes)
 ```
+
+The factory functions wrap a default `BaseConfig` provider context and return the `RestDataLakeRunner` / `RestDataLakeViewer` instance directly — dApp code no longer needs to construct a provider context manually.
 
 ### Off-chain payload storage
 
@@ -75,7 +66,7 @@ The **dApp is responsible for persisting off-chain payloads to its own datalake.
 The correct flow for application data:
 
 1. **Build** the application payloads (game state, attestations, etc.)
-2. **Insert** them into the dApp's datalake via `RestDataLakeRunner.insert()` — this is plain HTTP, no wallet needed. This ensures the dApp can read back its own data.
+2. **Insert** them into the dApp's datalake via the runner's `.insert()` method — this is plain HTTP, no wallet needed. This ensures the dApp can read back its own data.
 3. **Submit** the transaction via `addPayloadsToChain` — this requires the browser wallet. The transaction's BoundWitness references the payloads by hash, linking on-chain proof to off-chain data.
 
 Custom payloads go in the `offChain` parameter because they are not `AllowedBlockPayload` system types. The chain stores the cryptographic reference (hash); the datalake stores the actual payload data.
