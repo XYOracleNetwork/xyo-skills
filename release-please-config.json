@@ -5,7 +5,7 @@
   "include-component-in-tag": false,
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": false,
-  "last-release-sha": "b1bc7eb",
+  "last-release-sha": "4696901",
   "packages": {
     ".": {
       "package-name": "xl1-skills",
