@@ -9,7 +9,7 @@ Five skill layers that cascade top-down:
 | Layer | Skill | Covers |
 |-------|-------|--------|
 | 5 | `xl1-patterns` | Commit-reveal, chain data indexing, in-page datalakes, prediction markets |
-| 4 | `xl1-knowledge` | XL1 chain, datalakes, gateway, browser wallet |
+| 4 | `xl1-knowledge` | XL1 chain, datalakes, gateway (generic, browser, and Node) |
 | 3 | `xyo-knowledge` | XYO payloads, bound witnesses, modules, identity |
 | 2 | `xy-toolchain` | @xylabs/toolchain, ESLint flat config, TypeScript config, Vitest |
 | 1 | `development` | TypeScript, Git workflow, testing, dev conventions |

@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, or token protocols.
+description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, or dApp UI conventions.
 ---
 
 # XL1 Design Patterns
@@ -11,18 +11,28 @@ This skill provides prescriptive, recipe-style patterns for building common appl
 
 These patterns compose primitives from the full skill stack:
 
-- **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway, browser wallet
+- **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway (generic, browser, and Node)
 - **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — payloads, bound witnesses, modules, identity
 - **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest
 - **[Development](../development/SKILL.md)** — coding conventions, Git, testing, workflow
 
 ## Table of Contents
 
-### [Gateway Usage](gateway-usage.md)
-Read when you need to interact with the XL1 chain from application code — reading chain state, submitting transactions, or accessing the datalake. Covers provider setup, viewer sub-viewers, transaction submission, standalone datalake clients, capability detection, and network selection.
+### [Browser UX](browser-ux.md)
+Read when building user-facing dApp UIs in the browser. Covers wallet connection lifecycle (`ConnectAccountsStack`), the `useConnectAccount` singleton pitfall, lifting connected address into app state, capability-aware components, dApp UI structure, and display conventions (hash/address clamping, copy-to-clipboard). The UX layer that sits on top of [Browser Gateway](../xl1-knowledge/gateway-browser.md) construction.
 
-### [Chain Data Indexing](chain-data-indexing.md)
-Read when your dApp needs to query, filter, or paginate application-specific data from the XL1 chain. Covers schema-based datalake filtering, RPC viewer queries, polling for new data, and building application read models from raw chain state.
+### Chain Data Indexing — by role
+
+The first pattern in the layer to follow the protocol/client/service split. Read the protocol file first; then the role file matching what you're building.
+
+#### [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md)
+Conceptual rules for retrieving, filtering, and watching application-specific chain data — schemas, anchoring choices (Path A/B/C), `Destination as Protocol` (sentinel addresses), the four scan strategies, and finalized-vs-latest semantics. Environment-agnostic; both clients and services rely on it.
+
+#### [Chain Data Indexing — Client](chain-data-indexing-client.md)
+Browser-side reads — but **only for ephemeral, single-user, trivial cases**. The `useChainData` React hook for polled reads, capability detection in components, and a sharp boundary on what does and does not belong in the browser. Anything multi-user, durable, or reorg-sensitive needs the service file instead.
+
+#### [Chain Data Indexing — Service](chain-data-indexing-service.md)
+Long-running indexer service. Process model (sync/persist/serve loops), state persistence and atomic checkpoints, restart-resume semantics, exposing results via HTTP API, signer indexers, deployment shape (process supervision, single-instance, healthz, network from env).
 
 ### [Commit-Reveal Primitive](commit-reveal.md)
 Read when building any feature where multiple parties make simultaneous decisions and seeing another's choice first would be unfair. Covers the two-phase commit-reveal workflow, schema design for commits and reveals, on-chain recording, hash verification, and timeout handling.

@@ -1,6 +1,6 @@
 ---
 name: xl1-knowledge
-description: XL1 blockchain development (XYO Layer One). The top skill layer — covers the XL1 chain, datalakes, gateway, browser wallet, and building dApps. Activates when building on XL1, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
+description: XL1 blockchain development (XYO Layer One). The top skill layer — covers the XL1 chain, datalakes, gateway (generic, browser, and Node), and building dApps. Activates when building on XL1, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
 ---
 
 # XL1 Blockchain Knowledge
@@ -29,7 +29,10 @@ Read when building applications or services on XL1. Covers the Zod-first type pa
 Read when working with XL1 chain data storage — archiving, querying, or configuring storage backends. Covers the DataLake abstraction and how it builds on XYO Archivists.
 
 ### [Gateway](gateway.md)
-Read when connecting to the XL1 chain — gateway viewer API, networks, transports, and providers. Covers how to query blocks, submit transactions, and run a gateway node.
+Read when connecting to the XL1 chain — generic gateway concepts, viewer API, networks, transports, and how to run a gateway node. Environment-specific construction lives in two sibling files.
 
-### [Browser Wallet](wallet.md)
-Read when integrating with the XL1 browser wallet — transaction signing, React components, and the dApp ↔ wallet communication flow.
+### [Browser Gateway](gateway-browser.md)
+Read when constructing a gateway in a React dApp — the Chrome wallet extension, `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, and `useProvidedGateway`. UX patterns built on top of the gateway live in [Browser UX](../xl1-patterns/browser-ux.md).
+
+### [Node Gateway](gateway-node.md)
+Read when constructing a gateway server-side — `basicRemoteViewerLocator`, the read-only construction recipe, caching pattern, and the (currently undocumented) write path.

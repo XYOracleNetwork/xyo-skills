@@ -3,10 +3,10 @@
 Read this pattern when your React dApp needs to access chain data or the datalake without requiring the user to connect their wallet first. This is the foundation for building explorer views, leaderboards, game history, and any UI that reads chain data or writes to the datalake without a wallet connection.
 
 **Builds on:**
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — networks, viewer API, transports
-- [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling patterns
+- [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based querying and polling patterns
 
 ---
 
@@ -88,7 +88,7 @@ function App() {
 
 ## Datalake Client Setup
 
-The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
 
 ```ts
 import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
@@ -382,28 +382,7 @@ lastSeenBlockRef.current = head
 
 ## Displaying Hashes and Addresses
 
-Hashes (64 chars) and addresses (40 chars) are too long to display in full in most UI contexts. **Always** follow these two rules:
-
-1. **Clamp the display value.** Truncate to a readable prefix + suffix, e.g., `a1b2c3d4...ef567890`. This is fine — users don't read full hex strings.
-2. **Provide a copy-to-clipboard action.** Every clamped hash or address must have a way to copy the full, untruncated value. A click-to-copy icon or a tooltip with a copy button both work.
-
-```tsx
-function HashDisplay({ value }: { value: string }) {
-  const display = `${value.slice(0, 8)}...${value.slice(-8)}`
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value)
-  }
-
-  return (
-    <span style={{ fontFamily: 'monospace', cursor: 'pointer' }} onClick={handleCopy} title="Click to copy">
-      {display}
-    </span>
-  )
-}
-```
-
-Hashes and addresses appear throughout dApp UIs: game IDs, player addresses, transaction hashes, block hashes, etc. Prefer clamped display over raw hex strings — full 40- or 64-character values are rarely useful inline. When a value is clamped, always provide a way to copy the full value.
+Hashes and addresses surface throughout in-page datalake views (game IDs, player addresses, transaction hashes, block hashes). Always clamp them for display and provide a copy-to-clipboard action — see [Browser UX — Display Conventions](browser-ux.md) for the rule and a reference implementation.
 
 ---
 
@@ -416,5 +395,5 @@ Hashes and addresses appear throughout dApp UIs: game IDs, player addresses, tra
 | Component needs to submit a chain transaction? | Guard with `'addPayloadsToChain' in defaultGateway` check, require wallet connection |
 | Does the wallet's datalake cover the dApp's needs? | **Don't assume so.** The wallet and dApp are independent datalake clients. They may point to the same, different, or no endpoints. Always write to the dApp's datalake explicitly. |
 | Display data to unauthenticated users? | Place read components outside the wallet connection gate |
-| Need to poll for updates? | Use the polling pattern from [Chain Data Indexing](chain-data-indexing.md) — works with in-page gateway |
+| Need to poll for updates? | Use the polling pattern from [Chain Data Indexing](chain-data-indexing-protocol.md) — works with in-page gateway |
 | Which network for development? | Use Sequence (beta) — live chain, no real tokens. See [Gateway](../xl1-knowledge/gateway.md) |

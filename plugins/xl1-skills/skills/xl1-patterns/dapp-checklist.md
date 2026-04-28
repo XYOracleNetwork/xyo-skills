@@ -13,7 +13,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Transactions are submitted through gateway methods (`addPayloadsToChain`, `send`, `sendMany`) — no manual `TransactionBoundWitness` construction
 - [ ] Write capability is checked before submitting (`'addPayloadsToChain' in defaultGateway`)
 
-**Source:** [Gateway Usage](gateway-usage.md), [Browser Wallet](../xl1-knowledge/wallet.md)
+**Source:** [Gateway](../xl1-knowledge/gateway.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
@@ -24,7 +24,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Off-chain payloads are inserted into the dApp's datalake **before** submitting the transaction — the wallet does not do this automatically
 - [ ] The dApp does not assume the wallet's datalake covers its persistence needs — wallet and dApp are independent datalake clients
 
-**Source:** [Gateway Usage — Accessing the Datalake](gateway-usage.md), [Datalakes](../xl1-knowledge/datalakes.md)
+**Source:** [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake), [Datalakes](../xl1-knowledge/datalakes.md)
 
 ---
 
@@ -36,7 +36,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] The connected address is lifted into app-level state via `onAccountConnected` and passed as props — `useConnectAccount()` is not called in multiple components
 - [ ] When the wallet extension is missing, the UI prompts the user to install it — no silent fallback to a random account
 
-**Source:** [Browser Wallet — Wallet Connection](../xl1-knowledge/wallet.md)
+**Source:** [Browser UX — Wallet Connection](browser-ux.md)
 
 ---
 
@@ -71,7 +71,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Read-only components (history, leaderboards, explorers) are placed outside the wallet connection gate — they work with just the in-page gateway
 - [ ] Wallet-gated components (submit move, create game) check write capability before rendering action controls
 
-**Source:** [In-Page Data Lakes](in-page-datalakes.md), [Gateway Usage — Setup](gateway-usage.md)
+**Source:** [In-Page Data Lakes](in-page-datalakes.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
@@ -80,7 +80,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Hashes (64 chars) and addresses (40 chars) are clamped to a readable prefix + suffix (e.g., `a1b2c3d4...ef567890`)
 - [ ] Every clamped value provides a copy-to-clipboard action
 
-**Source:** [In-Page Data Lakes — Displaying Hashes and Addresses](in-page-datalakes.md)
+**Source:** [Browser UX — Display Conventions](browser-ux.md)
 
 ---
 

@@ -6,7 +6,7 @@ This pattern is the substrate. Higher-layer protocols (fungible tokens, collecti
 
 **Builds on:**
 - [Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md) — the foundational decomposition this pattern exploits
-- [Chain Data Indexing](chain-data-indexing.md) — schema-based payload submission and read models
+- [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based payload submission and read models
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browse without a wallet
 - [Gateway](../xl1-knowledge/gateway.md) — `connection.viewer.finalization` for finalized state, `connection.viewer.block` for hydrated blocks
 - [Datalakes](../xl1-knowledge/datalakes.md) — off-chain payload storage referenced by on-chain hash
@@ -119,7 +119,7 @@ export const toTransferPayload = zodToFactory(TransferPayloadZod, 'toTransferPay
 
 ## Step 2: Inscribe
 
-The substrate uses **carrier Path A** (off-chain payload referenced by TransactionBoundWitness) plus **dual sentinel transfers** for free chain-native indexing. See [Chain Data Indexing — Choosing a Carrier](chain-data-indexing.md#choosing-a-carrier--how-to-anchor-off-chain-data-on-chain) and [Destination as Protocol](chain-data-indexing.md#destination-as-protocol--a-native-xl1-pattern) for the full landscape.
+The substrate uses **carrier Path A** (off-chain payload referenced by TransactionBoundWitness) plus **dual sentinel transfers** for free chain-native indexing. See [Chain Data Indexing — Choosing a Carrier](chain-data-indexing-protocol.md#choosing-a-carrier--how-to-anchor-off-chain-data-on-chain) and [Destination as Protocol](chain-data-indexing-protocol.md#destination-as-protocol--a-native-xl1-pattern) for the full landscape.
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
@@ -230,7 +230,7 @@ type IndexerState = {
 }
 ```
 
-The `byOwner` side-index is maintained alongside `artifacts` during replay. It costs no extra block reads and turns "show me address X's inscriptions" into a single map lookup — see [Scan Strategies — Strategy 3](chain-data-indexing.md#strategy-3-indexer-maintained-per-address-side-index).
+The `byOwner` side-index is maintained alongside `artifacts` during replay. It costs no extra block reads and turns "show me address X's inscriptions" into a single map lookup — see [Scan Strategies — Strategy 3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index).
 
 ### Replay loop
 
@@ -287,7 +287,7 @@ If `hashToSigner.get(p._hash)` returns `undefined`, the payload was not wrapped 
 
 The actor for any application payload is `transactionBoundWitness.from`. The sentinel `Transfer` payload accompanying an inscription has its own `from` field, but the indexer doesn't read it — the chain's balance validator already enforces `transfer.from === tx.from`, and reading authorship out of payload content would mix declarative content with structural authorship.
 
-Chain-native consumers using [Scan Strategy 4](chain-data-indexing.md#strategy-4-sentinel-transfer) end up reading `transfer.from` because that's what `accountBalanceHistory` returns directly — they arrive at the same minter address by a different path. Both views agree by construction.
+Chain-native consumers using [Scan Strategy 4](chain-data-indexing-protocol.md#strategy-4-sentinel-transfer) end up reading `transfer.from` because that's what `accountBalanceHistory` returns directly — they arrive at the same minter address by a different path. Both views agree by construction.
 
 ### Register an artifact
 
@@ -354,7 +354,7 @@ const intervalId = setInterval(() => {
 
 ## Step 5: Browse
 
-Four browse paths, picked by what the UI needs and what infrastructure is available. See [Chain Data Indexing — Scan Strategies](chain-data-indexing.md#scan-strategies--reading-indexed-data) for the full taxonomy.
+Four browse paths, picked by what the UI needs and what infrastructure is available. See [Chain Data Indexing — Scan Strategies](chain-data-indexing-protocol.md#scan-strategies--reading-indexed-data) for the full taxonomy.
 
 ### All inscriptions of a given content type
 
@@ -378,7 +378,7 @@ Do not reach for `datalakeViewer.next({ allowedSchemas: [InscriptionSchema] })` 
 
 ### Ownership-aware browsing (per-address side-index)
 
-Query the indexer (or its diviner equivalent). The indexer's `artifacts` map plus a `byOwner: Map<Address, Set<ArtifactId>>` side-index ([Strategy 3](chain-data-indexing.md#strategy-3-indexer-maintained-per-address-side-index)) is the read model — expose it via a query interface that returns `ArtifactRecord[]` filtered by `owner`, by `creator`, or by ID. This is the canonical "show me my inscriptions" path when you control an indexer.
+Query the indexer (or its diviner equivalent). The indexer's `artifacts` map plus a `byOwner: Map<Address, Set<ArtifactId>>` side-index ([Strategy 3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index)) is the read model — expose it via a query interface that returns `ArtifactRecord[]` filtered by `owner`, by `creator`, or by ID. This is the canonical "show me my inscriptions" path when you control an indexer.
 
 ### Free chain-native per-address browsing (sentinel transfers)
 

@@ -5,7 +5,7 @@ Read this pattern when building any feature where multiple parties make simultan
 **Builds on:**
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, PayloadBuilder, BoundWitnessBuilder, hashing
 - [Identity & Signing](../xyo-knowledge/identity.md) — Account for signing commits and reveals
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `addPayloadsToChain` for on-chain recording
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `addPayloadsToChain` for on-chain recording via the wallet
 - [Development on XL1](../xl1-knowledge/development.md) — Zod-first type pattern
 
 ---
@@ -110,7 +110,7 @@ function generateSalt(): string {
 
 ### Datalake Setup
 
-The functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway Usage — Accessing the Datalake](gateway-usage.md) for full details.
+The functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
 
 ```ts
 import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
