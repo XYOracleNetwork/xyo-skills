@@ -70,9 +70,9 @@ Always use ES modules. No CommonJS.
 import { Payload, PayloadBuilder, Account, BoundWitnessBuilder } from '@xyo-network/sdk-js'
 
 // Avoid — importing from sub-packages
-import { Payload } from '@xyo-network/payload-model'
-import { PayloadBuilder } from '@xyo-network/payload-builder'
-import { Account } from '@xyo-network/account'
+import { Payload } from '@xyo-network/payload-model' // audit-imports: ignore
+import { PayloadBuilder } from '@xyo-network/payload-builder' // audit-imports: ignore
+import { Account } from '@xyo-network/account' // audit-imports: ignore
 ```
 
 This is simpler, more maintainable, and the bundler eliminates unused exports. See the XYO and XL1 knowledge skills for the specific root barrel packages.

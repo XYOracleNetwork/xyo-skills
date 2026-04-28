@@ -474,7 +474,7 @@ Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets wi
 
 ```tsx
 import { useProvidedGateway } from '@xyo-network/react-chain-client'
-import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/sdk-js'
+import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
 
 function MarketPage({ marketId }: { marketId: string }) {
   const { defaultGateway } = useProvidedGateway()

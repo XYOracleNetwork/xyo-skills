@@ -296,7 +296,7 @@ Each browser session is isolated — payloads submitted by Player A are invisibl
 ### Creating the local archivist
 
 ```ts
-import { IndexedDbArchivist, IndexedDbArchivistConfigSchema } from '@xyo-network/sdk-js'
+import { IndexedDbArchivist, IndexedDbArchivistConfigSchema } from '@xyo-network/archivist-indexeddb'
 
 const localArchivist = await IndexedDbArchivist.create({
   account: 'random',

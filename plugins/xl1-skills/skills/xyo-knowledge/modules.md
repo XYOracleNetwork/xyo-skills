@@ -55,11 +55,9 @@ interface ArchivistFunctions {
 All browser archivists share the standard archivist interface (`insert`, `get`, `next`, `delete`, `clear`) with built-in deduplication by data hash.
 
 ```ts
-import {
-  MemoryArchivist, MemoryArchivistConfigSchema,
-  IndexedDbArchivist, IndexedDbArchivistConfigSchema,
-  StorageArchivist, StorageArchivistConfigSchema,
-} from '@xyo-network/sdk-js'
+import { MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk-js'
+import { IndexedDbArchivist, IndexedDbArchivistConfigSchema } from '@xyo-network/archivist-indexeddb'
+import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
 
 // IndexedDbArchivist — primary local store for dApp payloads
 const localStore = await IndexedDbArchivist.create({

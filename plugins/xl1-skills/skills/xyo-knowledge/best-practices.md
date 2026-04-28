@@ -14,9 +14,9 @@ import {
 } from '@xyo-network/sdk-js'
 
 // Avoid — sub-package imports
-import { Payload } from '@xyo-network/payload-model'
-import { Account } from '@xyo-network/account'
-import { MemoryArchivist } from '@xyo-network/archivist-memory'
+import { Payload } from '@xyo-network/payload-model' // audit-imports: ignore
+import { Account } from '@xyo-network/account' // audit-imports: ignore
+import { MemoryArchivist } from '@xyo-network/archivist-memory' // audit-imports: ignore
 ```
 
 This applies to all XYO protocol development. See also the [XL1 root barrel](../xl1-knowledge/development.md) for XL1-specific imports.
