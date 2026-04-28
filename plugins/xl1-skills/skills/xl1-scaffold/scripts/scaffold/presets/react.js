@@ -9,6 +9,8 @@ export const reactTemplate = extendBase({
             '@xyo-network/sdk-js',
             '@xyo-network/xl1-sdk',
             '@xyo-network/react-chain-client',
+            '@xyo-network/archivist-storage',
+            '@xyo-network/archivist-indexeddb',
         ],
         // Peers-of-peers (emotion is peer of @mui/material) and non-peer extras.
         // The 'events' polyfill covers @metamask/safe-event-emitter's direct
