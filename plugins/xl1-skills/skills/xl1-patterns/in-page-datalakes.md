@@ -382,28 +382,7 @@ lastSeenBlockRef.current = head
 
 ## Displaying Hashes and Addresses
 
-Hashes (64 chars) and addresses (40 chars) are too long to display in full in most UI contexts. **Always** follow these two rules:
-
-1. **Clamp the display value.** Truncate to a readable prefix + suffix, e.g., `a1b2c3d4...ef567890`. This is fine — users don't read full hex strings.
-2. **Provide a copy-to-clipboard action.** Every clamped hash or address must have a way to copy the full, untruncated value. A click-to-copy icon or a tooltip with a copy button both work.
-
-```tsx
-function HashDisplay({ value }: { value: string }) {
-  const display = `${value.slice(0, 8)}...${value.slice(-8)}`
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value)
-  }
-
-  return (
-    <span style={{ fontFamily: 'monospace', cursor: 'pointer' }} onClick={handleCopy} title="Click to copy">
-      {display}
-    </span>
-  )
-}
-```
-
-Hashes and addresses appear throughout dApp UIs: game IDs, player addresses, transaction hashes, block hashes, etc. Prefer clamped display over raw hex strings — full 40- or 64-character values are rarely useful inline. When a value is clamped, always provide a way to copy the full value.
+Hashes and addresses surface throughout in-page datalake views (game IDs, player addresses, transaction hashes, block hashes). Always clamp them for display and provide a copy-to-clipboard action — see [Browser UX — Display Conventions](browser-ux.md) for the rule and a reference implementation.
 
 ---
 

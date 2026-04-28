@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, or token protocols.
+description: Prescriptive design patterns for XL1 dApps. Covers gateway usage, browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, or dApp UI conventions.
 ---
 
 # XL1 Design Patterns
@@ -20,6 +20,9 @@ These patterns compose primitives from the full skill stack:
 
 ### [Gateway Usage](gateway-usage.md)
 Read when you need to interact with the XL1 chain from application code — reading chain state, submitting transactions, or accessing the datalake. Cross-environment recipes (browser, Node, tests) covering viewer sub-viewers, transaction submission, standalone datalake clients, capability detection, and network selection. For environment-specific gateway construction, see [Browser Gateway](../xl1-knowledge/gateway-browser.md) or [Node Gateway](../xl1-knowledge/gateway-node.md).
+
+### [Browser UX](browser-ux.md)
+Read when building user-facing dApp UIs in the browser. Covers wallet connection lifecycle (`ConnectAccountsStack`), the `useConnectAccount` singleton pitfall, lifting connected address into app state, capability-aware components, dApp UI structure, and display conventions (hash/address clamping, copy-to-clipboard). The UX layer that sits on top of [Browser Gateway](../xl1-knowledge/gateway-browser.md) construction.
 
 ### [Chain Data Indexing](chain-data-indexing.md)
 Read when your dApp needs to query, filter, or paginate application-specific data from the XL1 chain. Covers schema-based datalake filtering, RPC viewer queries, polling for new data, and building application read models from raw chain state.

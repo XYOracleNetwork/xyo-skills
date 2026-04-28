@@ -32,7 +32,7 @@ Read when working with XL1 chain data storage — archiving, querying, or config
 Read when connecting to the XL1 chain — generic gateway concepts, viewer API, networks, transports, and how to run a gateway node. Environment-specific construction lives in two sibling files.
 
 ### [Browser Gateway](gateway-browser.md)
-Read when constructing a gateway in a React dApp — the Chrome wallet extension, `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, `ConnectAccountsStack`, and `useProvidedGateway`.
+Read when constructing a gateway in a React dApp — the Chrome wallet extension, `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, and `useProvidedGateway`. UX patterns built on top of the gateway live in [Browser UX](../xl1-patterns/browser-ux.md).
 
 ### [Node Gateway](gateway-node.md)
 Read when constructing a gateway server-side — `basicRemoteViewerLocator`, the read-only construction recipe, caching pattern, and the (currently undocumented) write path.

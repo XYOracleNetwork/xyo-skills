@@ -36,7 +36,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] The connected address is lifted into app-level state via `onAccountConnected` and passed as props — `useConnectAccount()` is not called in multiple components
 - [ ] When the wallet extension is missing, the UI prompts the user to install it — no silent fallback to a random account
 
-**Source:** [Browser Gateway — Wallet Connection](../xl1-knowledge/gateway-browser.md)
+**Source:** [Browser UX — Wallet Connection](browser-ux.md)
 
 ---
 
@@ -80,7 +80,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Hashes (64 chars) and addresses (40 chars) are clamped to a readable prefix + suffix (e.g., `a1b2c3d4...ef567890`)
 - [ ] Every clamped value provides a copy-to-clipboard action
 
-**Source:** [In-Page Data Lakes — Displaying Hashes and Addresses](in-page-datalakes.md)
+**Source:** [Browser UX — Display Conventions](browser-ux.md)
 
 ---
 
