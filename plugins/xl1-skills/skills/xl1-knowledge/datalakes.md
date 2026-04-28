@@ -61,9 +61,11 @@ await runner.insert(payloads)
 const viewer = await RestDataLakeViewer.create({
   context,
   endpoint: 'https://api.archivist.xyo.network/dataLake',
-  allowedSchemas,
 } satisfies RestDataLakeViewerParams)
-const results = await viewer.next()
+
+// Read by hash. Hashes come from the chain — see Chain Data Indexing
+// for how to discover them by walking blocks/transactions.
+const results = await viewer.get(hashes)
 ```
 
 ### Off-chain payload storage
@@ -98,7 +100,18 @@ interface DataLakeViewerMethods {
 }
 ```
 
-Use the DataLake viewer to query finalized chain data by hash or with pagination via `next()`.
+### How to read — iterate the chain, fetch by hash
+
+The XL1 datalake is a content-addressed blob store. The chain is the index. The correct read pattern is:
+
+1. **Iterate the chain** (via `gateway.connection.viewer.block.*` and `viewer.finalization.headNumber()`) to discover what payload hashes exist and in what order. The `TransactionBoundWitness.payload_hashes` on each transaction tells you which off-chain payloads the transaction references.
+2. **Fetch payload bytes by hash** via `viewer.get(hashes)`.
+
+In most cases the gateway does this for you: `viewer.block.blockByNumber(n)` and `viewer.block.payloadsByHash(hashes)` go through `ViewerWithDataLake`, which transparently resolves off-chain payloads from the datalake — that *is* the chain-iterate, hash-fetch pattern. Reach for `RestDataLakeViewer.get()` directly only when you have hashes from outside the gateway path (e.g., a hash you stored client-side or received out-of-band).
+
+**Do not use `.next()` to browse a remote XL1 datalake.** The method exists on the standard `ArchivistFunctions` interface, but remote XL1 datalakes do not implement cursor pagination — `.next()` against a `RestDataLakeViewer` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee). It will appear to "work" on small datasets and silently scale poorly. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing.md) for the chain-walk patterns that replace it.
+
+`.next()` *is* still valid on **local browser archivists** (`IndexedDbArchivist`, `MemoryArchivist`) — they implement real cursor pagination and they are caches, not the chain-of-record. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md).
 
 ## DataLake Runner
 
@@ -157,10 +170,6 @@ interface RouterDataLakeConfig {
 
 ## Querying Datalake Data via Gateway
 
-The gateway exposes datalake data at the `/chain` endpoint using XYO archivist middleware. This means standard XYO archivist query patterns work:
+The gateway exposes datalake data at the `/chain` endpoint using XYO archivist middleware. For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data — and `ViewerWithDataLake` transparently resolves off-chain payloads by hash, so a chain-side read like `viewer.block.blockByNumber(n)` returns hydrated payloads without you having to touch the datalake at all.
 
-1. **By hash** — retrieve specific payloads by their hash
-2. **Paginated** — iterate through data using cursor-based pagination via `next()`
-3. **Schema-filtered** — limit results to specific payload schemas
-
-For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than querying the datalake directly. The `connection.viewer` sub-viewers provide typed, validated access to chain data.
+When you do need to read the datalake directly, use `viewer.get(hashes)` with hashes you obtained from the chain. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing.md) for the supported scan strategies.

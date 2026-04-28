@@ -295,25 +295,27 @@ const tx = await defaultGateway.connection.viewer?.transaction.byHash(txHash)
 
 The gateway's `ViewerWithDataLake` transparently resolves off-chain payloads — you get complete hydrated transactions without querying the datalake separately.
 
-### Via Datalake — Schema-Filtered Queries
+### Via Block Walk — Schema Discovery From the Chain
 
-When you need to find all payloads of a given type regardless of which transaction included them, use `RestDataLakeViewer` from `@xyo-network/xl1-sdk`. The datalake is a standalone HTTP archivist — not a property on the gateway JS object. See [Datalakes — HTTP Endpoints](../xl1-knowledge/datalakes.md) for the endpoint URLs.
+When you need to find all payloads of a given type regardless of which transaction included them, walk the chain and filter by schema. The gateway's `ViewerWithDataLake` resolves off-chain payloads by hash transparently, so each block read returns hydrated payloads — you do not need to call the datalake separately:
 
 ```ts
-import { RestDataLakeViewer, type RestDataLakeViewerParams } from '@xyo-network/xl1-sdk'
-import { getTestProviderContext } from '@xyo-network/xl1-protocol-sdk/test'
+const viewer = defaultGateway.connection.viewer
+if (!viewer) throw new Error('Gateway has no viewer attached')
 
-const context = getTestProviderContext()
-const viewer = await RestDataLakeViewer.create({
-  context,
-  endpoint: 'https://api.archivist.xyo.network/dataLake',
-  allowedSchemas: [MoveSchema],
-} satisfies RestDataLakeViewerParams)
-
-const moves = await viewer.next()
+const head = Number(await viewer.finalization.headNumber())
+const moves: Payload[] = []
+for (let n = lastSeenBlock + 1; n <= head; n++) {
+  const hydrated = await viewer.block.blockByNumber(n)
+  if (!hydrated) continue
+  const [, payloads] = hydrated
+  moves.push(...payloads.filter(p => p.schema === MoveSchema))
+}
 ```
 
-For multi-player dApps, combine this with a local payload store for immediate UI updates — see [In-Page Data Lakes — dApp State Management](in-page-datalakes.md).
+This is the same engine that drives Strategy 1 below — see [Polling for New Data](#polling-for-new-data) for the React/incremental version. For multi-player dApps, combine the chain walk with a local payload store for immediate UI updates — see [In-Page Data Lakes — dApp State Management](in-page-datalakes.md).
+
+**Why not `RestDataLakeViewer.next({ allowedSchemas })`?** The datalake is a content-addressed blob store, not a queryable index. Remote XL1 datalakes do not implement cursor pagination, so `.next()` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee) and silently scales poorly. Iterate the chain to find what to look for, then read the datalake by hash — see [Datalakes — How to read](../xl1-knowledge/datalakes.md).
 
 ### Via Payload Hash — Direct Lookup
 
@@ -551,8 +553,8 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 | Decision | Guidance |
 |----------|----------|
 | Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
-| Just need payloads by type? | Use `RestDataLakeViewer` with `allowedSchemas` filtering |
-| Need a specific payload? | Use `connection.viewer.block.payloadsByHash(hashes)` |
+| Just need payloads by type? | Walk blocks via `viewer.block.blockByNumber()` from `lastSeen + 1 → finalization.headNumber()` and filter by `payload.schema`. `ViewerWithDataLake` hydrates off-chain payloads transparently |
+| Need a specific payload? | Use `connection.viewer.block.payloadsByHash(hashes)` (or `RestDataLakeViewer.get(hashes)` for hashes obtained outside the gateway path) |
 | Real-time updates with transient OK? | Poll `connection.viewer.block.currentBlockNumber()` on an interval |
 | Real-time updates that drive durable state? | Poll `connection.viewer.finalization.headNumber()` — never derive state from unfinalized blocks |
 | Anchoring choice (Path A vs B vs C)? | Default to A (TransactionBoundWitness reference). Use B for commit-then-reveal. Use C for multi-party attestation |
@@ -560,4 +562,4 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 | Showing "my X" in a dApp? | Strategy 3 — per-address side-index inside the global indexer, OR Strategy 4 sentinel transfer + `accountBalanceHistory` |
 | Want free protocol-wide indexing without running a global indexer? | Strategy 4 — sentinel transfers to the protocol's static sentinel address |
 | Want verifiable burn semantics for inscriptions? | Strategy 4 with per-payload derived sentinel address |
-| Large result sets from datalake? | Use block-range slicing on the viewer; XL1 datalakes do not have cursor pagination |
+| Large result sets? | Slice block ranges on the viewer and process incrementally. XL1 datalakes do not have cursor pagination, so `RestDataLakeViewer.next()` is not a paginated read — never use it to browse |

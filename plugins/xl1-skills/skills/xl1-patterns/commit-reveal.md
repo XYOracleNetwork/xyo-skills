@@ -155,7 +155,8 @@ async function submitCommit(
 **Security invariant:** The `salt` and `choice` must never be submitted on-chain during the commit phase. Persist them locally using a `StorageArchivist` with `type: 'local'` and a namespace scoped to the application (e.g., `'my-dapp-secrets'`). This gives you archivist-interface access (`insert`, `get`) with built-in namespace isolation and cross-tab sync. If the user closes the browser, the salt survives in localStorage and can be retrieved for the reveal phase. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
 
 ```ts
-import { StorageArchivist, StorageArchivistConfigSchema, PayloadBuilder } from '@xyo-network/sdk-js'
+import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
+import { PayloadBuilder } from '@xyo-network/sdk-js'
 
 const secretStore = await StorageArchivist.create({
   account: 'random',
