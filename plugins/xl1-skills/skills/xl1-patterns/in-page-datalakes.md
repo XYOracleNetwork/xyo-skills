@@ -3,7 +3,7 @@
 Read this pattern when your React dApp needs to access chain data or the datalake without requiring the user to connect their wallet first. This is the foundation for building explorer views, leaderboards, game history, and any UI that reads chain data or writes to the datalake without a wallet connection.
 
 **Builds on:**
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — networks, viewer API, transports
 - [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling patterns

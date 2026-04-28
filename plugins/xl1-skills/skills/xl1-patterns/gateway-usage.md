@@ -2,78 +2,31 @@
 
 Read this when you need to interact with the XL1 chain from application code — reading chain state, submitting transactions, or accessing the datalake. This is the recipe-style companion to the [Gateway reference](../xl1-knowledge/gateway.md).
 
+These recipes are environment-agnostic: once you have a gateway, the same methods apply whether it came from a React provider, a Node locator, or a test harness.
+
 **Builds on:**
 - [Gateway](../xl1-knowledge/gateway.md) — RPC methods, networks, transports
-- [Browser Wallet](../xl1-knowledge/wallet.md) — providers, wallet connection, React integration
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — React providers, wallet connection, `useProvidedGateway`
+- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side construction
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, DataLakeRunner, endpoints
 - [Development on XL1](../xl1-knowledge/development.md) — root barrel imports, Viewer/Runner pattern
 
 ---
 
-## Setup: Choosing Your Provider
+## Getting a Gateway
 
-Two providers publish a gateway to React context. Both are in `@xyo-network/react-chain-client`:
+The construction step is environment-specific. Pick the file that matches your runtime:
 
-| Provider | Wallet required? | Read-only fallback | Use when |
-|----------|-----------------|-------------------|----------|
-| `WalletGatewayProvider` | Yes | No | App strictly requires a wallet for all functionality |
-| `GatewayProvider` + `InPageGatewaysProvider` | No | Yes (in-page HTTP gateway) | App should work read-only without a wallet |
+- **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider`, then call `useProvidedGateway()` in components. See [Browser Gateway](../xl1-knowledge/gateway-browser.md).
+- **Node / server-side** — call `basicRemoteViewerLocator` and resolve `XyoGatewayMoniker`. See [Node Gateway](../xl1-knowledge/gateway-node.md).
+- **Tests** — use `MemoryRpcTransport` per [Gateway — Transports](../xl1-knowledge/gateway.md).
 
-### Wallet-only setup
+The variable named `gateway` in the snippets below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `locator.getInstance<XyoGateway>(XyoGatewayMoniker)`. Both expose the same method surface.
 
-```tsx
-import { WalletGatewayProvider } from '@xyo-network/react-chain-client'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
-
-function App() {
-  return (
-    <WalletGatewayProvider gatewayName={MainNetwork.id}>
-      <YourDApp />
-    </WalletGatewayProvider>
-  )
-}
-```
-
-### Hybrid setup (read-only fallback)
-
-```tsx
-import { InPageGatewaysProvider, GatewayProvider } from '@xyo-network/react-chain-client'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
-
-function App() {
-  return (
-    <InPageGatewaysProvider>
-      <GatewayProvider gatewayName={MainNetwork.id}>
-        <YourDApp />
-      </GatewayProvider>
-    </InPageGatewaysProvider>
-  )
-}
-```
-
-`GatewayProvider` requires `InPageGatewaysProvider` as an ancestor. It merges the in-page gateway and wallet gateway into a single `defaultGateway` — wallet wins when connected, in-page is the fallback.
-
-**`gatewayName` is required** on both providers. Without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` (value: `'mainnet'`) for production, `'sequence'` for beta/staging, `'local'` for local development.
-
----
-
-## Accessing the Gateway
-
-Use `useProvidedGateway()` in any component under a gateway provider:
-
-```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-client'
-
-function MyComponent() {
-  const { defaultGateway } = useProvidedGateway()
-  // defaultGateway: XyoGateway | XyoGatewayRunner | undefined | null
-}
-```
-
-The return type is a union:
-- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when wallet is connected.
-- **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway.
-- **`undefined` / `null`** — loading or no gateway available.
+The type is a union:
+- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, when documented).
+- **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway (browser) or `basicRemoteViewerLocator` (Node).
+- **`undefined` / `null`** — loading or no gateway available (React context only).
 
 ---
 
@@ -100,7 +53,7 @@ See [Gateway — Viewer API](../xl1-knowledge/gateway.md) for the full method-by
 ### Example: Read current block number
 
 ```ts
-const viewer = defaultGateway?.connection.viewer
+const viewer = gateway?.connection.viewer
 if (!viewer) return // gateway not ready or no viewer attached
 
 const currentBlock = Number(await viewer.block.currentBlockNumber())
@@ -109,7 +62,7 @@ const currentBlock = Number(await viewer.block.currentBlockNumber())
 ### Example: Look up a transaction by hash
 
 ```ts
-const tx = await defaultGateway?.connection.viewer?.transaction.byHash(txHash)
+const tx = await gateway?.connection.viewer?.transaction.byHash(txHash)
 // tx: SignedHydratedTransactionWithHashMeta | null
 // tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
 ```
@@ -117,7 +70,7 @@ const tx = await defaultGateway?.connection.viewer?.transaction.byHash(txHash)
 ### Example: Check an account balance
 
 ```ts
-const balance = await defaultGateway?.connection.viewer?.account.balance.accountBalance(address)
+const balance = await gateway?.connection.viewer?.account.balance.accountBalance(address)
 // balance: AttoXL1
 ```
 
@@ -125,21 +78,19 @@ const balance = await defaultGateway?.connection.viewer?.account.balance.account
 
 ## Submitting Transactions
 
-Transaction methods exist only on `XyoGatewayRunner` (wallet-connected gateway). Always check capability first.
+Transaction methods exist only on `XyoGatewayRunner` (write-capable gateway). Always check capability first.
 
 ### Adding application data to the chain
 
 ```ts
-const { defaultGateway } = useProvidedGateway()
-
-if (defaultGateway && 'addPayloadsToChain' in defaultGateway) {
+if (gateway && 'addPayloadsToChain' in gateway) {
   // onChain: AllowedBlockPayload[] — system types only
   // offChain: Payload[] — application data of any schema
-  const [txHash, signedTx] = await defaultGateway.addPayloadsToChain([], appPayloads)
+  const [txHash, signedTx] = await gateway.addPayloadsToChain([], appPayloads)
 }
 ```
 
-This single call builds a `TransactionBoundWitness`, triggers the wallet popup for signing, and broadcasts to the network.
+This single call builds a `TransactionBoundWitness`, signs it (in the browser this triggers the wallet popup; in Node the in-memory signer signs directly), and broadcasts to the network.
 
 ### Token transfers
 
@@ -208,37 +159,27 @@ For endpoint URLs by network, see [Datalakes — HTTP Endpoints](../xl1-knowledg
 Check whether the gateway supports write operations before attempting transactions:
 
 ```ts
-const { defaultGateway } = useProvidedGateway()
+const canSubmitToChain = gateway && 'addPayloadsToChain' in gateway
+const canRead = !!gateway
 
-const canSubmitToChain = defaultGateway && 'addPayloadsToChain' in defaultGateway
-const canRead = !!defaultGateway
-
-// Chain reads: work for all visitors (in-page gateway)
-// Datalake reads/writes: work for all visitors (dApp's own HTTP client)
-// Chain transactions: require wallet connection (XyoGatewayRunner)
+// Chain reads: work for any gateway (read-only or write-capable)
+// Datalake reads/writes: work via the dApp's own HTTP client, independent of the gateway
+// Chain transactions: require an XyoGatewayRunner (wallet-connected in browser, signer-wired in Node)
 ```
 
 ---
 
 ## Network Selection
 
-XL1 has three networks. The `gatewayName` prop on providers selects the network:
+XL1 has three networks. The network identifier is the same string across environments — only the construction call differs:
 
-| Network | `gatewayName` | When to use |
-|---------|--------------|-------------|
+| Network | Identifier | When to use |
+|---------|-----------|-------------|
 | **Mainnet** | `MainNetwork.id` (`'mainnet'`) | Production — real XL1 tokens |
 | **Sequence** (beta) | `'sequence'` | Development and staging — live chain, no real tokens |
 | **Local** | `'local'` | Local development with `xl1 start api` |
 
-```tsx
-import { MainNetwork, SequenceNetwork } from '@xyo-network/xl1-sdk'
-
-// Production
-<WalletGatewayProvider gatewayName={MainNetwork.id}>
-
-// Development
-<WalletGatewayProvider gatewayName={SequenceNetwork.id}>
-```
+For React, pass the identifier as the `gatewayName` prop on the gateway provider — see [Browser Gateway](../xl1-knowledge/gateway-browser.md). For Node, pass it directly to `basicRemoteViewerLocator` — see [Node Gateway](../xl1-knowledge/gateway-node.md).
 
 Start with **Sequence** (beta) to test against a live chain, then switch to **Mainnet** for production.
 

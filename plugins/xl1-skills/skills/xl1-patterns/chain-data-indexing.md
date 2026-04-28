@@ -6,7 +6,7 @@ Read this pattern when your dApp needs to retrieve, filter, or watch application
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
 - [Gateway](../xl1-knowledge/gateway.md) — RPC viewer methods, transports
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, schemas, hashing
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `useProvidedGateway()` for gateway access
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `useProvidedGateway()` for gateway access in React
 
 ---
 

@@ -13,7 +13,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Transactions are submitted through gateway methods (`addPayloadsToChain`, `send`, `sendMany`) — no manual `TransactionBoundWitness` construction
 - [ ] Write capability is checked before submitting (`'addPayloadsToChain' in defaultGateway`)
 
-**Source:** [Gateway Usage](gateway-usage.md), [Browser Wallet](../xl1-knowledge/wallet.md)
+**Source:** [Gateway Usage](gateway-usage.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
@@ -36,7 +36,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] The connected address is lifted into app-level state via `onAccountConnected` and passed as props — `useConnectAccount()` is not called in multiple components
 - [ ] When the wallet extension is missing, the UI prompts the user to install it — no silent fallback to a random account
 
-**Source:** [Browser Wallet — Wallet Connection](../xl1-knowledge/wallet.md)
+**Source:** [Browser Gateway — Wallet Connection](../xl1-knowledge/gateway-browser.md)
 
 ---
 

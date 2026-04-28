@@ -6,7 +6,7 @@ Read this pattern when building a game, prediction market, or any application wh
 - [Commit-Reveal Primitive](commit-reveal.md) — two-phase fairness protocol
 - [Chain Data Indexing](chain-data-indexing.md) — schema-based querying and polling
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browsing without wallet
-- [Browser Wallet](../xl1-knowledge/wallet.md) — transaction submission, React integration
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — transaction submission, React integration
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, bound witnesses, hashing
 
 ---

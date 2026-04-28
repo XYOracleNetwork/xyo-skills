@@ -8,7 +8,7 @@ This is the dApp-shaped projection of the multi-party escrow flow used in the XY
 - [Commit-Reveal Primitive](commit-reveal.md) — each party's secret commit is one half of the proof
 - [Protocol Primitives — Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses) — joint signatures and authority verification
 - [Chain Data Indexing](chain-data-indexing.md) — schema-based reads of exchange state
-- [Browser Wallet](../xl1-knowledge/wallet.md) — `addPayloadsToChain` for transaction submission
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `addPayloadsToChain` for transaction submission via the wallet
 
 ---
 

@@ -11,7 +11,7 @@ This skill provides prescriptive, recipe-style patterns for building common appl
 
 These patterns compose primitives from the full skill stack:
 
-- **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway, browser wallet
+- **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway (generic, browser, and Node)
 - **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — payloads, bound witnesses, modules, identity
 - **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest
 - **[Development](../development/SKILL.md)** — coding conventions, Git, testing, workflow
@@ -19,7 +19,7 @@ These patterns compose primitives from the full skill stack:
 ## Table of Contents
 
 ### [Gateway Usage](gateway-usage.md)
-Read when you need to interact with the XL1 chain from application code — reading chain state, submitting transactions, or accessing the datalake. Covers provider setup, viewer sub-viewers, transaction submission, standalone datalake clients, capability detection, and network selection.
+Read when you need to interact with the XL1 chain from application code — reading chain state, submitting transactions, or accessing the datalake. Cross-environment recipes (browser, Node, tests) covering viewer sub-viewers, transaction submission, standalone datalake clients, capability detection, and network selection. For environment-specific gateway construction, see [Browser Gateway](../xl1-knowledge/gateway-browser.md) or [Node Gateway](../xl1-knowledge/gateway-node.md).
 
 ### [Chain Data Indexing](chain-data-indexing.md)
 Read when your dApp needs to query, filter, or paginate application-specific data from the XL1 chain. Covers schema-based datalake filtering, RPC viewer queries, polling for new data, and building application read models from raw chain state.

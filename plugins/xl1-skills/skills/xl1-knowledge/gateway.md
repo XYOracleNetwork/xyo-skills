@@ -1,5 +1,12 @@
 # Gateway
 
+The generic gateway reference — what it is, the JSON-RPC surface, networks, transports, and the API exposed by `connection.viewer`. Environment-specific construction lives in sibling files:
+
+- [Browser Gateway](gateway-browser.md) — React providers, the wallet extension, `useProvidedGateway`
+- [Node Gateway](gateway-node.md) — server-side construction via `basicRemoteViewerLocator`
+
+For cross-environment recipes (read latest block, submit + confirm, datalake access, capability detection, anti-patterns) see [Gateway Usage](../xl1-patterns/gateway-usage.md).
+
 **Key npm packages:**
 - `@xyo-network/xl1-providers` — Browser, Node, and Neutral provider implementations
 
@@ -22,7 +29,7 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 ## Networks
 
-XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is what you pass to `WalletGatewayProvider` (wallet-only) or `GatewayProvider` (hybrid, with `InPageGatewaysProvider` for read-only fallback). The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
+XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is the network identifier — pass it to the React providers in browser dApps (see [Browser Gateway](gateway-browser.md)) or directly to the locator in Node services (see [Node Gateway](gateway-node.md)). The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
 
 | Network | Gateway Name | Gateway RPC | Datalake | Explorer |
 |---------|-------------|-------------|----------|----------|
@@ -152,38 +159,11 @@ The gateway object (`XyoGateway` or `XyoGatewayRunner`) exposes chain access thr
 
 `@xyo-network/xl1-providers` offers environment-specific provider bundles:
 
-- **Browser provider** — for web dApps, uses PostMessage transport
-- **Node provider** — for backend services, uses HTTP transport
-- **Neutral provider** — platform-agnostic
+- **Browser provider** — for web dApps, uses PostMessage transport. See [Browser Gateway](gateway-browser.md).
+- **Node provider** — for backend services, uses HTTP transport. See [Node Gateway](gateway-node.md).
+- **Neutral provider** — platform-agnostic primitives shared by both.
 
-Use `buildProviderLocator()` to wire up the standard provider dependency tree.
-
----
-
-## Node — Read-Only Gateway
-
-For backend services (chain walks, indexers, dashboards, CLIs) you construct the gateway directly instead of going through React context. Use `basicRemoteViewerLocator` from `@xyo-network/xl1-providers` to wire an `HttpRpcTransport`-backed locator, then resolve the gateway by moniker:
-
-```ts
-import { DefaultNetworks, NetworkDataLakeUrls } from '@xyo-network/xl1-network-model'
-import { XyoGatewayMoniker, type XyoGateway } from '@xyo-network/xl1-protocol-lib'
-import { basicRemoteViewerLocator } from '@xyo-network/xl1-providers'
-
-const id = 'sequence' // or 'mainnet' / 'local'
-const network = DefaultNetworks.find((n) => n.id === id)
-if (!network) throw new Error(`Unknown network "${id}"`)
-
-const locator = await basicRemoteViewerLocator(
-  id,
-  { rpc: { protocol: 'http', url: `${network.url}/rpc` } },
-  NetworkDataLakeUrls[id],
-)
-const gateway = await locator.getInstance<XyoGateway>(XyoGatewayMoniker)
-```
-
-**This is the read-only path.** It returns `XyoGateway`, not `XyoGatewayRunner` — no signer is wired in, so `addPayloadsToChain`, `send`, and `sendMany` are not available. All `connection.viewer.*` reads documented above work normally. For the write path (seed phrase / `HDWallet` / `Account` as an in-memory signer feeding an `XyoGatewayRunner`), see [Browser Wallet](wallet.md) for the browser flow — the Node write path is not yet documented here.
-
-Cache the resolved gateway across calls; `basicRemoteViewerLocator` does non-trivial async setup and you do not want to repeat it per request.
+The construction helpers (`basicRemoteViewerLocator`, `buildProviderLocator`, the React provider components) live with their respective environment-specific files.
 
 ---
 
