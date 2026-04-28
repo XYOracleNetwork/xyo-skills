@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.0...v1.1.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* **ci:** pin release-please target-branch to main ([821fc0c](https://github.com/XYOracleNetwork/xl1-skills/commit/821fc0c428eab824ae973d52f6abc7812f5591ff))
+* **ci:** pin release-please target-branch to main, anchor at v1.1.0 ([ecdc03e](https://github.com/XYOracleNetwork/xl1-skills/commit/ecdc03e7188cfd8f4ac135e536ef902880fce0ea))
+
 ## [1.1.0](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.0.3...v1.1.0) (2026-04-28)
 
 
