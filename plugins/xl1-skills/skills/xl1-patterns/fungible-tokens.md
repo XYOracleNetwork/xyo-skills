@@ -403,7 +403,7 @@ The "drop" pattern is intentional and matches BRC-20: the chain accepted these p
 | Treating ticker symbols case-sensitively | `ORDI` and `ordi` deploys race for the same ticker on BRC-20 (case-folded). Diverging here breaks user expectations | Case-fold to lowercase at indexer ingress |
 | Replaying from `viewer.block.currentBlockNumber()` | Same finality footgun as the substrate; balances would oscillate during reorgs | Use `viewer.finalization.headNumber()` only |
 | Reading transfer authorship from the payload's `to` field | `to` is the recipient (declarative). `from` does not exist on the payload by design | Always use the BoundWitness signer for the source of a transfer |
-| Sharing one schema with an `op` discriminator (`{ p: "xrc-20", op: "mint", ... }`) | Loses Zod type sharpness, breaks `RestDataLakeViewer` per-operation filtering, conflates artifact and event semantics | Three narrow schemas — one each for deploy, mint, transfer |
+| Sharing one schema with an `op` discriminator (`{ p: "xrc-20", op: "mint", ... }`) | Loses Zod type sharpness, defeats per-operation schema filtering during chain walks, conflates artifact and event semantics | Three narrow schemas — one each for deploy, mint, transfer |
 
 ---
 
