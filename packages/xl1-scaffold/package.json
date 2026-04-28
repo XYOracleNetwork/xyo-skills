@@ -13,14 +13,17 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "scaffold": "node dist/scaffold-xl1-dapp.js",
-    "scaffold:dev": "tsx src/scaffold-xl1-dapp.ts"
+    "scaffold:dev": "tsx src/scaffold-xl1-dapp.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "@types/node": "*",
-    "@xylabs/eslint-config-flat": "*",
-    "@xylabs/tsconfig": "*",
-    "eslint": "*",
-    "tsx": "*",
-    "typescript": "*"
+    "@types/node": "^25.6.0",
+    "@xylabs/eslint-config-flat": "~7.12.0",
+    "@xylabs/tsconfig": "~7.12.0",
+    "eslint": "^10.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }

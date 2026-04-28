@@ -1,0 +1,28 @@
+name: Sync main → develop after release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Open sync PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Open main → develop PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh pr create \
+            --base develop \
+            --head main \
+            --title "chore: sync main → develop after ${TAG}" \
+            --body "Post-release sync. Brings the version bump and changelog from \`main\` back into \`develop\` so the branches stay aligned for the next release cycle." \
+            || echo "PR already exists or nothing to sync"

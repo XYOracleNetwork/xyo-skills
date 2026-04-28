@@ -1,4 +1,5 @@
-export const reactTemplate = {
+import { extendBase } from './base.js';
+export const reactTemplate = extendBase({
     name: 'react',
     description: 'React + Vite + TypeScript XL1 dApp',
     deps: {
@@ -13,26 +14,21 @@ export const reactTemplate = {
         // The 'events' polyfill covers @metamask/safe-event-emitter's direct
         // import of Node's 'events' module from the wallet postMessage transport.
         extras: ['@emotion/react', '@emotion/styled', 'events'],
+        // tsconfig-react extends tsconfig-dom extends tsconfig — both extras need
+        // to be direct dev deps so the ESLint import resolver can walk the
+        // tsconfig extends chain. (`@xylabs/tsconfig` itself comes from base.)
         dev: [
-            '@xylabs/toolchain',
-            // tsconfig-react extends tsconfig-dom extends tsconfig — all three need
-            // to be direct dev deps so the ESLint import resolver can walk the
-            // tsconfig extends chain.
-            '@xylabs/tsconfig',
             '@xylabs/tsconfig-dom',
             '@xylabs/tsconfig-react',
             '@xylabs/eslint-config-react-flat',
             '@types/react',
             '@types/react-dom',
             '@vitejs/plugin-react',
-            'eslint',
             'happy-dom',
-            'typescript',
             'vite',
             'vite-plugin-checker',
             'vite-plugin-svgr',
             'vite-plugin-top-level-await',
-            'vitest',
         ],
     },
     tsconfig: {
@@ -53,6 +49,5 @@ export const reactTemplate = {
         { src: 'src/App.tsx', dest: 'src/App.tsx' },
         { src: 'src/vite-env.d.ts', dest: 'src/vite-env.d.ts' },
     ],
-    nextSteps: ['pnpm dev'],
-};
+});
 //# sourceMappingURL=react.js.map

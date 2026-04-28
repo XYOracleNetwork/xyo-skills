@@ -123,9 +123,9 @@ The substrate uses **carrier Path A** (off-chain payload referenced by Transacti
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
-import { keccak256, toUtf8Bytes } from 'ethers'
+import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
-// Pinned protocol sentinel — derived from `keccak256(utf8('network.xyo.ordinal')).slice(-40)`
+// Pinned protocol sentinel — equals sentinelAddressFromSchema('network.xyo.ordinal')
 const ORDINAL_SENTINEL = '4b210503f8caa8e82d38617997f2eaf612c0ec04'
 
 const inscription = asInscriptionPayload(
@@ -136,7 +136,7 @@ const inscription = asInscriptionPayload(
 )
 
 // Per-payload burn address — verifiably no key, bound to this specific inscription
-const burnAddress = keccak256(toUtf8Bytes(`network.xyo.ordinal|${inscription._hash}`)).slice(-40)
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', inscription._hash)
 
 // One Transfer payload, two recipients: protocol sentinel + per-payload burn
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
@@ -183,7 +183,7 @@ const transfer = asTransferPayload(
   true,
 )
 
-const burnAddress = keccak256(toUtf8Bytes(`network.xyo.ordinal|${transfer._hash}`)).slice(-40)
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', transfer._hash)
 
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({
@@ -414,9 +414,9 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 | Trusting the chain to validate inscription semantics | The chain validates BoundWitness signatures and balance flows only; inscription/transfer rules are off-chain | Indexer enforces rules (target exists, signer is owner) on replay |
 | Committing inscription bytes only to a local archivist before chain submission | The data hash on-chain references bytes nobody else can fetch | Always insert into the dApp's datalake (`RestDataLakeRunner`) before `addPayloadsToChain` |
 | Submitting a transfer signed by an account that isn't the current owner | Indexer drops it silently; on-chain fee is wasted; UX appears broken | Read the indexer's current owner before signing a transfer |
-| Sending the sentinel transfer to the zero address (`0x0000…0000`) | Zero address is the source of native XL1 minting; its history is enormous and noisy, and protocol activity is unfindable in the noise | Use the protocol-derived sentinel computed via `keccak256(utf8(protocolId)).slice(-40)` |
+| Sending the sentinel transfer to the zero address (`0x0000…0000`) | Zero address is the source of native XL1 minting; its history is enormous and noisy, and protocol activity is unfindable in the noise | Use the protocol-derived sentinel from `sentinelAddressFromSchema(protocolId)` |
 | Self-transfer (`from === to`) as a sentinel | Likely filtered as no-op at chain validation; behavior is fragile | Send to a no-key derived address (protocol sentinel or per-payload burn) |
-| Publishing a known-key address as the protocol sentinel | Defeats the burn semantic; key-holder could later spend accumulated dust | Always derive sentinels from `keccak256(utf8(seed)).slice(-40)` so no key exists |
+| Publishing a known-key address as the protocol sentinel | Defeats the burn semantic; key-holder could later spend accumulated dust | Always derive sentinels via `sentinelAddressFromSchema(...)` so no key exists |
 
 ---
 
@@ -431,7 +431,7 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 | Multiple indexers across operators? | Encouraged. The substrate's rules are deterministic; competing diviners that agree provide social consensus on ledger state. Document the reference implementation; let others replicate |
 | Reorg deeper than expected? | Persist `lastProcessedBlock` only when finalized; the substrate's finalization-only discipline already handles common reorg windows |
 | Need free chain-native per-user discovery without running a global indexer? | Use the dual-sentinel pattern in [Step 2](#step-2-inscribe). `accountBalanceHistory(userAddress)` then surfaces every inscription that user submitted, no diviner required |
-| Need verifiable real cost per inscription? | Per-payload derived burn address — `keccak256(utf8(`network.xyo.ordinal\|${payload._hash}`)).slice(-40)`. Each inscription burns dust to a unique no-key address |
+| Need verifiable real cost per inscription? | Per-payload derived burn address — `sentinelAddressFromSchema('network.xyo.ordinal', payload._hash)`. Each inscription burns dust to a unique no-key address |
 | Want both protocol-wide free indexing *and* per-payload burn? | Use both sentinels in one Transfer payload's `transfers` map. One extra payload, two recipients |
 
 ---

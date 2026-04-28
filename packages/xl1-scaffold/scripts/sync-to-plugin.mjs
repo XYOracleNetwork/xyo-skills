@@ -7,73 +7,135 @@
 // Runs as part of `pnpm build` in packages/xl1-scaffold. CI verifies the
 // plugin tree is in sync via
 // `git diff --exit-code plugins/xl1-skills/skills/xl1-scaffold/scripts`.
+//
+// Pass --verbose to print what each entry was classified as and why.
 
-import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const SCAFFOLD_ROOT = resolve(HERE, '..')
-const SRC = resolve(SCAFFOLD_ROOT, 'dist')
+import { findWorkspaceRoot, scaffoldRoot } from './paths.mjs'
 
-// Walk up from the scaffold package to find the workspace root.
-function findWorkspaceRoot(startDir) {
-  let dir = startDir
-  while (dir !== dirname(dir)) {
-    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir
-    dir = dirname(dir)
+const VERBOSE = process.argv.includes('--verbose')
+
+// ---------------------------------------------------------------------------
+// 1. Resolve & prepare
+// ---------------------------------------------------------------------------
+
+function prepareSync() {
+  const SCAFFOLD_ROOT = scaffoldRoot(import.meta.url)
+  const src = resolve(SCAFFOLD_ROOT, 'dist')
+  const workspaceRoot = findWorkspaceRoot(SCAFFOLD_ROOT)
+  const dest = resolve(workspaceRoot, 'plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold')
+
+  if (!existsSync(src)) {
+    console.error(`Source dir missing: ${src}. Run tsc first.`)
+    process.exit(1)
   }
-  throw new Error(`pnpm-workspace.yaml not found walking up from ${startDir}`)
+
+  // Clean slate — prevents stale files lingering when scaffold src is renamed or deleted.
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true })
+  mkdirSync(dest, { recursive: true })
+
+  return { workspaceRoot, src, dest }
 }
 
-const WORKSPACE_ROOT = findWorkspaceRoot(SCAFFOLD_ROOT)
-const DEST = resolve(WORKSPACE_ROOT, 'plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold')
+// ---------------------------------------------------------------------------
+// 2. Filter & copy
+//
+// Add a SKIP_RULES entry to exclude a class of files; add to BUNDLE_DIRS for
+// a directory copied wholesale. Each rule's `name` is what --verbose prints.
+// ---------------------------------------------------------------------------
 
-if (!existsSync(SRC)) {
-  console.error(`Source dir missing: ${SRC}. Run tsc first.`)
-  process.exit(1)
+const SKIP_RULES = [
+  {
+    name: 'declaration & sourcemap files',
+    test: ({ name }) => /\.(d\.ts|d\.ts\.map|js\.map)$/.test(name),
+  },
+  {
+    name: 'spec files',
+    test: ({ name }) => /\.spec\.[a-z]+(\.map)?$/.test(name),
+  },
+  {
+    // tsc emits one .js per .ts even when the source is types-only —
+    // produces a useless `export {};` stub.
+    name: 'types-only stubs',
+    test: ({ srcPath }) => {
+      if (!srcPath.endsWith('.js')) return false
+      const body = readFileSync(srcPath, 'utf8')
+        .split('\n')
+        .filter(line => !line.startsWith('//#'))
+        .join('\n')
+        .trim()
+      return body === 'export {};'
+    },
+  },
+  {
+    // Catches *.spec.js (already caught by name pattern) AND test helpers
+    // like shared-assertions.js that don't follow the spec naming.
+    name: 'test code (imports vitest)',
+    test: ({ srcPath }) => {
+      if (!srcPath.endsWith('.js')) return false
+      return /from ['"]vitest(\/[^'"]*)?['"]/.test(readFileSync(srcPath, 'utf8'))
+    },
+  },
+]
+
+const BUNDLE_DIRS = new Set(['templates'])
+
+function findSkipRule(entry) {
+  return SKIP_RULES.find(rule => rule.test(entry))
 }
 
-// Clean slate — prevents stale files from lingering when scaffold src is renamed or deleted.
-if (existsSync(DEST)) rmSync(DEST, { recursive: true, force: true })
-mkdirSync(DEST, { recursive: true })
+function logDecision(action, srcPath, reason, srcRoot) {
+  if (!VERBOSE) return
+  const rel = relative(srcRoot, srcPath) || '.'
+  const detail = reason ? `  (${reason})` : ''
+  console.log(`  ${action.padEnd(7)} ${rel}${detail}`)
+}
 
-// Copy filter: keep .js files (runtime), templates dir (raw files the CLI copies),
-// drop .d.ts, .d.ts.map, .js.map (not needed at runtime, just diff noise).
-const SKIP_SUFFIXES = ['.d.ts', '.d.ts.map', '.js.map']
-
-function copyFiltered(src, dest) {
-  const entries = readdirSync(src, { withFileTypes: true })
-  for (const entry of entries) {
+function copyFiltered(src, dest, opts) {
+  const { srcRoot } = opts
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
     const srcPath = join(src, entry.name)
     const destPath = join(dest, entry.name)
+
     if (entry.isDirectory()) {
-      // templates/ is copied wholesale — no filter inside
-      if (entry.name === 'templates') {
-        mkdirSync(destPath, { recursive: true })
-        cpSync(srcPath, destPath, { recursive: true })
-        continue
-      }
       mkdirSync(destPath, { recursive: true })
-      copyFiltered(srcPath, destPath)
+      if (BUNDLE_DIRS.has(entry.name)) {
+        cpSync(srcPath, destPath, { recursive: true })
+        logDecision('bundle', srcPath, 'BUNDLE_DIRS', srcRoot)
+      } else {
+        logDecision('recurse', srcPath, undefined, srcRoot)
+        copyFiltered(srcPath, destPath, opts)
+      }
       continue
     }
-    if (SKIP_SUFFIXES.some(suffix => entry.name.endsWith(suffix))) continue
+
+    const skipRule = findSkipRule({ name: entry.name, srcPath })
+    if (skipRule) {
+      logDecision('skip', srcPath, skipRule.name, srcRoot)
+      continue
+    }
+
     cpSync(srcPath, destPath)
+    logDecision('copy', srcPath, undefined, srcRoot)
   }
 }
 
-copyFiltered(SRC, DEST)
+// ---------------------------------------------------------------------------
+// 3. Post-copy fixups
+// ---------------------------------------------------------------------------
 
-// Mark the entry executable. The skill invokes via `node <path>` so this isn't
-// strictly required, but it means direct exec (via shebang) also works and
-// avoids "permission denied" if anything along the chain tries that path.
-chmodSync(join(DEST, 'scaffold-xl1-dapp.js'), 0o755)
+function finalize(dest, workspaceRoot) {
+  // Mark the entry executable. The skill invokes via `node <path>` so this
+  // isn't strictly required, but it lets direct exec (via shebang) also work
+  // and avoids "permission denied" if anything tries that path.
+  chmodSync(join(dest, 'scaffold-xl1-dapp.js'), 0o755)
 
-// Re-emit README so it survives the rmSync above.
-writeFileSync(
-  join(DEST, 'README.md'),
-  `# xl1-scaffold/scripts/scaffold/ — generated
+  // Re-emit README so it survives the rmSync done in prepareSync.
+  writeFileSync(
+    join(dest, 'README.md'),
+    `# xl1-scaffold/scripts/scaffold/ — generated
 
 Do not hand-edit. This directory is regenerated by:
 
@@ -85,6 +147,15 @@ Source of truth: [\`packages/xl1-scaffold/\`](../../../../../packages/xl1-scaffo
 
 CI enforces sync via \`git diff --exit-code plugins/xl1-skills/skills/xl1-scaffold/scripts\`.
 `,
-)
+  )
 
-console.log(`Synced scaffold → ${relative(WORKSPACE_ROOT, DEST)}`)
+  console.log(`Synced scaffold → ${relative(workspaceRoot, dest)}`)
+}
+
+// ---------------------------------------------------------------------------
+// Orchestration
+// ---------------------------------------------------------------------------
+
+const { workspaceRoot, src, dest } = prepareSync()
+copyFiltered(src, dest, { srcRoot: src })
+finalize(dest, workspaceRoot)

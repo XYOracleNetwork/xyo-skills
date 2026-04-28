@@ -1,23 +1,13 @@
-import type { Template } from '../template.js'
+import { extendBase } from './base.js'
 
-export const nodeTemplate: Template = {
+export const nodeTemplate = extendBase({
   name: 'node',
   description: 'Node.js + TypeScript XL1 service/CLI',
   deps: {
     runtime: ['@xyo-network/sdk-js', '@xyo-network/xl1-sdk'],
-    dev: [
-      '@xylabs/toolchain',
-      '@xylabs/tsconfig',
-      '@xylabs/eslint-config-flat',
-      '@types/node',
-      'eslint',
-      'tsx',
-      'typescript',
-      'vitest',
-    ],
+    dev: ['@xylabs/eslint-config-flat', '@types/node', 'tsx'],
   },
   tsconfig: {
-    extends: '@xylabs/tsconfig',
     // Base @xylabs/tsconfig sets noEmit: true + allowImportingTsExtensions:
     // true. Both must be overridden so `tsc` produces dist/ for `pnpm start`.
     // `typecheck` passes --noEmit on the CLI, so type-check-only runs still
@@ -35,5 +25,4 @@ export const nodeTemplate: Template = {
     { src: 'src/index.ts', dest: 'src/index.ts' },
   ],
   smokeTest: { pnpmScript: 'start' },
-  nextSteps: ['pnpm dev'],
-}
+})

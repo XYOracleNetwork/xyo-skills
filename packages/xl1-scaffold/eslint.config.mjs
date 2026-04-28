@@ -8,6 +8,7 @@ export default [
       'coverage/',
       'templates/',
       'eslint.config.mjs',
+      'vitest.config.ts',
       'scripts/',
     ],
   },
