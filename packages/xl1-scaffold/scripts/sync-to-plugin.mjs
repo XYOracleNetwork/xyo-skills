@@ -7,10 +7,14 @@
 // Runs as part of `pnpm build` in packages/xl1-scaffold. CI verifies the
 // plugin tree is in sync via
 // `git diff --exit-code plugins/xl1-skills/skills/xl1-scaffold/scripts`.
+//
+// Pass --verbose to print what each entry was classified as and why.
 
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+const VERBOSE = process.argv.includes('--verbose')
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SCAFFOLD_ROOT = resolve(HERE, '..')
@@ -38,53 +42,87 @@ if (!existsSync(SRC)) {
 if (existsSync(DEST)) rmSync(DEST, { recursive: true, force: true })
 mkdirSync(DEST, { recursive: true })
 
-// Copy filter: keep .js files (runtime), templates dir (raw files the CLI copies),
-// drop .d.ts, .d.ts.map, .js.map (not needed at runtime), and *.spec.* files
-// (tests aren't part of the runtime).
-const SKIP_SUFFIXES = ['.d.ts', '.d.ts.map', '.js.map']
-const SKIP_PATTERNS = [/\.spec\.[a-z]+(\.map)?$/]
+// ---------------------------------------------------------------------------
+// Filter rules — declarative. Add a new SKIP_RULE entry to exclude a class of
+// files; add to BUNDLE_DIRS for a directory that should be copied wholesale.
+// ---------------------------------------------------------------------------
 
-// tsc emits one .js per .ts even when the source is types-only. The result is
-// a `export {};` stub — useless at runtime and just noise in the synced tree.
-function isTypesOnlyStub(srcPath) {
-  if (!srcPath.endsWith('.js')) return false
-  const body = readFileSync(srcPath, 'utf8')
-    .split('\n')
-    .filter(line => !line.startsWith('//#'))   // drop sourceMappingURL comment
-    .join('\n')
-    .trim()
-  return body === 'export {};'
+// Skip predicates evaluated in order. First matching rule wins; the rule's
+// `name` is what gets logged in --verbose mode. Each `test` receives the
+// entry shape { name, srcPath } and returns true to skip.
+const SKIP_RULES = [
+  {
+    name: 'declaration & sourcemap files',
+    test: ({ name }) => /\.(d\.ts|d\.ts\.map|js\.map)$/.test(name),
+  },
+  {
+    name: 'spec files',
+    test: ({ name }) => /\.spec\.[a-z]+(\.map)?$/.test(name),
+  },
+  {
+    // tsc emits one .js per .ts even when the source is types-only — produces a
+    // useless `export {};` stub. Detect and skip.
+    name: 'types-only stubs',
+    test: ({ srcPath }) => {
+      if (!srcPath.endsWith('.js')) return false
+      const body = readFileSync(srcPath, 'utf8')
+        .split('\n')
+        .filter(line => !line.startsWith('//#'))
+        .join('\n')
+        .trim()
+      return body === 'export {};'
+    },
+  },
+  {
+    // Catches both *.spec.js (caught earlier by pattern) and test helpers like
+    // shared-assertions.js that import vitest without following the spec naming.
+    name: 'test code (imports vitest)',
+    test: ({ srcPath }) => {
+      if (!srcPath.endsWith('.js')) return false
+      return /from ['"]vitest(\/[^'"]*)?['"]/.test(readFileSync(srcPath, 'utf8'))
+    },
+  },
+]
+
+// Directories whose contents are copied as-is (no per-file filtering).
+const BUNDLE_DIRS = new Set(['templates'])
+
+function findSkipRule(entry) {
+  return SKIP_RULES.find(rule => rule.test(entry))
 }
 
-// Test code (specs and helpers shared between specs) imports from vitest. None
-// of it should ship in the synced runtime. This catches *.spec.js by name AND
-// shared assertion files like shared-assertions.js without relying on naming.
-function importsTestRunner(srcPath) {
-  if (!srcPath.endsWith('.js')) return false
-  return /from ['"]vitest(\/[^'"]*)?['"]/.test(readFileSync(srcPath, 'utf8'))
+function logDecision(action, srcPath, reason) {
+  if (!VERBOSE) return
+  const rel = relative(SRC, srcPath) || '.'
+  const detail = reason ? `  (${reason})` : ''
+  console.log(`  ${action.padEnd(7)} ${rel}${detail}`)
 }
 
 function copyFiltered(src, dest) {
-  const entries = readdirSync(src, { withFileTypes: true })
-  for (const entry of entries) {
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
     const srcPath = join(src, entry.name)
     const destPath = join(dest, entry.name)
+
     if (entry.isDirectory()) {
-      // templates/ is copied wholesale — no filter inside
-      if (entry.name === 'templates') {
-        mkdirSync(destPath, { recursive: true })
-        cpSync(srcPath, destPath, { recursive: true })
-        continue
-      }
       mkdirSync(destPath, { recursive: true })
-      copyFiltered(srcPath, destPath)
+      if (BUNDLE_DIRS.has(entry.name)) {
+        cpSync(srcPath, destPath, { recursive: true })
+        logDecision('bundle', srcPath, 'BUNDLE_DIRS')
+      } else {
+        logDecision('recurse', srcPath)
+        copyFiltered(srcPath, destPath)
+      }
       continue
     }
-    if (SKIP_SUFFIXES.some(suffix => entry.name.endsWith(suffix))) continue
-    if (SKIP_PATTERNS.some(pattern => pattern.test(entry.name))) continue
-    if (isTypesOnlyStub(srcPath)) continue
-    if (importsTestRunner(srcPath)) continue
+
+    const skipRule = findSkipRule({ name: entry.name, srcPath })
+    if (skipRule) {
+      logDecision('skip', srcPath, skipRule.name)
+      continue
+    }
+
     cpSync(srcPath, destPath)
+    logDecision('copy', srcPath)
   }
 }
 
