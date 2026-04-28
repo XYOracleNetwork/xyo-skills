@@ -10,7 +10,7 @@
 import path from 'node:path'
 import { parseArgs as parseNodeArgs } from 'node:util'
 
-import { nodeTemplate, reactTemplate } from './presets/index.js'
+import { expressTemplate, nodeTemplate, reactTemplate } from './presets/index.js'
 import {
   expandWithPeers, resolveLatestPnpmByMajor, resolveVersions,
 } from './registry.js'
@@ -22,6 +22,7 @@ import {
 const TEMPLATES: Record<string, Template> = {
   react: reactTemplate,
   node: nodeTemplate,
+  express: expressTemplate,
 }
 
 // pnpm 11.0.0-rc.2 hits ERR_PNPM_MISSING_TIME on @eslint-react/* and
@@ -136,7 +137,7 @@ async function main() {
     template, dependencies, devDependencies, packageManager,
   }))
   writeJson(target, 'tsconfig.json', buildTsconfig(template))
-  for (const f of template.files) copyTemplateFile(templatesRoot, template.name, f, target)
+  for (const f of template.files) copyTemplateFile(templatesRoot, f, target)
 
   if (noInstall) {
     console.log('\nSkipped install (--no-install).')
