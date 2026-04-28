@@ -20,9 +20,19 @@ async function fetchLatestVersion(pkg: string): Promise<string> {
   return body.version
 }
 
-export async function resolveVersions(packages: string[]): Promise<Record<string, string>> {
+// Resolves a list of package names to a { name → version-spec } map.
+// Packages present in `pins` use the pinned value verbatim; the rest get
+// `^<latest>` from the npm registry. Pins are written as-is so callers
+// retain full control over the specifier (`~1.2.3`, `1.2.3`, `>=1 <2`, etc.).
+export async function resolveVersions(
+  packages: string[],
+  pins: Record<string, string> = {},
+): Promise<Record<string, string>> {
   const entries = await Promise.all(
-    packages.map(async pkg => [pkg, `^${await fetchLatestVersion(pkg)}`] as const),
+    packages.map(async (pkg) => {
+      if (pkg in pins) return [pkg, pins[pkg]] as const
+      return [pkg, `^${await fetchLatestVersion(pkg)}`] as const
+    }),
   )
   return Object.fromEntries(entries)
 }
