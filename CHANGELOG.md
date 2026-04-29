@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.2...v1.1.3) (2026-04-29)
+
+
+### Bug Fixes
+
+* skip PR-title lint for release-please branches ([#35](https://github.com/XYOracleNetwork/xl1-skills/issues/35)) ([5176d86](https://github.com/XYOracleNetwork/xl1-skills/commit/5176d869afa4cf9c3e8955e44324e0c273d1749f))
+* use PAT for release-please so its PRs trigger checks ([#37](https://github.com/XYOracleNetwork/xl1-skills/issues/37)) ([8f65bf1](https://github.com/XYOracleNetwork/xl1-skills/commit/8f65bf172292c64c13bcfbd792343ca63977ea71))
+
 ## [1.1.2](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.1...v1.1.2) (2026-04-29)
 
 
