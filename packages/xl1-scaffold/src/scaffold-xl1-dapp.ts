@@ -7,10 +7,13 @@
 //
 // Defaults: target-dir=src, template=react.
 
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs as parseNodeArgs } from 'node:util'
 
-import { nodeTemplate, reactTemplate, xl1ServiceTemplate } from './presets/index.js'
+import {
+  nodeTemplate, reactTemplate, xl1MonorepoTemplate, xl1ServiceTemplate, xl1SharedTemplate,
+} from './presets/index.js'
 import {
   expandWithPeers, resolveLatestPnpmByMajor, resolveVersions,
 } from './registry.js'
@@ -23,6 +26,8 @@ const TEMPLATES: Record<string, Template> = {
   react: reactTemplate,
   node: nodeTemplate,
   'xl1-service': xl1ServiceTemplate,
+  'xl1-monorepo': xl1MonorepoTemplate,
+  'xl1-shared': xl1SharedTemplate,
 }
 
 // pnpm 11.0.0-rc.2 hits ERR_PNPM_MISSING_TIME on @eslint-react/* and
@@ -30,19 +35,26 @@ const TEMPLATES: Record<string, Template> = {
 // pins pnpm to the latest 10.x via `corepack pnpm@10` and resolves the
 // concrete version for package.json's packageManager field at runtime.
 const PNPM_MAJOR = '10'
-const PACKAGE_NAME = 'xl1-dapp'
 
 interface Args {
   force: boolean
   noInstall: boolean
   target: string
   templateName: string
+  workspaceMember: boolean
+  workspaceScope: string | undefined
 }
 
 // Supported flag forms (any order relative to each other and to positionals):
 //   --force, --no-install             boolean switches
 //   --template=node, --template node  option with value (also --template's short form -t)
 //   --target=my-app, --target my-app  same; target is also acceptable as positional[0]
+//   --workspace-member                this scaffold target is a sub-package inside an existing
+//                                     pnpm workspace; emit a scoped package name, drop
+//                                     packageManager + .gitignore, skip the verification chain
+//   --workspace-scope=<scope>         explicit scope (e.g. `@my-app`) for the resulting package
+//                                     name. If omitted with --workspace-member, derived from
+//                                     the workspace root's package.json name.
 function parseArgs(argv: string[]): Args {
   const { values, positionals } = parseNodeArgs({
     args: argv,
@@ -54,6 +66,8 @@ function parseArgs(argv: string[]): Args {
       'target': { type: 'string' },
       'force': { type: 'boolean', default: false },
       'no-install': { type: 'boolean', default: false },
+      'workspace-member': { type: 'boolean', default: false },
+      'workspace-scope': { type: 'string' },
     },
   })
   return {
@@ -61,6 +75,8 @@ function parseArgs(argv: string[]): Args {
     templateName: values.template,
     force: values.force,
     noInstall: values['no-install'],
+    workspaceMember: values['workspace-member'],
+    workspaceScope: values['workspace-scope'],
   }
 }
 
@@ -72,18 +88,63 @@ function buildTsconfig(template: Template) {
   }
 }
 
+// Walks up from `dir` looking for a pnpm-workspace.yaml. Returns the directory
+// containing it, or undefined if none found before hitting filesystem root.
+function findWorkspaceRoot(start: string): string | undefined {
+  let dir = path.dirname(start)
+  while (dir !== path.dirname(dir)) {
+    if (existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir
+    dir = path.dirname(dir)
+  }
+  return undefined
+}
+
+// Auto-derives a workspace scope from the workspace root's package.json name.
+// Throws if no workspace root or no name field.
+function deriveWorkspaceScope(target: string): string {
+  const wsRoot = findWorkspaceRoot(target)
+  if (!wsRoot) {
+    throw new Error(`--workspace-member set but no pnpm-workspace.yaml found walking up from ${target}`)
+  }
+  const rootPkgPath = path.join(wsRoot, 'package.json')
+  if (!existsSync(rootPkgPath)) {
+    throw new Error(`workspace root at ${wsRoot} is missing package.json — cannot derive --workspace-scope`)
+  }
+  const rootPkg = JSON.parse(readFileSync(rootPkgPath, 'utf8')) as { name?: string }
+  if (!rootPkg.name) {
+    throw new Error(`workspace root package.json at ${rootPkgPath} has no "name" field`)
+  }
+  // If root name is already scoped (`@org/foo`), use the scope alone.
+  // Otherwise, treat the whole name as the scope (`foo` → `@foo`).
+  return rootPkg.name.startsWith('@') ? rootPkg.name.split('/')[0] : `@${rootPkg.name}`
+}
+
+// Looks for a sibling `packages/shared/package.json` under the workspace root
+// and returns its `name` field. Used to auto-wire a `workspace:*` dep on
+// shared into newly-scaffolded sub-packages.
+function findSharedPackageName(wsRoot: string): string | undefined {
+  const sharedPkgPath = path.join(wsRoot, 'packages', 'shared', 'package.json')
+  if (!existsSync(sharedPkgPath)) return undefined
+  const pkg = JSON.parse(readFileSync(sharedPkgPath, 'utf8')) as { name?: string }
+  return pkg.name
+}
+
 function buildPackageJson(args: {
   dependencies: Record<string, string>
   devDependencies: Record<string, string>
+  name: string
   packageManager: string
   template: Template
+  workspaceMember: boolean
 }) {
+  // Workspace members inherit packageManager from the root — emitting it here
+  // would cause corepack-version drift between root and members.
   return {
-    name: PACKAGE_NAME,
+    name: args.name,
     version: '0.1.0',
     private: true,
     type: 'module',
-    packageManager: args.packageManager,
+    ...(args.workspaceMember ? {} : { packageManager: args.packageManager }),
     scripts: args.template.scripts,
     dependencies: args.dependencies,
     devDependencies: args.devDependencies,
@@ -112,7 +173,7 @@ async function resolveVersionsForTemplate(template: Template) {
 
 async function main() {
   const {
-    target: targetArg, templateName, force, noInstall,
+    target: targetArg, templateName, force, noInstall, workspaceMember, workspaceScope,
   } = parseArgs(process.argv.slice(2))
   const template = TEMPLATES[templateName]
   if (!template) {
@@ -126,6 +187,18 @@ async function main() {
   const target = path.resolve(invocationCwd, targetArg)
   const templatesRoot = resolveTemplatesRoot(import.meta.url)
 
+  // Resolve the package's `name` field. Workspace members get a scoped name
+  // (`@<scope>/<basename>`); standalones use the target dir's basename so the
+  // generated package.json reflects the project's actual location.
+  let packageName: string
+  if (workspaceMember) {
+    const scope = workspaceScope ?? deriveWorkspaceScope(target)
+    packageName = `${scope}/${path.basename(target)}`
+    console.log(`Workspace member mode: package name = ${packageName}`)
+  } else {
+    packageName = path.basename(target)
+  }
+
   console.log(`Scaffolding ${template.description} at: ${target}`)
   ensureTargetDir(target, force)
 
@@ -133,11 +206,37 @@ async function main() {
     dependencies, devDependencies, packageManager,
   } = await resolveVersionsForTemplate(template)
 
+  // Auto-wire a `workspace:*` dep on the sibling `shared` package when
+  // scaffolding any workspace member OTHER than xl1-shared itself. The shared
+  // package only exists if it was scaffolded earlier — if we don't find it,
+  // skip silently (caller can add the dep manually later).
+  const finalDeps = { ...dependencies }
+  if (workspaceMember && template.name !== 'xl1-shared') {
+    const wsRoot = findWorkspaceRoot(target)
+    const sharedName = wsRoot ? findSharedPackageName(wsRoot) : undefined
+    if (sharedName) {
+      finalDeps[sharedName] = 'workspace:*'
+      console.log(`  + workspace dep: ${sharedName}@workspace:*`)
+    }
+  }
+
   writeJson(target, 'package.json', buildPackageJson({
-    template, dependencies, devDependencies, packageManager,
+    template, dependencies: finalDeps, devDependencies, packageManager, workspaceMember, name: packageName,
   }))
-  writeJson(target, 'tsconfig.json', buildTsconfig(template))
-  for (const f of template.files) copyTemplateFile(templatesRoot, f, target)
+  if (!template.omitTsconfig) writeJson(target, 'tsconfig.json', buildTsconfig(template))
+  // Workspace members rely on the root's .gitignore; emitting our own would
+  // duplicate ignore patterns and cause merge noise. Filter it out at copy time.
+  const filesToCopy = workspaceMember
+    ? template.files.filter(f => f.dest !== '.gitignore')
+    : template.files
+  for (const f of filesToCopy) copyTemplateFile(templatesRoot, f, target)
+
+  // Workspace members skip the install + verification chain — the workspace
+  // root's `pnpm install` handles linking, and verification runs there too.
+  if (workspaceMember) {
+    console.log('\nWorkspace member written. Run `pnpm install` from the workspace root to link + install.')
+    return
+  }
 
   if (noInstall) {
     console.log('\nSkipped install (--no-install).')
