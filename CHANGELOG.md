@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.1...v1.1.2) (2026-04-29)
+
+
+### Bug Fixes
+
+* require conventional title on PRs to main ([#33](https://github.com/XYOracleNetwork/xl1-skills/issues/33)) ([7f0a1fc](https://github.com/XYOracleNetwork/xl1-skills/commit/7f0a1fcf8bdaddf08cc8a5c8ae01c83aeb0bfcc2))
+
 ## [1.1.1](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.0...v1.1.1) (2026-04-28)
 
 

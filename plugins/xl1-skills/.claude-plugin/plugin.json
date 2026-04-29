@@ -1,6 +1,6 @@
 {
   "name": "xl1-skills",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Full-stack Claude Code skills for building dApps on the XL1 blockchain. Covers XYO primitives, XL1 chain operations, toolchain config, and prescriptive design patterns (commit-reveal, indexing, prediction markets).",
   "author": {
     "name": "XY Labs",
