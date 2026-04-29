@@ -43,7 +43,7 @@ This skill scaffolds either a **single project** or a **full-stack monorepo**, b
 | `xl1-monorepo` | pnpm workspace root for a full-stack dApp. No source of its own — just `pnpm-workspace.yaml`, root scripts, and a README. | monorepo flow only (step 1 below) |
 | `xl1-shared` | TypeScript library for environment-neutral code (types, Zod schemas, constants) shared between `app` and `service`. Compiles to `dist/` so workspace consumers import compiled JS via `workspace:*`. | monorepo flow only (member at `packages/shared`) |
 
-Use a **single template** (`react`, `xl1-service`, or `node`) when the dApp's logic only runs while a user has the page open. Use the **monorepo flow** below (which combines `xl1-monorepo` + `xl1-shared` + `react` + `xl1-service`) when the dApp needs ongoing chain tracking.
+**Default to the monorepo flow** (`xl1-monorepo` + `xl1-shared` + `react` + `xl1-service`). Drop to a single template only when the prompt is *clearly* read-only / browser-only (e.g. "wallet balance dashboard", "show recent transactions"). When in doubt, scaffold the monorepo — it's strictly a superset; an unused `service` is cheap to delete later, but retrofitting a service into a single-template scaffold is annoying.
 
 #### Full-stack monorepo (xl1-monorepo + react + xl1-service + xl1-shared)
 
@@ -71,11 +71,11 @@ The [xl1-patterns](../xl1-patterns/SKILL.md) skill catalogues patterns that impl
 
 #### When ambiguous
 
-Ask exactly one clarifying question before scaffolding:
+**Default to the monorepo flow.** Don't ask the user — just scaffold it. The monorepo is a superset of the single-template options; unused parts (e.g. `service` if the app turns out to be read-only) are easy to delete later. Retrofitting a backend into a standalone React scaffold is much harder.
 
-> Does any logic need to run independently of a user's browser session — e.g. watching the chain for events, indexing past data, or reacting to time-based deadlines? If yes, I'll scaffold a monorepo with a React dApp, an xl1-service backend, and a shared TypeScript library; if no, just the React dApp.
+Only drop to a single template (`react`) when the prompt is unambiguously read-only — wallet balance dashboards, one-shot contract interactions, simple display dApps. If you find yourself even slightly unsure, choose the monorepo.
 
-Don't ask if the prompt already names a pattern from [xl1-patterns](../xl1-patterns/SKILL.md) (commit-reveal, indexing, prediction markets) — those are monorepo by definition.
+The clarifying question pattern ("does any logic need to run independently of a browser session?") is **discouraged** — it adds round-trip latency and the answer is almost always "yes, eventually." Skip it; default to monorepo and let the user prune if needed.
 
 ### Target directory
 
