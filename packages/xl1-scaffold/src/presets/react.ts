@@ -48,13 +48,13 @@ const reactTemplateOverrides: Override = {
     preview: 'vite preview',
   },
   files: [
-    { src: 'eslint.config.mjs', dest: 'eslint.config.mjs' },
-    { src: 'vite.config.ts', dest: 'vite.config.ts' },
-    { src: 'vitest.config.ts', dest: 'vitest.config.ts' },
-    { src: 'index.html', dest: 'index.html' },
-    { src: 'src/main.tsx', dest: 'src/main.tsx' },
-    { src: 'src/App.tsx', dest: 'src/App.tsx' },
-    { src: 'src/vite-env.d.ts', dest: 'src/vite-env.d.ts' },
+    { src: 'react/eslint.config.mjs', dest: 'eslint.config.mjs' },
+    { src: 'react/vite.config.ts', dest: 'vite.config.ts' },
+    { src: 'react/vitest.config.ts', dest: 'vitest.config.ts' },
+    { src: 'react/index.html', dest: 'index.html' },
+    { src: 'react/src/main.tsx', dest: 'src/main.tsx' },
+    { src: 'react/src/App.tsx', dest: 'src/App.tsx' },
+    { src: 'react/src/vite-env.d.ts', dest: 'src/vite-env.d.ts' },
   ],
 }
 

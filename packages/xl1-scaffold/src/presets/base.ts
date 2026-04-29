@@ -30,12 +30,29 @@ export const baseTemplate: Template = {
     'test:watch': 'vitest',
     'typecheck': 'tsc --noEmit',
   },
-  files: [{ src: '_gitignore', dest: '.gitignore' }],
+  files: [{ src: 'shared/_gitignore', dest: '.gitignore' }],
   nextSteps: ['pnpm dev'],
 }
 
 export type Override = DeepPartial<Template> & Pick<Template, 'name' | 'description'>
 
+// Generic preset extension. Use `extendBase` for direct base extension, or
+// `extend(parent, override)` to compose a preset on top of another preset.
+//
+// Files are deduped by `dest` after the deepMerge, with later (child) entries
+// winning. This lets a child preset override an inherited file by declaring
+// the same `dest` with a different `src`.
+export function extend(parent: Template, override: Override): Template {
+  const merged = deepMerge(parent, override)
+  const seen = new Set<string>()
+  merged.files = [...merged.files].reverse().filter((f) => {
+    if (seen.has(f.dest)) return false
+    seen.add(f.dest)
+    return true
+  }).reverse()
+  return merged
+}
+
 export function extendBase(override: Override): Template {
-  return deepMerge(baseTemplate, override)
+  return extend(baseTemplate, override)
 }

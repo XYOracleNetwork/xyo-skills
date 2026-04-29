@@ -19,9 +19,9 @@ const nodeTemplateOverrides = {
         build: 'tsc',
     },
     files: [
-        { src: 'eslint.config.mjs', dest: 'eslint.config.mjs' },
-        { src: 'vitest.config.ts', dest: 'vitest.config.ts' },
-        { src: 'src/index.ts', dest: 'src/index.ts' },
+        { src: 'node/eslint.config.mjs', dest: 'eslint.config.mjs' },
+        { src: 'node/vitest.config.ts', dest: 'vitest.config.ts' },
+        { src: 'node/src/index.ts', dest: 'src/index.ts' },
     ],
     smokeTest: { pnpmScript: 'start' },
 };

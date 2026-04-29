@@ -8,12 +8,13 @@
 // Defaults: target-dir=src, template=react.
 import path from 'node:path';
 import { parseArgs as parseNodeArgs } from 'node:util';
-import { nodeTemplate, reactTemplate } from './presets/index.js';
+import { nodeTemplate, reactTemplate, xl1ServiceTemplate } from './presets/index.js';
 import { expandWithPeers, resolveLatestPnpmByMajor, resolveVersions, } from './registry.js';
 import { copyTemplateFile, ensureTargetDir, resolveTemplatesRoot, runPnpmStep, writeJson, } from './writer.js';
 const TEMPLATES = {
     react: reactTemplate,
     node: nodeTemplate,
+    'xl1-service': xl1ServiceTemplate,
 };
 // pnpm 11.0.0-rc.2 hits ERR_PNPM_MISSING_TIME on @eslint-react/* and
 // @typescript-eslint/* even with resolution-mode=highest set, so the script
@@ -104,7 +105,7 @@ async function main() {
     }));
     writeJson(target, 'tsconfig.json', buildTsconfig(template));
     for (const f of template.files)
-        copyTemplateFile(templatesRoot, template.name, f, target);
+        copyTemplateFile(templatesRoot, f, target);
     if (noInstall) {
         console.log('\nSkipped install (--no-install).');
         console.log(`Next: cd ${targetArg} && pnpm install && ${template.nextSteps.join(' && ')}`);

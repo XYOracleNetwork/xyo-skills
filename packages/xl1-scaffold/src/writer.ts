@@ -43,15 +43,14 @@ export function writeJson(target: string, relPath: string, value: unknown): void
   writeString(target, relPath, JSON.stringify(value, null, 2))
 }
 
-export function copyTemplateFile(templatesRoot: string, templateName: string, file: TemplateFile, target: string): void {
-  // shared files live at templates/shared/, template files at templates/<name>/
-  const candidates = [
-    path.resolve(templatesRoot, templateName, file.src),
-    path.resolve(templatesRoot, 'shared', file.src),
-  ]
-  const found = candidates.find(p => existsSync(p))
-  if (!found) {
-    throw new Error(`template file not found: ${file.src} (looked in ${candidates.join(', ')})`)
+export function copyTemplateFile(templatesRoot: string, file: TemplateFile, target: string): void {
+  // file.src is a path relative to templates/ (e.g. 'node/eslint.config.mjs',
+  // 'shared/_gitignore'). Each preset's files declare their source location
+  // explicitly, so a child template inheriting from a parent picks up the
+  // parent's file paths automatically — no fallback chain needed.
+  const found = path.resolve(templatesRoot, file.src)
+  if (!existsSync(found)) {
+    throw new Error(`template file not found: ${found}`)
   }
   const out = path.join(target, file.dest)
   mkdirSync(path.dirname(out), { recursive: true })
