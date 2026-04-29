@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.3...v1.1.4) (2026-04-29)
+
+
+### Bug Fixes
+
+* auto-merge sync PR with merge-commit method ([#39](https://github.com/XYOracleNetwork/xl1-skills/issues/39)) ([ca568b4](https://github.com/XYOracleNetwork/xl1-skills/commit/ca568b4ec0b3eaa59252173168eb8ebf87887e94))
+
 ## [1.1.3](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.2...v1.1.3) (2026-04-29)
 
 
