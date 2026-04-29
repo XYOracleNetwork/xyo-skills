@@ -10,6 +10,7 @@
     ".": {
       "package-name": "xl1-skills",
       "changelog-path": "CHANGELOG.md",
+      "versioning": "always-bump-patch",
       "extra-files": [
         {
           "type": "json",
