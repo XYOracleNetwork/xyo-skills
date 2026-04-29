@@ -33,17 +33,17 @@ The scaffold runtime ships with this plugin under `scripts/scaffold/` (synced fr
 
 This skill scaffolds either a **single project** or a **full-stack monorepo**, based on whether the dApp needs ongoing chain tracking.
 
-#### Single template
+#### Available templates
 
-Use one of these when the dApp's logic only runs while a user has the page open:
+| Template | When | Used standalone? |
+|---|---|---|
+| `react` (default) | User-facing dApp that reads current chain state and submits transactions on user action. Most browser-facing apps. | ✓ also a monorepo member at `packages/app` |
+| `xl1-service` | Node + Express HTTP service backed by `@xyo-network/xl1-sdk`. The backend for any dApp needing chain-watching, indexing, or scheduled jobs. | ✓ also a monorepo member at `packages/service` |
+| `node` | Plain Node CLI/script — rare from this skill; usually a backend that needs HTTP routes prefers `xl1-service`. | ✓ standalone only |
+| `xl1-monorepo` | pnpm workspace root for a full-stack dApp. No source of its own — just `pnpm-workspace.yaml`, root scripts, and a README. | monorepo flow only (step 1 below) |
+| `xl1-shared` | TypeScript library for environment-neutral code (types, Zod schemas, constants) shared between `app` and `service`. Compiles to `dist/` so workspace consumers import compiled JS via `workspace:*`. | monorepo flow only (member at `packages/shared`) |
 
-| Template | When |
-|---|---|
-| `react` (default) | User-facing dApp that reads current chain state and submits transactions on user action. Most browser-facing apps. |
-| `xl1-service` | Standalone Node + Express HTTP service backed by `@xyo-network/xl1-sdk`. Pick directly only when the user explicitly wants the backend without a UI. |
-| `node` | Plain Node CLI/script — rare from this skill; usually a backend that needs HTTP routes prefers `xl1-service`. |
-
-Two more templates (`xl1-monorepo`, `xl1-shared`) only show up in the monorepo flow below — don't pick them as standalone single-templates.
+Use a **single template** (`react`, `xl1-service`, or `node`) when the dApp's logic only runs while a user has the page open. Use the **monorepo flow** below (which combines `xl1-monorepo` + `xl1-shared` + `react` + `xl1-service`) when the dApp needs ongoing chain tracking.
 
 #### Full-stack monorepo (xl1-monorepo + react + xl1-service + xl1-shared)
 
