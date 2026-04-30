@@ -1,0 +1,2 @@
+# Workspace-level environment variables. Copy to .env at the workspace root
+# (gitignored). Sub-packages inherit this file when launched from the root.

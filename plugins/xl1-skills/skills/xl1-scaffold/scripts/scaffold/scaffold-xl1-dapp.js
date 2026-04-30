@@ -19,6 +19,18 @@ const TEMPLATES = {
     'xl1-monorepo': xl1MonorepoTemplate,
     'xl1-shared': xl1SharedTemplate,
 };
+// Files a workspace member should NOT emit — owned by the workspace root.
+// Only .gitignore is on this list: the root's .gitignore covers descendants,
+// and a per-package one would just duplicate patterns and cause merge noise.
+//
+// .env.example is intentionally NOT filtered. Each sub-package carries its
+// own because runtime env loading is package-local: Node's dotenv reads from
+// the process cwd (per-service), and Vite reads .env from the Vite project
+// root (the package dir, not the workspace root). The per-template
+// .env.example also encodes runtime-specific hints (PORT=3000 for the
+// express service, VITE_* convention for React) that a generic root file
+// can't express.
+const WORKSPACE_MEMBER_SKIP_FILES = new Set(['.gitignore']);
 // pnpm 11.0.0-rc.2 hits ERR_PNPM_MISSING_TIME on @eslint-react/* and
 // @typescript-eslint/* even with resolution-mode=highest set, so the script
 // pins pnpm to the latest 10.x via `corepack pnpm@10` and resolves the
@@ -184,10 +196,8 @@ async function main() {
     }));
     if (!template.omitTsconfig)
         writeJson(target, 'tsconfig.json', buildTsconfig(template));
-    // Workspace members rely on the root's .gitignore; emitting our own would
-    // duplicate ignore patterns and cause merge noise. Filter it out at copy time.
     const filesToCopy = workspaceMember
-        ? template.files.filter(f => f.dest !== '.gitignore')
+        ? template.files.filter(f => !WORKSPACE_MEMBER_SKIP_FILES.has(f.dest))
         : template.files;
     for (const f of filesToCopy)
         copyTemplateFile(templatesRoot, f, target);

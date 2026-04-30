@@ -1,0 +1,5 @@
+# Copy to .env (gitignored). Vite loads .env files natively — no dotenv
+# package needed. Only variables prefixed with VITE_ are exposed to client
+# code via import.meta.env. See https://vite.dev/guide/env-and-mode
+
+# VITE_API_URL=

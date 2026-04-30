@@ -15,9 +15,11 @@ const xl1ServiceTemplateOverrides = {
         smoke: 'node dist/index.js --smoke-test',
     },
     files: [
-        // Overrides node's `src/index.ts` (the dedupe-by-dest in `extend()` keeps
-        // the child entry). eslint.config.mjs and vitest.config.ts come straight
-        // from the inherited `node/...` entries — no copy needed in templates/xl1-service/.
+        // Overrides node's `src/index.ts` and `.env.example` (the dedupe-by-dest in
+        // `extend()` keeps the child entry). eslint.config.mjs and vitest.config.ts
+        // come straight from the inherited `node/...` entries — no copy needed in
+        // templates/xl1-service/.
+        { src: 'xl1-service/_env.example', dest: '.env.example' },
         { src: 'xl1-service/src/index.ts', dest: 'src/index.ts' },
     ],
     smokeTest: { pnpmScript: 'smoke' },

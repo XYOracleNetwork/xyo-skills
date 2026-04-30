@@ -1,0 +1,2 @@
+# Copy to .env (gitignored). Loaded at startup via `import 'dotenv/config'`
+# in src/index.ts, then read with process.env.<NAME>.

@@ -50,6 +50,7 @@ const reactTemplateOverrides = {
         { src: 'react/vite.config.ts', dest: 'vite.config.ts' },
         { src: 'react/vitest.config.ts', dest: 'vitest.config.ts' },
         { src: 'react/index.html', dest: 'index.html' },
+        { src: 'react/_env.example', dest: '.env.example' },
         { src: 'react/src/main.tsx', dest: 'src/main.tsx' },
         { src: 'react/src/App.tsx', dest: 'src/App.tsx' },
         { src: 'react/src/vite-env.d.ts', dest: 'src/vite-env.d.ts' },

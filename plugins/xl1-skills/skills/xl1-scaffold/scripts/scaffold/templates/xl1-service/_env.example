@@ -1,0 +1,5 @@
+# Copy to .env (gitignored). Loaded at startup via `import 'dotenv/config'`
+# in src/index.ts.
+
+# Express server port. Defaults to 3000 if unset.
+PORT=3000

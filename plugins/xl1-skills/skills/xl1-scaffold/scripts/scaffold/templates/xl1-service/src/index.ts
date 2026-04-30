@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import express from 'express'
 
 const PORT = Number(process.env.PORT) || 3000

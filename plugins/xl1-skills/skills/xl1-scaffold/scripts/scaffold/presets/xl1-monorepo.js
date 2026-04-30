@@ -22,6 +22,7 @@ const xl1MonorepoTemplateOverrides = {
     omitTsconfig: true,
     files: [
         { src: 'xl1-monorepo/pnpm-workspace.yaml', dest: 'pnpm-workspace.yaml' },
+        { src: 'xl1-monorepo/_env.example', dest: '.env.example' },
         { src: 'xl1-monorepo/README.md', dest: 'README.md' },
     ],
 };

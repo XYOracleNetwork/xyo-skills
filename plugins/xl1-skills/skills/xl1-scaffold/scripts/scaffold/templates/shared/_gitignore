@@ -3,5 +3,8 @@ dist/
 coverage/
 .npmrc
 .vite/
+.env
+.env.local
+.env.*.local
 *.log
 .DS_Store
