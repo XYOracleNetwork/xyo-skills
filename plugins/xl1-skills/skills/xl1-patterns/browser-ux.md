@@ -125,6 +125,42 @@ function HashDisplay({ value }: { value: string }) {
 
 Hashes and addresses appear throughout dApp UIs: game IDs, player addresses, transaction hashes, block hashes, etc. Prefer clamped display over raw hex strings — full 40- or 64-character values are rarely useful inline.
 
+### Link primitives to the Explorer
+
+Whenever a UI surfaces an XL1 chain primitive, render it as a link to the corresponding Explorer page. Use `ExplorerLinks` from `@xyo-network/xl1-sdk` to build the URL — never hand-concatenate paths. The class covers every primitive worth linking:
+
+| Primitive in your UI | `ExplorerLinks` method |
+|---|---|
+| Account / signer / wallet address | `address(addr)` |
+| List of known addresses | `addresses()` |
+| Block (by hash) | `block(blockHash)` |
+| Block (by number) | `blockByNumber(n)` |
+| Block list / chain head view | `blocks()` |
+| Payload anchored in a block | `blockPayload(blockHash, payloadHash, render?)` |
+| Transaction (`TransactionBoundWitness` hash) | `transaction(txHash)` |
+| Payload carried by a transaction | `transactionPayload(txHash, payloadHash, render?)` |
+| Transaction list | `transactions()` |
+| Network landing page | `network()` |
+
+Construct one `ExplorerLinks` per network from the same `NetworkBootstrap` that drives the gateway provider — this keeps the explorer the user lands on aligned with the network the dApp is talking to:
+
+```tsx
+import { ExplorerLinks, MainNetwork } from '@xyo-network/xl1-sdk'
+
+const explorer = new ExplorerLinks(MainNetwork.explorerUrl!, MainNetwork.id)
+
+function AddressDisplay({ value }: { value: string }) {
+  const display = `${value.slice(0, 8)}...${value.slice(-8)}`
+  return (
+    <a href={explorer.address(value)} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace' }}>
+      {display}
+    </a>
+  )
+}
+```
+
+Linking, clamping, and copy-to-clipboard compose — a single component should clamp the visible value, expose a copy action, *and* be a link to the Explorer. Open the Explorer in a new tab so the user does not lose dApp state.
+
 ---
 
 ## Anti-Patterns
@@ -137,4 +173,6 @@ Hashes and addresses appear throughout dApp UIs: game IDs, player addresses, tra
 | `Account.random()` as a fallback when wallet is missing | Hides the missing-wallet error; user thinks they're connected when they aren't | Show the install-wallet prompt that `ConnectAccountsStack` already provides |
 | Displaying full 64-char hashes inline | Visually overwhelming; users can't scan a list of them | Clamp to prefix...suffix, provide copy-to-clipboard |
 | Clamping without a copy action | Users have no way to recover the full value | Always pair clamping with a copy mechanism |
+| Surfacing an address, block, transaction, or payload with no link to the Explorer | Users have no path to inspect the primitive in context | Wrap the value in a link built via `ExplorerLinks` from `@xyo-network/xl1-sdk` |
+| Hand-rolling Explorer URLs (`` `${explorerUrl}/xl1/${networkId}/transaction/${hash}` ``) | Drifts from the canonical path shape; breaks silently when the Explorer route changes | Build URLs through `ExplorerLinks` methods (`address`, `block`, `transaction`, `transactionPayload`, …) |
 | Gating reads behind wallet connection | Visitors can't browse without committing to a wallet popup | Use `GatewayProvider` + `InPageGatewaysProvider` for read-only access; gate only writes on wallet |

@@ -79,6 +79,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 
 - [ ] Hashes (64 chars) and addresses (40 chars) are clamped to a readable prefix + suffix (e.g., `a1b2c3d4...ef567890`)
 - [ ] Every clamped value provides a copy-to-clipboard action
+- [ ] Every surfaced chain primitive (address, block, transaction, payload, list view) links to the corresponding Explorer page, with the URL built via `ExplorerLinks` from `@xyo-network/xl1-sdk` — no hand-concatenated explorer paths
 
 **Source:** [Browser UX — Display Conventions](browser-ux.md)
 
