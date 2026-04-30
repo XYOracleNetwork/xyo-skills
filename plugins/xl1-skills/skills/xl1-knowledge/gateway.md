@@ -38,6 +38,8 @@ XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) 
 | **Sequence** (beta) | `'sequence'` | `https://beta.api.chain.xyo.network/rpc` | `https://beta.api.archivist.xyo.network/dataLake` | `https://beta.explore.xyo.network` |
 | **Local** | `'local'` | `http://localhost:8080/rpc` | `http://localhost:8080/dataLake` | `http://localhost:3000` |
 
+The Explorer URL and `NetworkId` for each network are also exposed on `MainNetwork` / `SequenceNetwork` / `LocalNetwork` (and via `DefaultNetworks`) from `@xyo-network/xl1-sdk`. Pair them with `ExplorerLinks` from the same barrel to build canonical Explorer URLs for addresses, blocks, transactions, and payloads — never hand-concatenate explorer paths. UI conventions for *when* to render those links live in [Browser UX — Display Conventions](../xl1-patterns/browser-ux.md#display-conventions).
+
 **When to use each:**
 - **Mainnet** — production deployments. Real XL1 tokens, real transactions.
 - **Sequence** — testing and staging. Use this for development against a live network without affecting production. This is the default for beta/staging deployments.
