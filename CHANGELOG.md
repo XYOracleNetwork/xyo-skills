@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.5...v1.1.6) (2026-05-01)
+
+
+### Features
+
+* add LGPL license ([#48](https://github.com/XYOracleNetwork/xl1-skills/issues/48)) ([8b3bd20](https://github.com/XYOracleNetwork/xl1-skills/commit/8b3bd20e0821398a125475c5077feeceed47966a))
+
 ## [1.1.5](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.4...v1.1.5) (2026-05-01)
 
 
