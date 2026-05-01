@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # Claude Code — keep .claude/settings.json (shared project permissions),
 # ignore personal overrides
 .claude/settings.local.json
+
+# Testing Prompts
+Prompts.md

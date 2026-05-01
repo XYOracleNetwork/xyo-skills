@@ -160,22 +160,6 @@ jq empty .claude-plugin/marketplace.json
 jq empty plugins/xl1-skills/.claude-plugin/plugin.json
 ```
 
-## Evaluation
-
-This repo doubles as a test bed for the skill stack. **Before running the prompts below, make sure the scaffold is built locally** (see [Building the Scaffold](#building-the-scaffold-required-for-the-xl1-scaffold-skill)) — the `xl1-scaffold` skill depends on it.
-
-Start a Claude Code session with the plugin loaded and paste this prompt to exercise all five layers:
-
-> Build me a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.
-
-To test how your skill are picked up you can ask in a plan:
-
-> Make me a plan to build a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.  Be sure the plan includes the relevant skills you will use and how you will use them
-
-Or to be more specific
-
-> Build me a two-player rock paper scissors game on XL1. Use commit-reveal so neither player can see the other's move before both have committed. Record moves and outcomes on-chain. Include a UI where anyone can browse past games and results without connecting a wallet, and connected players can start and play games.  Do all the blockchain indexing on the backend and use the front end to present current game state as well as game detection to players.
-
 ## Releases
 
 Versioning is automated by [release-please](https://github.com/googleapis/release-please) on top of Gitflow:
