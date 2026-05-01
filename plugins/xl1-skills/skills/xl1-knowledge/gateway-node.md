@@ -74,7 +74,7 @@ const id = process.env.XL1_NETWORK ?? 'sequence'
 
 ## Write Path (not yet documented)
 
-Constructing an `XyoGatewayRunner` in Node — wiring an in-memory signer (seed phrase via `HDWallet.fromPhrase`, raw key via `Account.create`) into a write-capable gateway — is a real and supported flow but is not yet captured here. The identity primitives are documented in [Identity & Signing](../xyo-knowledge/identity.md). The bridge from those primitives into a Node-side runner gateway needs a verified working sample before it lands in this file.
+Constructing an `XyoGatewayRunner` in Node — wiring an in-memory signer into a write-capable gateway — is a real and supported flow but is not yet captured here. Load the signer using the canonical backend pattern: `generateXyoBaseWalletFromPhrase` + `DEFAULT_WALLET_PATH` from `@xyo-network/xl1-sdk`. See [XL1 Identity & Wallets](identity.md) for the snippet and the cross-environment compatibility story; lower-level XYO primitives (`Account`, `HDWallet`) live in [Identity & Signing](../xyo-knowledge/identity.md). The bridge from those primitives into a Node-side runner gateway needs a verified working sample before it lands in this file.
 
 ---
 
@@ -83,4 +83,5 @@ Constructing an `XyoGatewayRunner` in Node — wiring an in-memory signer (seed 
 - [Gateway](gateway.md) — generic concepts, viewer API, networks, transports, anti-patterns
 - [Gateway](gateway.md) — cross-environment recipes (read latest block, capability detection, datalake reads)
 - [Datalakes](datalakes.md) — `createRestDataLakeRunner` / `createRestDataLakeViewer` are the same in Node as in the browser
-- [Identity & Signing](../xyo-knowledge/identity.md) — `Account`, `HDWallet`, mnemonic / seed-phrase construction
+- [XL1 Identity & Wallets](identity.md) — canonical backend wallet pattern (`generateXyoBaseWalletFromPhrase` + `DEFAULT_WALLET_PATH`) and cross-environment compatibility
+- [Identity & Signing (XYO)](../xyo-knowledge/identity.md) — lower-level `Account` / `HDWallet` primitives

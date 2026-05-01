@@ -25,6 +25,9 @@ Read when working with XL1 blockchain concepts — blocks, transactions, fees, r
 ### [Development on XL1](development.md)
 Read when building applications or services on XL1. Covers the Zod-first type pattern, Viewer/Runner architecture, providers, validation, and the SDK package structure.
 
+### [Identity & Wallets](identity.md)
+Read when creating a wallet or signer in XL1 backend code (Node services, indexers, CLIs, tests). Covers the canonical `generateXyoBaseWalletFromPhrase` + `DEFAULT_WALLET_PATH` pattern and the cross-environment compatibility guarantee with MetaMask and the XYO browser extension.
+
 ### [Datalakes](datalakes.md)
 Read when working with XL1 chain data storage — archiving, querying, or configuring storage backends. Covers the DataLake abstraction and how it builds on XYO Archivists.
 

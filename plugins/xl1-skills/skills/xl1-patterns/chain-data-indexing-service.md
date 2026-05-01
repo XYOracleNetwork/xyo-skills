@@ -141,7 +141,7 @@ Some patterns require the indexer to **also act as an authoritative signer** —
 
 The indexer is then both a *reader* (deriving state from the chain) and a *writer* (submitting transactions back). This shifts requirements:
 
-- **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). See [Identity & Signing](../xyo-knowledge/identity.md) for `Account.create({ mnemonic })` and `HDWallet.fromPhrase`. A write-capable Node-side gateway construction is not yet documented in this skill set — see [Node Gateway § Write Path](../xl1-knowledge/gateway-node.md).
+- **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). Use the canonical backend pattern: `generateXyoBaseWalletFromPhrase(mnemonic)` then `derivePath(DEFAULT_WALLET_PATH)` from `@xyo-network/xl1-sdk` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md). This produces the same default address that MetaMask and the XYO browser extension show for the seed, so an operator can inspect balances and signing identity in either place. A write-capable Node-side gateway construction is not yet documented in this skill set — see [Node Gateway § Write Path](../xl1-knowledge/gateway-node.md).
 - **Idempotency on the write side.** A submitted transaction may be observed by the indexer's own sync loop; the application logic must not double-submit. Track submitted-transaction hashes in state.
 - **Restart safety.** A signer that crashes mid-decision must not re-submit on restart. Persist intent (decided to settle X) before submitting; on restart, check whether the chain already contains the result before retrying.
 

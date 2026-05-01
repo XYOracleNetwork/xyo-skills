@@ -13,6 +13,10 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 
 ---
 
+> **Building on XL1?** For backend (Node) wallet creation, route through `generateXyoBaseWalletFromPhrase` + `DEFAULT_WALLET_PATH` from `@xyo-network/xl1-sdk` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md). The bare `Account.create({ mnemonic })` and `HDWallet.fromPhrase` calls below skip the standard BIP44 derivation, so the resulting address will **not** match MetaMask or the XYO browser extension wallet for the same seed. Use those primitives only for non-XL1 XYO contexts or when you explicitly need a non-standard derivation.
+
+---
+
 ## Account
 
 An **Account** is a key pair (secp256k1 elliptic curve) used for signing and identity in XYO.
