@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.4...v1.1.5) (2026-05-01)
+
+
+### Features
+
+* refine XL1 dev skills for env, identity, and UX ([#45](https://github.com/XYOracleNetwork/xl1-skills/issues/45)) ([9689703](https://github.com/XYOracleNetwork/xl1-skills/commit/96897033c6a8ddba953bd8488d17399be3add0ba))
+
 ## [1.1.4](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.3...v1.1.4) (2026-04-29)
 
 
