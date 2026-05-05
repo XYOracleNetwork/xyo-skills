@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.7](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.6...v1.1.7) (2026-05-05)
+
+
+### Features
+
+* release GatewayBuilder + headless dApp verification ([#52](https://github.com/XYOracleNetwork/xl1-skills/issues/52)) ([64fed1a](https://github.com/XYOracleNetwork/xl1-skills/commit/64fed1a47ee086b759490ef14a68d257cc945f81))
+
 ## [1.1.6](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.5...v1.1.6) (2026-05-01)
 
 
