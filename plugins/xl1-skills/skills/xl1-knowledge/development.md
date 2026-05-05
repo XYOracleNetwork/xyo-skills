@@ -115,7 +115,7 @@ const viewer = await locator.getInstance<BlockViewer>(BlockViewerMoniker)
 - `static factory()` — creates a factory for registration
 - `createHandler()` — post-creation async initialization
 
-Use `buildProviderLocator()` from `@xyo-network/xl1-providers` to wire up standard provider trees.
+For the common case of getting a working gateway, you almost never construct a locator yourself — use `GatewayBuilder` from `@xyo-network/xl1-sdk` (see [Node Gateway](gateway-node.md)). The locator pattern shown here is the layer underneath; reach for it directly only when the builder cannot express what you need (custom provider graphs, instrumented transports, test harnesses).
 
 ---
 

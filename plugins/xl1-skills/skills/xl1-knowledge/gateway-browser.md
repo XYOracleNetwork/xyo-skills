@@ -4,7 +4,7 @@ How to construct an XL1 gateway in a browser — React dApps, browser-extension-
 
 **Scope:** environment-specific *construction* of a browser-side gateway. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and [Gateway](gateway.md) for cross-environment recipes. For browser UX patterns built on top of the gateway (wallet connection UI, display conventions, capability-aware components), see [Browser UX](../xl1-patterns/browser-ux.md).
 
-For the Node / server-side equivalent, see [Node Gateway](gateway-node.md). Identity primitives that work in any environment (`Account.create({ mnemonic })`, `HDWallet.fromPhrase`) live in [Identity & Signing](../xyo-knowledge/identity.md).
+For the Node / server-side equivalent, see [Node Gateway](gateway-node.md). For backend identity creation (Node services, indexers, CLIs, headless verification scripts), use the canonical seed-phrase pattern in [XL1 Identity & Wallets](identity.md) — `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` for the account, then `buildSimpleXyoSignerV2` to wrap it as an `XyoSigner`. The lower-level XYO primitives (`Account.create({ mnemonic })`, `HDWallet.fromPhrase`) in [Identity & Signing](../xyo-knowledge/identity.md) skip BIP44 derivation and produce addresses that do not match the browser wallet on the same seed — use those only for non-XL1 XYO contexts.
 
 **Key npm packages:**
 - `@xyo-network/react-chain-client` — Gateway providers, wallet connection, and client hooks for React dApps

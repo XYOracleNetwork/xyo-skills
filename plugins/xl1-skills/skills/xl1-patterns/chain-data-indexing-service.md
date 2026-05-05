@@ -6,9 +6,9 @@ How to run a chain data indexer as a long-lived service: process model, state pe
 
 **Builds on:**
 - [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md) — conceptual rules (finalized vs latest, scan strategies, schemas)
-- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction
+- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `buildSimpleXyoSignerV2`)
 - [Datalakes](../xl1-knowledge/datalakes.md) — what the indexer actually reads through the gateway viewer
-- [Identity & Signing](../xyo-knowledge/identity.md) — key primitives for signer indexers
+- [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical backend identity for signer indexers (`generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`); the lower-level [Identity & Signing](../xyo-knowledge/identity.md) is for XYO primitives only
 
 ---
 
@@ -141,7 +141,7 @@ Some patterns require the indexer to **also act as an authoritative signer** —
 
 The indexer is then both a *reader* (deriving state from the chain) and a *writer* (submitting transactions back). This shifts requirements:
 
-- **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). Use the canonical backend pattern: `generateXyoBaseWalletFromPhrase(mnemonic)` then `derivePath(DEFAULT_WALLET_PATH)` from `@xyo-network/xl1-sdk` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md). This produces the same default address that MetaMask and the XYO browser extension show for the seed, so an operator can inspect balances and signing identity in either place. A write-capable Node-side gateway construction is not yet documented in this skill set — see [Node Gateway § Write Path](../xl1-knowledge/gateway-node.md).
+- **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). Use the canonical backend pattern: `generateXyoBaseWalletFromPhrase(mnemonic)` then `derivePath('0')` to get an `AccountInstance`, then `buildSimpleXyoSignerV2` to wrap it as an `XyoSigner` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md) and [Node Gateway — Write-capable gateway](../xl1-knowledge/gateway-node.md#write-capable-gateway-runner). This produces the same default address that MetaMask and the XYO browser extension show for the seed, so an operator can inspect balances and signing identity in either place.
 - **Idempotency on the write side.** A submitted transaction may be observed by the indexer's own sync loop; the application logic must not double-submit. Track submitted-transaction hashes in state.
 - **Restart safety.** A signer that crashes mid-decision must not re-submit on restart. Persist intent (decided to settle X) before submitting; on restart, check whether the chain already contains the result before retrying.
 
@@ -175,6 +175,6 @@ The indexer is then both a *reader* (deriving state from the chain) and a *write
 - [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md) — conceptual rules (scan strategies, schema design, anchoring choices)
 - [Chain Data Indexing — Client](chain-data-indexing-client.md) — browser-side consumption of indexer output
 - [Inscription Substrate — Replay loop](inscription-substrate.md#replay-loop) — worked example of a global-walk indexer
-- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction
+- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `buildSimpleXyoSignerV2`)
 - [Datalakes](../xl1-knowledge/datalakes.md) — datalake reads through the gateway viewer
-- [Identity & Signing](../xyo-knowledge/identity.md) — key primitives if the indexer also signs
+- [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical backend identity if the indexer also signs; [Identity & Signing](../xyo-knowledge/identity.md) covers the lower-level XYO primitives

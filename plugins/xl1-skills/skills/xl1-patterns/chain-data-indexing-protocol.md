@@ -385,8 +385,8 @@ The example below uses `currentBlockNumber()` for simplicity (showing recent pay
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
 
 // `gateway` is whatever your environment gives you — the React-context
-// gateway in a browser dApp, the result of basicRemoteViewerLocator in
-// a Node service, or any other XyoGateway instance. Reach viewer methods
+// gateway in a browser dApp, the result of `new GatewayBuilder().rpcUrl(...).build()`
+// in a Node service, or any other XyoGateway instance. Reach viewer methods
 // via connection.viewer; never call RPC by hand.
 async function pollForNewData(
   gateway: XyoGateway | XyoGatewayRunner,

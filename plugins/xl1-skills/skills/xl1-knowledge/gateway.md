@@ -5,7 +5,7 @@ The env-agnostic gateway file — what the gateway is, the JSON-RPC surface, net
 Environment-specific construction lives in sibling files:
 
 - [Browser Gateway](gateway-browser.md) — React providers, the wallet extension, `useProvidedGateway`
-- [Node Gateway](gateway-node.md) — server-side construction via `basicRemoteViewerLocator`
+- [Node Gateway](gateway-node.md) — server-side construction via `GatewayBuilder` (`.build()` for read-only, `.build(signer)` for write-capable)
 
 **Key npm packages:**
 - `@xyo-network/xl1-providers` — Browser, Node, and Neutral provider implementations
@@ -30,7 +30,7 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 ## Networks
 
-XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is the network identifier — pass it to the React providers in browser dApps (see [Browser Gateway](gateway-browser.md)) or directly to the locator in Node services (see [Node Gateway](gateway-node.md)). The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
+XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is the network identifier — pass it to the React providers in browser dApps (see [Browser Gateway](gateway-browser.md)) or to `GatewayBuilder().name(id).rpcUrl(...)` in Node services (see [Node Gateway](gateway-node.md)). The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
 
 | Network | Gateway Name | Gateway RPC | Datalake | Explorer |
 |---------|-------------|-------------|----------|----------|
@@ -54,14 +54,14 @@ For dApp development, start with **Sequence** (beta) to test against a live chai
 The construction step is environment-specific. Pick the file that matches your runtime:
 
 - **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider`, then call `useProvidedGateway()` in components. See [Browser Gateway](gateway-browser.md).
-- **Node / server-side** — call `basicRemoteViewerLocator` and resolve `XyoGatewayMoniker`. See [Node Gateway](gateway-node.md).
+- **Node / server-side / headless** — use `GatewayBuilder` from `@xyo-network/xl1-sdk`. `.build()` for read-only, `.build(signer)` for write-capable. See [Node Gateway](gateway-node.md).
 - **Tests** — use `MemoryRpcTransport` (see [Transports](#transports) below).
 
-The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `locator.getInstance<XyoGateway>(XyoGatewayMoniker)`. Both expose the same method surface.
+The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `new GatewayBuilder().rpcUrl(...).build()` (or `.build(signer)`). Both expose the same method surface.
 
 The type is a union:
-- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, when documented).
-- **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway (browser) or `basicRemoteViewerLocator` (Node).
+- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, via `GatewayBuilder.build(signer)`).
+- **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway (browser) or `GatewayBuilder.build()` (Node).
 - **`undefined` / `null`** — loading or no gateway available (React context only).
 
 ---
@@ -226,6 +226,15 @@ const [txHash, signedTx] = await gateway.addTransactionToChain(unsignedTx, offCh
 const confirmedTx = await gateway.confirmSubmittedTransaction(txHash)
 ```
 
+`confirmSubmittedTransaction` polls the gateway until the transaction is included in a block. The defaults are **`attempts: 20`, `delay: 1_000`** (20 attempts at 1-second intervals — a 20-second total budget). That budget is too short for Sequence, where finalization regularly takes a few minutes. Always pass explicit options when running against Sequence:
+
+```ts
+// poll up to 30 times, 10s apart — ~5 minutes total budget
+await gateway.confirmSubmittedTransaction(txHash, { attempts: 30, delay: 10_000 })
+```
+
+The 30 × 10s budget is the verified-working baseline for Sequence. Tune downward for local devnets (`{ attempts: 10, delay: 500 }` is plenty), upward for archival jobs or congested-network conditions. Mainnet block cadence is similar to Sequence — start with 30 × 10s and adjust if you observe systematic timeouts.
+
 ---
 
 ## Detecting Capabilities
@@ -271,6 +280,8 @@ The wallet and dApp are independent datalake clients — they may point to diffe
 | `PostMessageRpcTransport` | Browser — cross-window communication (wallet ↔ dApp) |
 | `MemoryRpcTransport` | Testing — in-memory JSON-RPC engine |
 
+Most consumers never instantiate transports directly. In the browser, the React providers select the transport based on whether a wallet is present. In Node, `GatewayBuilder` selects between HTTP and PostMessage based on whether you call `.rpcUrl()` or `.postMessage()`.
+
 ---
 
 ## Providers
@@ -281,7 +292,7 @@ The wallet and dApp are independent datalake clients — they may point to diffe
 - **Node provider** — for backend services, uses HTTP transport. See [Node Gateway](gateway-node.md).
 - **Neutral provider** — platform-agnostic primitives shared by both.
 
-The construction helpers (`basicRemoteViewerLocator`, `buildProviderLocator`, the React provider components) live with their respective environment-specific files.
+The construction helpers (`GatewayBuilder` for Node, with `basicRemoteViewerLocator` as an advanced escape hatch; `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider` for browser) live with their respective environment-specific files.
 
 ---
 
