@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.8](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.7...v1.1.8) (2026-05-06)
+
+
+### Features
+
+* release Floor Block indexing pattern and headless verification checklist ([#56](https://github.com/XYOracleNetwork/xl1-skills/issues/56)) ([b52d84a](https://github.com/XYOracleNetwork/xl1-skills/commit/b52d84a75dd4a313c403e9e68ea6a72d1a63f7c9))
+* **skills:** Floor Block indexing pattern + headless verification checklist ([#55](https://github.com/XYOracleNetwork/xl1-skills/issues/55)) ([befcce5](https://github.com/XYOracleNetwork/xl1-skills/commit/befcce59bd32f04173914be6710b5f309021e59c))
+
 ## [1.1.7](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.6...v1.1.7) (2026-05-05)
 
 
