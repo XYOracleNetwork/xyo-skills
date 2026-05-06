@@ -41,9 +41,21 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 
 **Branching:** Gitflow with `develop` as the integration branch. Feature branches use `feature/<description>` off `develop`. Never rewrite git history (no amend, rebase, or force push).
 
+**Merge method by PR type:** the strategy matters for keeping `main` and `develop` in sync. `required_linear_history` is intentionally **off** on `main` so the integration PR can be merge-committed.
+
+| PR type | Head | Base | Merge method |
+|---|---|---|---|
+| Feature/fix PR | `feature/*` | `develop` | Squash |
+| Integration PR | `develop` | `main` | **Merge commit** (preserves ancestry; never squash — squashing creates phantom commits in `git log main..develop` that grow over time) |
+| Release-please PR | `release-please--*` | `main` | Squash (release-please's recommended flow — keeps each release as one tidy commit on `main`) |
+| Sync PR | `main` | `develop` | Merge commit (already auto-applied by `sync-main-to-develop.yml`) |
+
+**Principle:** squash is fine when the source branch is throwaway (feature branches and release-please's auto-generated branch are deleted after merge — there's nowhere for phantom commits to accumulate). Squash is harmful when both source and target are long-lived branches (`develop` and `main`), because the originals stay on the source forever without ancestry to the new squash commit on the target. So `feature → develop` and `release-please → main` squash; `develop ↔ main` always merge-commit.
+
 **Releases:** Automated by [release-please](https://github.com/googleapis/release-please).
 - Use conventional commit prefixes (`feat:`, `fix:`, `docs:`, `chore:`, `feat!:` for breaking) — release-please reads them for `CHANGELOG.md` content. Versioning is configured `always-bump-patch`, so any merge to `main` produces a release; the prefix only affects the changelog text.
-- To ship: PR `develop` → `main` with a `feat:` or `fix:` title (enforced by `lint-pr-title.yml`) and merge. Release-please then opens a Release PR against `main` that bumps `plugins/xl1-skills/.claude-plugin/plugin.json` (source of truth), both version fields in `.claude-plugin/marketplace.json`, `version.txt`, and the manifest. Merging that PR tags and publishes the release.
+- `lint-pr-title.yml` enforces conventional titles on PRs into both `main` (only `feat:` / `fix:` accepted) and `develop` (any conventional type — `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.). The develop-side lint matters because feature-PR squash commits travel to `main` via the integration PR's merge commit, and release-please scans those individual subjects when building the changelog.
+- To ship: PR `develop` → `main` with a `feat:` or `fix:` title and merge using the **"Create a merge commit"** option (not squash). Release-please then opens a Release PR against `main` that bumps `plugins/xl1-skills/.claude-plugin/plugin.json` (source of truth), both version fields in `.claude-plugin/marketplace.json`, `version.txt`, and the manifest. Merging that PR tags and publishes the release.
 - After release, `sync-main-to-develop.yml` auto-opens **and auto-merges** a `main → develop` PR using the **merge-commit** method. Do not squash this PR if you ever merge it manually — squashing breaks the ancestry link between `main` and `develop` and makes them drift over time.
 - Release-please uses a fine-grained PAT (`secrets.RELEASE_PLEASE_TOKEN`) so its release PRs trigger downstream workflows; without it, the PR's checks would never report and branch protection would block the merge. Track PAT expiration.
 - Don't bump versions by hand — release-please owns those files. Anchored at `b1bc7eb`; older `feat:`/`fix:` commits are not rolled forward.
