@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.9](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.8...v1.1.9) (2026-05-06)
+
+
+### Features
+
+* release dApp DoD mandatory hand-off step ([#61](https://github.com/XYOracleNetwork/xl1-skills/issues/61)) ([c205c96](https://github.com/XYOracleNetwork/xl1-skills/commit/c205c968a44ca2e36e5c5d7f4d3a9dc74bcf34a3))
+* **skills:** make dApp DoD a mandatory hand-off step ([#60](https://github.com/XYOracleNetwork/xl1-skills/issues/60)) ([b89e6ab](https://github.com/XYOracleNetwork/xl1-skills/commit/b89e6ab550a8c5fb98e8705511254bd6c3924183))
+
 ## [1.1.8](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.7...v1.1.8) (2026-05-06)
 
 
