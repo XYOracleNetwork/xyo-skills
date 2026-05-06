@@ -19,7 +19,7 @@ Reading directly from the chain in the browser is appropriate for a narrow set o
 
 - **Ephemeral status** — "tx-just-submitted" toasts, "live" block-height tickers, mempool peeks. State that can disappear on refresh and that's fine.
 - **Single-user views** — the connected user's own moves, their own balance, their own recent activity. Re-walking from scratch is cheap when you only care about one address over a small range.
-- **Pre-MVP and prototyping** — getting a feature into a demo before standing up real infrastructure. Migrate to a service indexer before you ship.
+- **Pre-MVP and prototyping** — getting a feature into a demo before standing up real infrastructure. Migrate to a service indexer before declaring the work done.
 - **Bounded lookups** — viewing a specific block, transaction, or hash you already have. Not a scan, not a derivation.
 
 In all of these cases, the browser is doing trivial work — small range, ephemeral output, single user, no reorg sensitivity.

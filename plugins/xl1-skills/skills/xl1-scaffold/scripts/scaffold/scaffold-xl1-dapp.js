@@ -27,7 +27,7 @@ const TEMPLATES = {
 // own because runtime env loading is package-local: Node's dotenv reads from
 // the process cwd (per-service), and Vite reads .env from the Vite project
 // root (the package dir, not the workspace root). The per-template
-// .env.example also encodes runtime-specific hints (PORT=3000 for the
+// .env.example also encodes runtime-specific hints (PORT=3001 for the
 // express service, VITE_* convention for React) that a generic root file
 // can't express.
 const WORKSPACE_MEMBER_SKIP_FILES = new Set(['.gitignore']);

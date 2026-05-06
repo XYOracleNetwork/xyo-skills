@@ -19,7 +19,10 @@ These patterns compose primitives from the full skill stack:
 ## Table of Contents
 
 ### [Browser UX](browser-ux.md)
-Read when building user-facing dApp UIs in the browser. Covers wallet connection lifecycle (`ConnectAccountsStack`), the `useConnectAccount` singleton pitfall, lifting connected address into app state, capability-aware components, dApp UI structure, and display conventions (hash/address clamping, copy-to-clipboard). The UX layer that sits on top of [Browser Gateway](../xl1-knowledge/gateway-browser.md) construction.
+**REQUIRED reading for any dApp with a UI** — which is nearly all of them. Covers wallet connection lifecycle (`ConnectAccountsStack`), the `useConnectAccount` singleton pitfall, lifting connected address into app state, capability-aware components, dApp UI structure, and display conventions (hash/address clamping, copy-to-clipboard). The UX layer that sits on top of [Browser Gateway](../xl1-knowledge/gateway-browser.md) construction. Skip only if the work is genuinely UI-less (a pure indexer service or a CLI).
+
+### [Browser ↔ Service Wiring](browser-service-wiring.md)
+**REQUIRED reading whenever the dApp has both a React app and a companion HTTP service** (the default monorepo flow). Names the prescriptive port pair (`:3000` app, `:3001` service), the `/api/*` base-path convention, the Vite dev proxy that keeps everything same-origin, and the prod single-domain reverse-proxy story. Same-origin by default means **no CORS middleware** on the service. The escape hatch for genuinely cross-origin layouts is documented but treated as an exception. Skip only when there is no service (a pure read-only React app or a service-only project with no UI).
 
 ### Chain Data Indexing — by role
 
@@ -56,4 +59,4 @@ Read when building a fungible token on XL1 in the style of Bitcoin's BRC-20 — 
 Read when you need to prove a dApp's chain interactions work end-to-end without a browser — agentic development, CI smoke tests, regression scripts. Wires `GatewayBuilder.build(signer)` to a seed-phrase wallet so a Node script becomes the same identity a browser user would have on the same seed. Covers the `.env`-driven prompt shape, multi-account derivation for multi-party flows, and the requirement that scripts call the dApp's own domain functions rather than re-implementing them.
 
 ### [dApp Definition of Done](dapp-checklist.md)
-Read before shipping any XL1 dApp feature. A checklist that validates gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, provider architecture, display conventions, and commit-reveal correctness against the rules and anti-patterns defined across the skill stack.
+**REQUIRED before reporting any XL1 dApp work as complete.** Not optional, not "if you have time" — walk it explicitly and call out pass/fail per relevant section in your completion summary. The checklist enumerates the rules and anti-patterns documented across the skill stack (gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, indexer floor block, provider architecture, display conventions, commit-reveal correctness, settlement authorities, multi-party co-signing, headless verification). Sections marked "(if applicable)" can be skipped only when truly out of scope — state which and why.

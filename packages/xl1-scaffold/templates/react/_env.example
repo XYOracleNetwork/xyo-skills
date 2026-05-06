@@ -1,5 +1,11 @@
 # Copy to .env (gitignored). Vite loads .env files natively — no dotenv
 # package needed. Only variables prefixed with VITE_ are exposed to client
 # code via import.meta.env. See https://vite.dev/guide/env-and-mode
-
-# VITE_API_URL=
+#
+# Note on the companion service URL: in the default monorepo layout the
+# React app calls its xl1-service via same-origin /api/* requests (Vite
+# proxies them in dev; a reverse proxy forwards them in prod). No
+# VITE_API_URL is needed. If you genuinely need a cross-origin layout —
+# e.g. service deployed at api.example.com — set VITE_API_URL here and
+# see xl1-patterns/browser-service-wiring.md for the cross-origin escape
+# hatch.

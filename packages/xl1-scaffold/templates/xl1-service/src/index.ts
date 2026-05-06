@@ -2,13 +2,17 @@ import 'dotenv/config'
 
 import express from 'express'
 
-const PORT = Number(process.env.PORT) || 3000
+const PORT = Number(process.env.PORT) || 3001
 const SMOKE_TEST = process.argv.includes('--smoke-test')
 
 const app = express()
 
-app.get('/', (_req, res) => {
-  res.send('Hello world')
+// All routes mount under /api/* so the React app's Vite dev proxy
+// (server.proxy['/api'] in vite.config.ts) forwards them here. Same-
+// origin from the browser's perspective → no CORS middleware needed.
+// See xl1-patterns/browser-service-wiring.md.
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' })
 })
 
 const server = app.listen(PORT, () => {

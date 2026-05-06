@@ -1,5 +1,7 @@
 # Copy to .env (gitignored). Loaded at startup via `import 'dotenv/config'`
 # in src/index.ts.
 
-# Express server port. Defaults to 3000 if unset.
-PORT=3000
+# Express server port. The companion React app's Vite dev server proxies
+# /api/* requests here, so changing this requires a matching update to the
+# `server.proxy` target in the React app's vite.config.ts.
+PORT=3001

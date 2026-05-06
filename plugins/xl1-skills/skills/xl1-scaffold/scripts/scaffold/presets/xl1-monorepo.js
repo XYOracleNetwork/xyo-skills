@@ -11,6 +11,11 @@ const xl1MonorepoTemplateOverrides = {
     },
     scripts: {
         // Workspace orchestrator scripts. `-r` fans out to every workspace package.
+        // `dev` uses --parallel so app and service run concurrently in one terminal;
+        // packages without a dev script (e.g. xl1-shared) are skipped automatically.
+        // The default port pair is :3000 (app, Vite) and :3001 (service, Express),
+        // wired same-origin via Vite's /api/* proxy — see browser-service-wiring.md.
+        'dev': 'pnpm -r --parallel run dev',
         'build': 'pnpm -r run build',
         'typecheck': 'pnpm -r run typecheck',
         'lint': 'pnpm -r run lint',

@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { reactTemplate } from './react.js'
 import { assertExtendsBase } from './shared-assertions.js'
+
+const TEMPLATES_DIR = path.resolve(__dirname, '../../templates')
 
 assertExtendsBase(reactTemplate)
 
@@ -39,5 +44,25 @@ describe('react preset specifics', () => {
 
   it('does NOT pull in the dotenv package (Vite handles env loading)', () => {
     expect(reactTemplate.deps.runtime).not.toContain('dotenv')
+  })
+
+  describe('browser-service-wiring (vite.config.ts contents)', () => {
+    // Lock in the same-origin /api/* proxy prescription so a future edit
+    // can't silently revert the React app to a CORS-dependent layout.
+    // See xl1-patterns/browser-service-wiring.md.
+    const viteConfig = readFileSync(path.join(TEMPLATES_DIR, 'react/vite.config.ts'), 'utf8')
+
+    it('pins the dev server to port 3000', () => {
+      expect(viteConfig).toMatch(/port:\s*3000/)
+    })
+
+    it('proxies /api to the companion service on :3001', () => {
+      expect(viteConfig).toContain("'/api'")
+      expect(viteConfig).toContain('http://localhost:3001')
+    })
+
+    it('uses changeOrigin: true on the proxy rule', () => {
+      expect(viteConfig).toMatch(/changeOrigin:\s*true/)
+    })
   })
 })

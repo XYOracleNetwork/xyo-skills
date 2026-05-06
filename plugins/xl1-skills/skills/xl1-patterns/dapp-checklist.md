@@ -1,6 +1,6 @@
 # dApp Definition of Done
 
-Use this checklist before shipping any XL1 dApp feature. Each item corresponds to a rule or anti-pattern documented in the skill stack. The general [Definition of Done](../development/workflow.md) (builds, lints, tests, dev server, no placeholders, no regressions) still applies — this checklist adds XL1-specific concerns.
+Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. Each item corresponds to a rule or anti-pattern documented in the skill stack. The general [Definition of Done](../development/workflow.md) (builds, lints, tests, dev server, no placeholders, no regressions) still applies — this checklist adds XL1-specific concerns on top of it.
 
 ---
 
@@ -86,6 +86,20 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Wallet-gated components (submit move, create game) check write capability before rendering action controls
 
 **Source:** [In-Page Data Lakes](in-page-datalakes.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
+
+---
+
+## Browser ↔ Service Wiring (if there's both an app and a service)
+
+- [ ] Service routes mount under `/api/*` — never at the root or under app-specific paths
+- [ ] React app calls the service with relative URLs (`fetch('/api/...')`) — no `VITE_API_URL`, no hardcoded `http://localhost:3001`, no `window.location.origin` concatenation
+- [ ] App's `vite.config.ts` has a `server.proxy` rule for `/api` → `http://localhost:3001` with `changeOrigin: true`
+- [ ] Service `PORT` defaults to `3001`; app's Vite `server.port` is `3000`
+- [ ] No CORS middleware on the service — the default same-origin topology has nothing to CORS for. Adding `cors()` "just in case" is the anti-pattern
+- [ ] Workspace root has a `dev` script that runs app + service concurrently (`pnpm -r --parallel run dev`)
+- [ ] If the dApp deliberately runs cross-origin (escape hatch), the choice is documented, the CORS allowlist is explicit (not `*` for credentialed routes), and the preflight path was tested
+
+**Source:** [Browser ↔ Service Wiring](browser-service-wiring.md)
 
 ---
 

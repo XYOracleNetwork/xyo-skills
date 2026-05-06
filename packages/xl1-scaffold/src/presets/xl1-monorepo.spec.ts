@@ -21,6 +21,13 @@ describe('xl1-monorepo preset specifics', () => {
     expect(xl1MonorepoTemplate.scripts.test).toBe('pnpm -r run test')
   })
 
+  it('declares a parallel `dev` script so app + service run concurrently', () => {
+    // Locks in the browser-service-wiring prescription: one command at the
+    // workspace root brings up both processes. --parallel is required so they
+    // run concurrently (default `pnpm -r run` is sequential).
+    expect(xl1MonorepoTemplate.scripts.dev).toBe('pnpm -r --parallel run dev')
+  })
+
   it('skips emitting tsconfig.json (workspace root has no source)', () => {
     expect(xl1MonorepoTemplate.omitTsconfig).toBe(true)
   })

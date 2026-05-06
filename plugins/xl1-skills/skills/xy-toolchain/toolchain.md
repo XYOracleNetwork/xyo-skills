@@ -109,7 +109,7 @@ pnpm add -D vite-plugin-top-level-await vite-tsconfig-paths
 - `vite-plugin-top-level-await` — XYO SDK dependencies (e.g., `@bitauth/libauth`) use top-level `await`. This plugin handles it for the dev server without requiring build target changes.
 - `vite-tsconfig-paths` — ensures Vite resolves paths consistently with the TypeScript config, which matters for the SDK's multi-target builds.
 
-**Browser compatibility:** XYO/XL1 SDK packages ship browser-specific builds via the `"browser"` condition in their `package.json` exports field. Vite automatically resolves these, so the consuming app typically does not need Node.js polyfills (`buffer`, `events`, `stream`, etc.). The `@xylabs/*` toolchain packages provide browser-safe alternatives internally (e.g., `@xylabs/buffer`).
+**Browser compatibility:** XYO/XL1 SDK packages publish browser-specific builds via the `"browser"` condition in their `package.json` exports field. Vite automatically resolves these, so the consuming app typically does not need Node.js polyfills (`buffer`, `events`, `stream`, etc.). The `@xylabs/*` toolchain packages provide browser-safe alternatives internally (e.g., `@xylabs/buffer`).
 
 If you see errors about missing Node.js built-ins, strongly prefer fixing the root cause (check Vite version, plugin setup, and that the browser export condition is being resolved) before adding polyfill aliases as a last resort.
 
