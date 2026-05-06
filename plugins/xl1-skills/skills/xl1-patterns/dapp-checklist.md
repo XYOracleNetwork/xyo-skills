@@ -47,6 +47,7 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] BoundWitnesses are built with `BoundWitnessBuilder` — field arrays are never constructed manually
 - [ ] Datalake access uses `RestDataLakeRunner` / `RestDataLakeViewer` — not raw `fetch()` to the endpoint
 - [ ] New types follow the Zod-first pattern: Zod schema is source of truth, TS type derived via `z.infer`, guards via `zodIsFactory` / `zodAsFactory` / `zodToFactory`
+- [ ] Payloads read from the chain or datalake are filtered through Zod-factory guards (`isXxxPayload`) before being honored — `payload.schema === '...'` is a tag check, not a validator. `isPayloadOfSchemaType` is not a substitute
 - [ ] Schemas are created with `asSchema('network.xyo.app.entity', true)` — not bare string literals
 
 **Source:** [Protocol Best Practices](../xyo-knowledge/best-practices.md), [Development on XL1](../xl1-knowledge/development.md)
@@ -64,6 +65,19 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 
 ---
 
+## Indexer Floor Block
+
+- [ ] `INDEXER_FLOOR_BLOCK` is set in `.env` for every chain the dApp targets — captured during development, not at deploy time
+- [ ] Bounded dApps (any with self-authored `network.xyo.<myapp>.*` schemas) use a captured chain head as the floor
+- [ ] Unbounded indexers (transfer ledgers, substrate indexers, XRC-20 ledgers) explicitly set `INDEXER_FLOOR_BLOCK=0` — never silently default
+- [ ] Browser dApps that read chain data directly also expose the floor as `VITE_INDEXER_FLOOR_BLOCK`, with backward walks bounded at it
+- [ ] The indexer fails closed when `INDEXER_FLOOR_BLOCK` is missing — no implicit floor of `0`
+- [ ] Each environment (mainnet, sequence, devnet) has its own `.env` with its own captured floor — no reuse across chains
+
+**Source:** [Chain Data Indexing — Floor Block](chain-data-indexing-protocol.md#floor-block), [Chain Data Indexing — Service](chain-data-indexing-service.md)
+
+---
+
 ## Provider Architecture
 
 - [ ] App needs read-only access without wallet? Uses `GatewayProvider` + `InPageGatewaysProvider` — not `WalletGatewayProvider`
@@ -72,6 +86,22 @@ Use this checklist before shipping any XL1 dApp feature. Each item corresponds t
 - [ ] Wallet-gated components (submit move, create game) check write capability before rendering action controls
 
 **Source:** [In-Page Data Lakes](in-page-datalakes.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
+
+---
+
+## Headless Verification
+
+- [ ] A Node verification script exercises the dApp's happy path end-to-end — `GatewayBuilder.build(signer)` against a seed phrase from `.env`, no browser involved
+- [ ] The script imports the dApp's own domain functions (e.g., `submitMove`, `revealMove`) — does not re-implement payload construction or transaction logic
+- [ ] Domain functions accept a runner/gateway as a parameter so the same code runs in both browser and Node contexts
+- [ ] The signer is derived via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` + `buildSimpleXyoSignerV2` — addresses match what MetaMask / XYO extension show on the same seed
+- [ ] Multi-party flows derive distinct signers (`derivePath('0')`, `derivePath('1')`, …) and build one runner per signer
+- [ ] The script reads back through `connection.viewer` after submission — confirming the data shape the UI will render, not just that the tx was accepted
+- [ ] `confirmSubmittedTransaction` calls pass explicit options for non-local networks (e.g., `{ attempts: 30, delay: 10_000 }` for Sequence) — defaults time out before finalization
+- [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
+- [ ] Script defaults to a non-mainnet network (e.g., `XL1_NETWORK=sequence`) — explicit override required to point at mainnet
+
+**Source:** [Headless dApp Verification](headless-verification.md)
 
 ---
 

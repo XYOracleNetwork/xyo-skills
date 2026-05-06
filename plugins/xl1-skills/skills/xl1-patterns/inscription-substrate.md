@@ -208,6 +208,27 @@ The wallet signs the wrapping `TransactionBoundWitness`. The indexer reads `tx.f
 
 The indexer is the off-chain component that derives the ownership ledger. In production, package it as a diviner module ([Module System](../xyo-knowledge/modules.md)). For prototypes, an in-memory worker is enough.
 
+### Indexing posture: unbounded, ordered, with a permanent floor
+
+The substrate sits at three corners of the indexing-concerns space defined in [Floor Block](chain-data-indexing-protocol.md#floor-block):
+
+- **Unbounded.** Inscriptions and transfers are pre-existing schemas relative to any indexer of the substrate. Floor: `0`.
+- **Ordered.** State derivation requires in-order replay — standard for any state-deriving indexer. See [Strategy 1](chain-data-indexing-protocol.md#strategy-1-global-block-walk-forward-iteration).
+- **Permanent floor.** Unlike most ordered + unbounded indexers, the substrate's floor cannot be raised retroactively. Canonical authorship — "the first finalized BoundWitness referencing this content hash wins" — is established by *first appearance*, and first appearance is only observable by walking from genesis. Skipping early blocks silently miscredits authorship to a later inscriber. An operator standing up a substrate indexer in 2030 still walks from genesis.
+
+This third property distinguishes the substrate from, say, an XL1 balance ledger: the balance ledger is also unbounded + ordered, but a snapshot at block N permits resuming from N+1 without information loss. The substrate doesn't allow the snapshot trick because identity is *established by* the very early blocks the snapshot would skip.
+
+### Indexers built on top of the substrate
+
+A dApp built on top of the substrate — a token deploy, an NFT collection, a recursive content protocol — has two state layers:
+
+- **Substrate ownership state.** Driven by the inscription substrate's replay loop. Unbounded, ordered, permanent floor. The dApp depends on it being authoritative.
+- **Application-layer state.** The dApp's own derivations beyond ownership — e.g., a leaderboard of trades, an "inscriptions in this collection" filter, custom metadata indexes.
+
+The application-layer state can have its own `INDEXER_FLOOR_BLOCK` *for the dApp's own handlers*, but the substrate replay underneath the dApp is still unbounded. Mixing modes in one indexer is a [mixed indexer](chain-data-indexing-protocol.md#mixed-indexers--the-escape-hatch), with the same caveat: as soon as one schema's floor is `0`, the scan hydrates every block from genesis and the bounded benefit is lost. The honest framing is: **substrate-dependent dApps are unbounded indexers in practice**; the per-handler bounded floor only suppresses application work, not block reads.
+
+If the dApp wants real bounded performance, it must split: one process runs the substrate indexer (unbounded), exposes its derived ownership ledger as a service, and the bounded application-layer indexer consumes that service rather than re-deriving from raw blocks.
+
 ### State shape
 
 The substrate's record is intentionally schema-agnostic. Anything with an artifact-shaped lifecycle — a plain inscription, a token deploy, a collection root — goes in the same map. Schema-specific details live in higher-layer state alongside it.

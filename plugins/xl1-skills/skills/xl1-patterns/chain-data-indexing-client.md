@@ -92,9 +92,13 @@ The hook above is wrong-shaped for most browser views. UIs typically want "the l
 
 The right shape: walk **backward** from `currentBlockNumber()`, accumulate matches, stop when you have N. See [Chain Data Indexing — Protocol § Direction of Iteration](chain-data-indexing-protocol.md#direction-of-iteration) for why.
 
+For a bounded dApp (one querying its own self-authored schemas — see [Floor Block](chain-data-indexing-protocol.md#floor-block)), the walk also bounds at the floor. Without it, a UI for a connected wallet that has zero matching payloads runs an unbounded scan toward genesis — slow, RPC-quota-burning, and at risk of rendering pre-deployment matches that cannot be this dApp's data. The same `INDEXER_FLOOR_BLOCK` the service indexer reads from `.env` is exposed to the browser via Vite as `VITE_INDEXER_FLOOR_BLOCK`.
+
 ```ts
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
 import type { Payload, Schema } from '@xyo-network/sdk-js'
+
+const FLOOR_BLOCK = Number(import.meta.env.VITE_INDEXER_FLOOR_BLOCK ?? 0)
 
 async function fetchRecent(
   gateway: XyoGateway | XyoGatewayRunner,
@@ -106,7 +110,8 @@ async function fetchRecent(
   if (!viewer) throw new Error('Gateway has no viewer attached')
 
   const head = Number(await viewer.block.currentBlockNumber())
-  const stopBlock = Math.max(0, head - maxBlocksToScan)
+  // Two safety nets: the time-bound (don't scan too far back) and the floor (don't read pre-app blocks).
+  const stopBlock = Math.max(FLOOR_BLOCK, head - maxBlocksToScan)
   const results: Payload[] = []
 
   for (let n = head; n >= stopBlock && results.length < count; n--) {
@@ -122,6 +127,8 @@ async function fetchRecent(
   return results
 }
 ```
+
+For an unbounded browser view (e.g., a recent-transfers feed), `VITE_INDEXER_FLOOR_BLOCK` is set to `0` and the floor safety net falls away — only the time-bound applies. The structural filter on accumulated matches is the dApp's Zod-factory guard — `payloads.filter(isMovePayload)` instead of a schema-string check — which validates shape and rejects most collisions on its own. See [Chain Data Indexing — Protocol § The honor question](chain-data-indexing-protocol.md#the-honor-question) for when authorship discriminators (signer scoping, sentinel filtering) layer on top.
 
 ### React hook wrapper
 

@@ -415,11 +415,9 @@ UIs that consume the view **must** treat it as advisory. If `view.settlement` do
 
 ## Querying Market State
 
-Use the [Chain Data Indexing](chain-data-indexing-protocol.md) pattern to reconstruct market state from on-chain payloads. Group by `marketId` to build a complete view:
+Use the [Chain Data Indexing](chain-data-indexing-protocol.md) pattern to reconstruct market state from on-chain payloads. Group by `marketId` to build a complete view. The filters below use the Zod-factory guards exported earlier in this skill — `isMarketCommitPayload`, `isMarketRevealPayload`, `isMarketSettlementPayload` — which validate schema name *and* shape on every chain read.
 
 ```ts
-import { isPayloadOfSchemaType } from '@xyo-network/sdk-js'
-
 interface MarketState {
   market: MarketPayload
   commits: MarketCommitPayload[]

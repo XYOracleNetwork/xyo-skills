@@ -338,13 +338,12 @@ const payloads = await gateway.connection.viewer?.block.payloadsByHash(hashes)
 
 ## Step 4: Build an Application Read Model
 
-Transform raw chain payloads into your application's domain model. Use schema-based type guards to filter and narrow:
+Transform raw chain payloads into your application's domain model. Filter and narrow with the **Zod-factory guards from Step 1** — `isMovePayload`, `isResultPayload`, etc. — never `isPayloadOfSchemaType`. The Zod factories validate schema name *and* payload shape in one step; `isPayloadOfSchemaType` checks only the schema string and would let a malformed payload (right schema name, wrong fields) slip through.
 
 ```ts
-import { isPayloadOfSchemaType } from '@xyo-network/sdk-js'
-
-const isMovePayload = isPayloadOfSchemaType<MovePayload>('network.xyo.rps.move')
-const isResultPayload = isPayloadOfSchemaType<ResultPayload>('network.xyo.rps.result')
+// `isMovePayload` and `isResultPayload` are exported from Step 1 — Zod-factory
+// guards derived from MovePayloadZod and ResultPayloadZod. Use them anywhere
+// you read payloads from the chain or datalake. Never trust the schema field alone.
 
 function buildGameState(payloads: Payload[]): GameState {
   const moves = payloads.filter(isMovePayload)
@@ -359,6 +358,131 @@ function buildGameState(payloads: Payload[]): GameState {
   }, {} as GameState)
 }
 ```
+
+---
+
+## Floor Block
+
+Two orthogonal concerns shape every indexer:
+
+- **Temporality** — does the indexer cover the entire chain, or only a subset of it? The *floor block* answers this.
+- **Ordering** — must blocks be replayed in order to derive state? [Direction of Iteration](#direction-of-iteration) and [Strategy 1](#strategy-1-global-block-walk-forward-iteration) answer this.
+
+A given indexer is some pair of these. A `txHash → blockNumber` lookup is unbounded but unordered. An RPS dApp's per-game state machine is bounded and ordered. The inscription substrate is unbounded *and* ordered, with an extra retroactivity property addressed below. This section is about the temporality axis.
+
+### The honor question
+
+The chain accepts arbitrary bytes for any schema, including before your application existed. Whether to *honor* pre-deployment matches isn't a chain decision — it's yours.
+
+**Heuristic.** If your dApp invented the schema, data older than your dApp can't be your dApp's data. Whatever those bytes are — random collisions, independent dApps that picked the same schema name, accidental writes — they're not part of your application's state. Ignore them.
+
+**The schema name is a tag, not a validator.** The `schema` field is a string the chain doesn't interpret. Older versions of your dApp can publish payloads that no longer match the current shape; malformed bytes can carry the right schema with the wrong fields; another party can independently use the same schema string. The structural discriminator is your dApp's Zod-factory guard — `isMovePayload` derived from `MovePayloadZod` validates name *and* shape in one step, and a well-defined Zod schema is usually sufficient on its own.
+
+**Beyond shape: referential integrity.** Some checks Zod can't see — *"this payload references hash H — does H actually exist on chain?"*, *"this transfer claims a previous owner — does the ownership ledger agree?"* — belong in a sanity-check pass after Zod. Treat referential integrity as part of the read pipeline, not as ad-hoc assertions sprinkled into business logic.
+
+**Authorship discriminators (last resort).** When a legitimate same-schema *and* same-shape collision is plausible — two real dApps that picked identical schemas, or a malicious party crafting payloads that pass your Zod — additional discriminators apply: per-dApp signer scoping, sentinel addresses (see [Destination as Protocol](#destination-as-protocol--a-native-xl1-pattern)), or per-app ID prefixes. Reach for these only when Zod can't tell the data apart on its own.
+
+### Two postures — pick one for the dApp
+
+**Bounded.** The dApp's data lives under schemas the dApp itself introduced. Floor: a chain block captured during development, recorded as `INDEXER_FLOOR_BLOCK`.
+
+- Custom dApps with their own `network.xyo.<myapp>.*` namespace
+- Games (an RPS dApp's `network.xyo.rps.*` schemas)
+- Any application that designed its own payload protocol from scratch
+
+This is the default for new dApps. Reading from `INDEXER_FLOOR_BLOCK` forward is both *correct* (no honoring of pre-app data) and *fast* (no scanning of blocks that provably contain none of the dApp's data).
+
+**Unbounded.** The indexer covers schemas (or chain properties) that predate its own code. Pre-deployment data is real and load-bearing. Recorded as `INDEXER_FLOOR_BLOCK=0`.
+
+- A `network.xyo.transfer` indexer covering all XL1 history
+- A `txHash → blockNumber` lookup service
+- An XRC-20 ledger for an existing token
+- Any indexer of the inscription substrate
+
+Temporality (unbounded) is independent of ordering — some unbounded indexers are also ordered (the substrate, balance ledgers); others are not (the txHash lookup).
+
+### The substrate's special property: floor is permanent
+
+A few unbounded + ordered indexers have an additional constraint: their floor cannot be raised retroactively, even for performance. The inscription substrate is the canonical example. Canonical authorship — "the first finalized BoundWitness referencing this content hash wins" — is established by replay order, and "first" is observed only by walking from genesis. Skipping any block silently miscredits authorship to a later inscriber. So the substrate's floor is `0` forever; an operator standing up a substrate indexer in 2030 still must walk from genesis.
+
+Most ordered + unbounded indexers don't have this property. An XL1 balance ledger derives state from `Transfer` payloads, and order matters for arithmetic correctness — but if you knew the balance at block N, you could resume from N+1 with no information loss. The substrate doesn't allow that snapshot trick because identity is established by *first appearance*, and you can't observe first appearance from a snapshot.
+
+### The development-time capture step
+
+When scaffolding a bounded dApp — the default for any application creating its own schemas — capture the chain's finalized head **during development**, as part of dApp creation, and record it in `.env` as `INDEXER_FLOOR_BLOCK`. The agent does this; the user never sees the step.
+
+Anchor the capture to development time, not to first publish. Publish steps are often automated, skipped, or implicit, and an agent following an "after first publish" rule will frequently miss it. "Capture during development" is unambiguous and runs every time. Precision isn't the goal — *performance optimization* is. A few blocks of slack on either side don't matter; orders-of-magnitude reduction in cold-start scan time does.
+
+```bash
+# .env (recorded during scaffolding)
+INDEXER_FLOOR_BLOCK=412847
+VITE_INDEXER_FLOOR_BLOCK=412847   # only if there's a Vite-built browser package
+```
+
+```ts
+// Service indexer (Node)
+const floorBlock = Number(process.env.INDEXER_FLOOR_BLOCK)
+let lastProcessedBlock = floorBlock - 1
+// ...sync loop iterates from lastProcessedBlock + 1 to finalized head
+
+// Browser dApp (Vite)
+const floorBlock = Number(import.meta.env.VITE_INDEXER_FLOOR_BLOCK)
+// ...backward walks bound at floorBlock instead of running unbounded toward genesis
+```
+
+For unbounded indexers, set `INDEXER_FLOOR_BLOCK=0` explicitly. The env var is *required* in either case — there is no silent default. An unbounded indexer with no floor declaration is an error: the operator must affirm "yes, walk from genesis" rather than slip into it by accident.
+
+### Multi-chain and multi-operator
+
+The floor block is **per chain** and **per dApp deployment moment**. Every operationally distinct indexer instance has its own `.env`:
+
+- A dApp deployed to mainnet, sequence, and a local devnet has three different `.env` files with three different floors.
+- A single indexer process should cover one chain. We do not currently support cross-chain indexers; if you need them, run separate processes.
+
+For shared / canonical protocols (where many operators run their own indexer of the same dApp), the floor must be a *socialized* canonical value, not each operator's local capture time. Late operators read the published `INDEXER_FLOOR_BLOCK` — out-of-band (README, docs, bootstrap scripts) or via a chain-recorded `network.xyo.<app>.genesis` payload they can verify. This is a day-2 concern; day-1 scaffolding bootstraps the local operator, and a canonical floor can be agreed on later.
+
+### Retrofitting an already-deployed dApp
+
+If a dApp is already deployed and the floor was never captured, recover it after the fact:
+
+- **Best-effort estimate.** Pick a recent block known to be after the first deployment — the deployer wallet's first relevant transaction, a known schema-introduction commit, a roughly-correct date-based estimate. Set `INDEXER_FLOOR_BLOCK` to that block and backfill from there.
+- **Schema-discovery scan.** Walk backward from `finalization.headNumber()` and stop on the first block containing the target schema. See [Direction of Iteration § Cold-start backward](#direction-of-iteration). Bounded by the depth at which the schema first appeared.
+- **Genesis payload sweep.** If the dApp ever published a `network.xyo.<app>.genesis` payload (recommended for shared protocols), find it via `accountBalanceHistory(deployer)` and use its block.
+
+The retrofit doesn't need to be exact — the floor is a performance optimization, and a slightly-too-low floor just costs a one-time cold-start scan.
+
+### Mixed indexers — the escape hatch
+
+A dApp that genuinely indexes both its own schemas *and* a pre-existing schema (e.g., RPS that also tracks players' XL1 transfer history) needs per-schema floors. This is the escape hatch, not the canonical shape — most dApps fit cleanly into one of the two postures.
+
+```ts
+const FLOORS: Record<string, number> = {
+  'network.xyo.rps.move':   floorBlock,  // self-authored, sourced from INDEXER_FLOOR_BLOCK
+  'network.xyo.rps.result': floorBlock,  // self-authored
+  'network.xyo.transfer':   0,           // pre-existing
+}
+
+function shouldHonor(payload: Payload, blockNumber: number): boolean {
+  const floor = FLOORS[payload.schema] ?? floorBlock
+  return blockNumber >= floor
+}
+```
+
+Default-when-absent is the dApp's `floorBlock`, not `0`. The safe choice is the default — adding a new self-authored schema can't accidentally open the indexer up to honoring pre-deployment matches. The scan iterates from `Math.min(...Object.values(FLOORS))` and each handler self-gates by its schema's floor.
+
+**Performance consequence — and why this is the last resort.** As soon as one schema in the map has floor `0`, the scan must hydrate every block from genesis to find matches for it. The bounded handlers self-gate during that scan, but the indexer still pays the unbounded cost. Mixing temporalities loses the bounded performance benefit. If a dApp can split into two indexer processes — one bounded, one unbounded, each with its own `INDEXER_FLOOR_BLOCK` — that's strictly faster than mixing in one process.
+
+### Anti-patterns
+
+| Anti-pattern | Why it fails |
+|---|---|
+| Cold-start defaulting `lastSeenBlock = 0` for a bounded dApp | Honors pre-deployment data that cannot be the dApp's; wastes hours scanning blocks that provably contain none of the app's data |
+| Treating an unbounded indexer (transfers, substrate) as bounded | Misses real pre-deployment data; for substrate-shaped protocols, silently miscredits canonical first-author |
+| Silent default when `INDEXER_FLOOR_BLOCK` is missing | Forces a choice the operator should make explicitly. Fail closed; require either the captured head or `0` |
+| Per-schema floor map for a single-posture dApp | Adds ceremony with no benefit — every handler gates on the same value. Reach for the map only when temporalities genuinely differ |
+| Mixing bounded and unbounded handlers in one indexer when they could be split | The mixed scan hydrates every block from genesis; two separate indexers (one bounded, one unbounded) is strictly faster |
+| Asking the developer to "remember to capture the floor" | This is an agentic/scaffold concern. Capture during development and write to `.env` — the developer should never see this step |
+| Reusing one `INDEXER_FLOOR_BLOCK` across mainnet, sequence, and devnet | Floor is per-chain. Each environment's `.env` carries its own captured value |
 
 ---
 
@@ -438,6 +562,8 @@ Two regimes:
 **Forward iteration is required for state derivation.** A global indexer that builds derived state ([Strategy 1](#strategy-1-global-block-walk-forward-iteration)) cannot replay events out of order without losing determinism. This is non-negotiable for ledger correctness.
 
 **Backward iteration is the right shape for recency-biased UIs.** A user staring at "show my last 10 moves" doesn't care about block 1 — they care about what just happened. Walk backward, accumulate matches, stop when you have N. The browser-side ephemeral case is overwhelmingly this shape.
+
+**Cold-start backward** (`head → first app-schema occurrence`) is a specialized variant: retroactively discovering an indexer's floor for a third-party protocol with no documented birth block. Walk backward from `finalization.headNumber()`, stop on the first block containing the target schema, cache the result. Bounded by the depth at which the protocol first appeared. New dApps capture their birth block at scaffold time and skip this entirely — see [Floor Block](#floor-block).
 
 The four scan strategies below are tagged with their natural direction. Some are bidirectional in principle but most have a clearly correct choice.
 
@@ -564,6 +690,8 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 
 | Decision | Guidance |
 |----------|----------|
+| Indexing your dApp's own schemas? | **Bounded** — capture `INDEXER_FLOOR_BLOCK` during development, iterate from there. See [Floor Block](#floor-block) |
+| Indexing pre-existing schemas (transfers, substrate, older protocols)? | **Unbounded** — set `INDEXER_FLOOR_BLOCK=0`, iterate from genesis. Substrate-shaped protocols additionally require ordered replay and a permanently-zero floor |
 | Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
 | Just need payloads by type? | Walk blocks via `viewer.block.blockByNumber()` from `lastSeen + 1 → finalization.headNumber()` and filter by `payload.schema`. `ViewerWithDataLake` hydrates off-chain payloads transparently |
 | Need a specific payload? | Use `connection.viewer.block.payloadsByHash(hashes)` (or `RestDataLakeViewer.get(hashes)` for hashes obtained outside the gateway path) |

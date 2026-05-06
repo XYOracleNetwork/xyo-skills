@@ -88,12 +88,20 @@ Schemas are the primary mechanism for type discrimination in XYO. Choose them ca
 
 ### Schema as Type Identity
 
-Schemas drive TypeScript type narrowing via `isPayloadOfSchemaType<T>()`. A well-chosen schema hierarchy makes payload filtering and discrimination ergonomic:
+Schemas drive TypeScript type narrowing, but the canonical guard is the **Zod-factory pair** generated alongside each payload type. `zodIsFactory(MovePayloadZod)` validates schema name *and* payload shape in one step — use it whenever you read payloads from the chain or datalake.
 
 ```ts
-const isMovePayload = isPayloadOfSchemaType<MovePayload>('network.xyo.rps.move')
+const isMovePayload = zodIsFactory(MovePayloadZod)
 const moves = allPayloads.filter(isMovePayload)
 ```
+
+`isPayloadOfSchemaType<T>()` exists and looks similar, but it checks only the `schema` field — a tag check, not a validator. Avoid it for trust-boundary reads. A payload carrying the right schema string with the wrong shape would slip through.
+
+### Trust boundary on chain reads
+
+The gateway's RPC surface returns block envelopes, transaction structures, and signatures the chain has already validated — those can be trusted as the SDK presents them. The **application-level payload content** riding inside, however, is fetched from the datalake, where anyone can write bytes (including bytes that match a schema name but not its shape). Trust but verify: Zod-validate every payload your code consumes, even when it came back through `connection.viewer`.
+
+In practice: you can trust `tx.payload_hashes`, `tx.from`, block numbers, and signatures without re-checking. You should not trust the dereferenced payload bodies until they've passed your Zod guards.
 
 ---
 

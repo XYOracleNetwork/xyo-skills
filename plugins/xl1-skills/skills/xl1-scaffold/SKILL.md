@@ -184,12 +184,38 @@ When you add new exports to `shared/`, run `pnpm --filter @<scope>/shared run bu
 After the scaffold reports success:
 
 1. Briefly summarize what was created (template(s), target dir(s), one-line "ready to develop"). For monorepos, mention the workspace root + each sub-package and remind the user that `pnpm install` at the root links everything.
-2. **Proactively continue** implementing whatever the user originally described. Do not stop and wait. For monorepos, the natural ordering is:
+2. **Capture the indexer floor block** — see the next section. Part of dApp creation, not deferred to first deploy.
+3. **Proactively continue** implementing whatever the user originally described. Do not stop and wait. For monorepos, the natural ordering is:
    1. Define shared types/schemas in `packages/shared/src/` based on what the feature needs and export them for consumers.
    2. Implement service routes/jobs in `packages/service/src/` (chain-watching, indexing, deadline handling).
    3. Implement app UI in `packages/app/src/` consuming the service routes via `fetch`.
    Consult [xl1-patterns](../xl1-patterns/SKILL.md) for the canonical recipe (commit-reveal, indexing, etc.).
-3. Only pause if you need a clarifying decision that can't be inferred from the original request (e.g. "should players be able to rematch without re-committing stakes?").
+4. Only pause if you need a clarifying decision that can't be inferred from the original request (e.g. "should players be able to rematch without re-committing stakes?").
+
+## Capture the indexer floor block
+
+If the dApp introduces its own payload schemas (the default — any custom dApp under a fresh `network.xyo.<myapp>.*` namespace), capture a **sensible floor block** as part of dApp creation and record it in `.env` as `INDEXER_FLOOR_BLOCK`. The agent does this; the user never sees the step. This is part of the dApp Definition of Done — see [dApp Checklist](../xl1-patterns/dapp-checklist.md).
+
+The reason: the chain accepts arbitrary bytes for any schema, including before the dApp existed. An indexer that walks from block 0 will (a) waste hours on blocks that provably contain none of the dApp's data and (b) honor pre-deployment matches that cannot be the dApp's data. Capturing a floor makes correctness and performance the default. See [Chain Data Indexing — Floor Block](../xl1-patterns/chain-data-indexing-protocol.md#floor-block) for the full framing.
+
+**Anchor the capture to development time, not first publish.** Publish steps are routinely deferred, automated, or skipped, and an "after first publish" rule frequently misses. Capturing during dApp creation is unambiguous and runs every time. Precision isn't the goal — performance optimization is. A few blocks of slack on either side don't matter.
+
+The procedure:
+
+1. Connect to the target chain using the gateway already wired into the scaffold.
+2. Read the current finalized head: `Number(await viewer.finalization.headNumber())`.
+3. Write to the dApp's `.env` (root for single-template scaffolds; the relevant sub-package's `.env` for monorepos):
+   ```
+   INDEXER_FLOOR_BLOCK=<n>
+   VITE_INDEXER_FLOOR_BLOCK=<n>   # only if there's a Vite-built browser package
+   ```
+4. Reference `INDEXER_FLOOR_BLOCK` from the indexer (`process.env`) and from the browser dApp (`import.meta.env.VITE_INDEXER_FLOOR_BLOCK`) so all readers share the same floor.
+
+`INDEXER_FLOOR_BLOCK` is **per chain**. A dApp scaffolded for mainnet, sequence, and a local devnet has three different `.env` files with three different captured values. Don't reuse a floor across environments.
+
+For an **unbounded** dApp — one whose purpose is to index pre-existing schemas (an XL1 transfer indexer, an inscription-substrate indexer, an XRC-20 ledger for an existing token) — set `INDEXER_FLOOR_BLOCK=0` explicitly. The env var is required either way; there is no silent default. State the unbounded choice in the hand-off summary so it's auditable.
+
+Mixed dApps (some bounded schemas, some pre-existing) still set `INDEXER_FLOOR_BLOCK` to the captured head; per-schema floors live in the indexer code per [Chain Data Indexing — Mixed indexers](../xl1-patterns/chain-data-indexing-protocol.md#mixed-indexers--the-escape-hatch). Mixing is the last resort — splitting into separate bounded and unbounded indexer processes is strictly faster.
 
 ## Flags reference
 

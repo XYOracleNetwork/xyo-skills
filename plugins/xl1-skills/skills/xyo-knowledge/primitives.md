@@ -92,24 +92,18 @@ Static meta manipulation:
 
 ### Schema-Based Type Discrimination
 
-Schemas act as TypeScript discriminated union tags. Use type guards for narrowing:
+Schemas act as TypeScript discriminated union tags. The canonical guard is the **Zod-factory** generated alongside each payload type — it validates schema name *and* payload shape in one call, which is what you need for any chain or datalake read.
 
 ```ts
-import { isPayloadOfSchemaType } from '@xyo-network/sdk-js'
+import { zodIsFactory } from '@xylabs/sdk-js'
 
-const isMove = isPayloadOfSchemaType<MovePayload>('network.xyo.rps.move')
+const isMove = zodIsFactory(MovePayloadZod)
 
-// Filter a mixed payload array
-const moves = allPayloads.filter(isMove) // typed as MovePayload[]
+// Filter a mixed payload array — typed as MovePayload[] AND validated
+const moves = allPayloads.filter(isMove)
 ```
 
-For runtime validation with Zod:
-
-```ts
-import { isPayloadOfZodType } from '@xyo-network/sdk-js'
-
-const isMove = isPayloadOfZodType<MovePayload>(MovePayloadZod, 'network.xyo.rps.move')
-```
+The SDK also exports `isPayloadOfSchemaType<T>(schema)` and `isPayloadOfZodType<T>(zod, schema)`. The first is a tag check only — it inspects `.schema` and trusts the rest. The second is equivalent to the Zod-factory above. Prefer the Zod-factory: one canonical pattern, no temptation to reach for the tag-only variant by accident.
 
 ---
 
