@@ -13,10 +13,10 @@ How to build user-facing dApp UIs idiomatically — wallet connection, display c
 
 ## Wallet Connection
 
-Use `ConnectAccountsStack` from `@xyo-network/react-chain-client` for the entire wallet connection UI. It handles the **full connection lifecycle** automatically: wallet detection, timeout, error display, the "install wallet" prompt, **and the post-connection state** (displaying the connected account).
+Use `ConnectAccountsStack` from `@xyo-network/react-chain-client-sdk` for the entire wallet connection UI. It handles the **full connection lifecycle** automatically: wallet detection, timeout, error display, the "install wallet" prompt, **and the post-connection state** (displaying the connected account).
 
 ```tsx
-import { ConnectAccountsStack } from '@xyo-network/react-chain-client'
+import { ConnectAccountsStack } from '@xyo-network/react-chain-client-sdk'
 
 <ConnectAccountsStack
   timeout={5000}
@@ -49,7 +49,7 @@ Do not use `Account.random()` for user-facing wallet connections — it is for t
 A typical XL1 dApp layout:
 
 ```tsx
-import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
+import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client-sdk'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 import { useState } from 'react'
 

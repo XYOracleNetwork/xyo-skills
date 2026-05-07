@@ -43,7 +43,7 @@ These are not edge cases — they cover most production dApp needs. The pattern 
 Wrap the protocol-level `pollForNewData` (defined in [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md)) in a hook with an interval:
 
 ```ts
-import { useProvidedGateway } from '@xyo-network/react-chain-client'
+import { useProvidedGateway } from '@xyo-network/react-chain-client-sdk'
 import { useEffect, useRef, useState } from 'react'
 import type { Payload, Schema } from '@xyo-network/sdk-js'
 
