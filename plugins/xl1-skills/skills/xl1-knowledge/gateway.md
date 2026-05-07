@@ -121,6 +121,33 @@ if (!viewer) return // gateway not ready or no viewer attached
 const currentBlock = Number(await viewer.block.currentBlockNumber())
 ```
 
+#### What `block.blockByNumber` (and friends) returns — hydration is shallow
+
+`viewer.block.blockByNumber(n)`, `blockByHash(h)`, `blocksByNumber(...)`, `blocksByHash(...)`, `currentBlock()` all return the block's **on-chain** payloads only:
+
+- The `BlockBoundWitness` itself
+- `TransactionBoundWitness` instances included in the block
+- `network.xyo.transfer` (sentinel/value transfer payloads)
+- `network.xyo.time`
+- Other system payloads listed in `AllowedBlockPayloadSchemas`
+
+They **do not fetch the off-chain application payloads referenced by each `TransactionBoundWitness.payload_hashes[]`**, even when the gateway has a datalake configured (browser in-page provider or Node `GatewayBuilder().dataLakeEndpoint(...)`). This is structural: the SDK's `addDataLakePayloads` step is bound-witness-local — it inspects only the immediate bound witness's `payload_hashes`, never recursing into nested `TransactionBoundWitness` instances. Both the block and transaction viewers share the same `dataLakeViewer`; the asymmetry is purely *which* bound witness's hashes get inspected.
+
+| Entrypoint | What gets hydrated from the datalake |
+|---|---|
+| `viewer.transaction.byHash(txHash)` | The wrapping `TransactionBoundWitness` **plus** the off-chain payloads it references — full hydration |
+| `viewer.block.blockByNumber(n)` (and the other block.* readers) | The block's on-chain payloads only — off-chain payloads referenced inside nested `TransactionBoundWitness` instances are **absent** |
+| `viewer.block.payloadsByHash(hashes)` | Off-chain payloads fetched by hash from the datalake — the explicit second step |
+
+**The two-step pattern.** When you walk blocks and need the off-chain content of a transaction in that block, do not assume `block[1]` already contains it. Pick one:
+
+1. For each `TransactionBoundWitness` in `block[1]`, call `viewer.transaction.byHash(txBw._hash)` — returns the tx with its off-chain payloads hydrated.
+2. Collect the payload hashes you care about from each `TransactionBoundWitness.payload_hashes[]` (filtering by the parallel `payload_schemas[]` is usually how you decide which ones to keep), then call `viewer.block.payloadsByHash(hashes)` to fetch them in one batch.
+
+Pattern 2 is the canonical shape for indexer block walks because it issues one combined datalake fetch per block instead of one per transaction. See [Chain Data Indexing — Step 3](../xl1-patterns/chain-data-indexing-protocol.md#step-3-query-by-schema) for the full block-walk recipe.
+
+**Tripwire.** A test in the SDK pins this shallow behavior. The intended end-state is deep hydration at the block level — a consistent return-value contract regardless of which entrypoint a caller used. When that lands, the test flips and these docs can be simplified back to "either entrypoint hydrates everything." Until then, teach the two-step pattern.
+
 ### Transaction Queries — `connection.viewer.transaction`
 
 | When you need to... | Use |
@@ -266,7 +293,7 @@ const viewer = await createRestDataLakeViewer('https://api.archivist.xyo.network
 const results = await viewer.get(hashes)
 ```
 
-For the typical read flow you do not need to construct a viewer at all — `gateway.connection.viewer.block.*` goes through `ViewerWithDataLake`, which resolves off-chain payloads from the datalake transparently. Construct one only when you have hashes from outside the gateway path.
+For the typical read flow you do not need to construct a viewer at all — `gateway.connection.viewer.transaction.byHash(...)` hydrates a transaction's off-chain payloads through `ViewerWithDataLake`, and `gateway.connection.viewer.block.payloadsByHash(...)` fetches off-chain payloads by hash through the same path. Block reads (`block.blockByNumber` and friends) return on-chain payloads only — pair them with `payloadsByHash` when walking blocks for application content. See [What `block.blockByNumber` returns](#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) above for the full hydration semantics. Construct a `RestDataLakeViewer` only when you have hashes from outside the gateway path.
 
 The wallet and dApp are independent datalake clients — they may point to different endpoints, or either may have no datalake at all. For the full breakdown (factory internals, two-client semantics, endpoint independence), see [Datalakes](datalakes.md).
 

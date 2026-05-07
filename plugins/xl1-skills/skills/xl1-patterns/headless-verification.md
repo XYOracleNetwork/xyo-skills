@@ -145,6 +145,57 @@ if (!tx) throw new Error('transaction not found after confirmation')
 
 ---
 
+## Verifying Derived State Through the Service
+
+The script in the previous section proves the chain accepted the transaction and that `connection.viewer` can read it back. That is the **chain edge** of the dApp. If the UI reads from a service (indexer REST API, GraphQL endpoint, WebSocket subscription) rather than calling `connection.viewer` directly, the chain edge is *not* the user-facing surface. The verification script must round-trip through the service too, or the path the user actually exercises remains untested.
+
+**The escape hatch this section forbids.** When the indexer's API returns empty for state you know is on chain, **do not** reach for `viewer.block.payloadsByHash([appPayloadHash])` to confirm "the data is really there" and call verification done. That synthesizes the indexer's output from chain primitives the indexer also has access to — it proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI takes. Bypassing it via direct hash lookups defeats the purpose.
+
+### The two-gate poll
+
+After `confirmSubmittedTransaction` returns, two watermarks must **both** advance past the tx's block before the service is expected to surface the data:
+
+1. **Chain availability gate** — `viewer.finalization.headNumber() >= blockContaining(txHash)`. The data is finalized on chain.
+2. **Indexer progress gate** — `indexer.lastIndexedBlock >= blockContaining(txHash)`. The indexer has walked past that block. Read this from the indexer's [progress endpoint](../xl1-patterns/chain-data-indexing-service.md#progress-endpoint).
+
+Once both gates pass, hit the application surface (e.g., `GET /api/games/:id`). If it returns the expected state, verification passes. If it doesn't, the indexer is **buggy, not behind** — and the verify script must fail loudly.
+
+```ts
+async function awaitIndexed(blockOfTx: number, timeoutMs = 5 * 60_000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const finalizedHead = Number(await runner.connection.viewer!.finalization.headNumber())
+    const status = await fetch('http://localhost:3001/api/indexer/status').then(r => r.json())
+    if (finalizedHead >= blockOfTx && status.lastIndexedBlock >= blockOfTx) return
+    await new Promise(r => setTimeout(r, 10_000))
+  }
+  throw new Error(
+    `Watermarks did not advance past block ${blockOfTx} within ${timeoutMs}ms ` +
+    `— either the chain or the indexer is stuck`,
+  )
+}
+
+// After submission + confirmation:
+await awaitIndexed(blockOfTx)
+
+// Now assert the application surface — the path the UI exercises
+const game = await fetch(`http://localhost:3001/api/games/${gameId}`).then(r => r.json())
+if (!game) {
+  throw new Error(
+    `Both watermarks past block ${blockOfTx} but service returned empty for game ${gameId} ` +
+    `— this is an indexer bug, not finalization lag`,
+  )
+}
+```
+
+The 5-minute budget mirrors `confirmSubmittedTransaction`'s Sequence-tuned shape (30 × 10s); for local devnets, drop to ~30 seconds. The polling loop **fails on timeout** — silently passing because "the indexer might catch up later" is the bug class this section exists to prevent.
+
+### What this requires of the indexer
+
+The two-gate poll only works if the indexer service exposes `lastIndexedBlock` programmatically. Every indexer service must expose a [progress endpoint](../xl1-patterns/chain-data-indexing-service.md#progress-endpoint) — that requirement is not a debugging affordance, it is part of the indexer service contract. Without it, the verify script cannot distinguish "indexer still working" from "indexer broken," and the agent will fall back to rationalizing the empty result as network slowness.
+
+---
+
 ## Cross-Environment Identity Guarantee
 
 Because the script derives via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` (and wraps with `buildSimpleXyoSignerV2`), the signing identity is bit-for-bit the identity a browser user would have after importing the same seed into the XYO Chrome wallet or MetaMask. After construction, `await runner.signer.address()` will equal `account.address` — that equality is the contract being verified. Implications:
@@ -169,6 +220,8 @@ If addresses do not line up, the script bypassed the canonical helpers — the f
 | Logging or committing the seed phrase | Catastrophic if the repo or CI logs are exposed | Treat the seed like any other secret; load via `dotenv/config`; never `console.log` |
 | Building one runner and pretending it represents both parties | Multi-party flows (commit-reveal, atomic exchange) need distinct signers to be meaningful | Derive each party from a different index; build a runner per signer |
 | Skipping the read-back step after submission | Confirms the chain accepted the tx, not that the data is queryable as the UI expects | Always round-trip via `connection.viewer` to assert the shape the UI will read |
+| Reporting "verified" when only `connection.viewer` was exercised but the UI reads from a service | The chain edge passes; the user-facing flow is untested. Indexer bugs that drop or mis-derive payloads slip through | Round-trip through the service surface the UI uses — see [Verifying Derived State Through the Service](#verifying-derived-state-through-the-service). Do not skip the indexer step just because `viewer.transaction.byHash` returns the data |
+| Confirming "the indexer just hasn't caught up" by reaching into the chain to fetch the payload manually | Synthesizes derived state from primitives the indexer also has access to — proves the agent can do the indexer's job, not that the indexer is doing it. "Sequence is slow" becomes a free pass | Wait for the two-gate poll (`finalization.headNumber()` AND `indexer.lastIndexedBlock` both past the tx block), then assert the service surface. If both gates pass and the service is empty, fail loudly — that is an indexer bug |
 | Pointing the script at `mainnet` for routine verification | Real funds, real chain pressure | Default to `sequence` in `.env`; require an explicit override for mainnet runs |
 | Calling `confirmSubmittedTransaction(txHash)` with no options on Sequence | Defaults are `attempts: 20`, `delay: 1_000` — a 20-second total budget. Sequence finalization regularly takes minutes, so the call rejects before the block lands | Pass `{ attempts: 30, delay: 10_000 }` (the verified-working baseline) or tune for your network's cadence |
 

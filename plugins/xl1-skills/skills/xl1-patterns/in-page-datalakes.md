@@ -88,7 +88,7 @@ function App() {
 
 ## Datalake Client Setup
 
-The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer` (its `ViewerWithDataLake` hydrates off-chain payloads transparently), so the dApp typically only needs a `RestDataLakeRunner` for writes. Create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
+The datalake is independent of the gateway — it is the dApp's own HTTP client. Most reads go through `gateway.connection.viewer`: `viewer.transaction.byHash(txHash)` hydrates a transaction's off-chain payloads transparently, and `viewer.block.payloadsByHash(hashes)` fetches off-chain payloads by hash through the same datalake. Block-level reads (`viewer.block.blockByNumber`, etc.) return on-chain payloads only — when walking blocks for application-schema content, pair them with `payloadsByHash`. See [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full hydration semantics. The dApp typically only needs a `RestDataLakeRunner` for writes; create a `RestDataLakeViewer` only if you have hashes from outside the gateway path that you need to fetch directly.
 
 ```ts
 import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
@@ -123,10 +123,10 @@ function GameHistory() {
     if (!viewer) return
 
     const loadHistory = async () => {
-      // Iterate the chain to find Result payloads. ViewerWithDataLake
-      // hydrates off-chain payloads transparently — no separate datalake
-      // call. For production: persist a checkpoint and walk only from
-      // there to head; see Chain Data Indexing for the rigorous pattern.
+      // Two-step walk: block reads return TransactionBoundWitness instances
+      // (on-chain only); fetch the referenced off-chain Result payloads via
+      // payloadsByHash. For production: persist a checkpoint and walk only
+      // from there to head; see Chain Data Indexing for the rigorous pattern.
       const head = Number(await viewer.finalization.headNumber())
       const startBlock = Math.max(0, head - HISTORY_LOOKBACK_BLOCKS)
       const results: GameResult[] = []
@@ -134,7 +134,20 @@ function GameHistory() {
         const hydrated = await viewer.block.blockByNumber(n)
         if (!hydrated) continue
         const [, payloads] = hydrated
-        results.push(...payloads.filter(isResultPayload))
+
+        const resultHashes: Hash[] = []
+        for (const p of payloads) {
+          if (!isTransactionBoundWitness(p)) continue
+          for (let i = 0; i < p.payload_hashes.length; i++) {
+            if (p.payload_schemas[i] === ResultSchema) {
+              resultHashes.push(p.payload_hashes[i])
+            }
+          }
+        }
+        if (resultHashes.length === 0) continue
+
+        const fetched = await viewer.block.payloadsByHash(resultHashes)
+        results.push(...fetched.filter(isResultPayload))
       }
       setGames(results)
     }
@@ -194,8 +207,8 @@ function Leaderboard() {
     if (!defaultGateway) return
 
     const loadLeaders = async () => {
-      // Walk finalized blocks for Result payloads. ViewerWithDataLake
-      // resolves off-chain payloads transparently as the walk proceeds.
+      // Two-step walk: block reads return TransactionBoundWitness instances;
+      // off-chain Result payloads are fetched explicitly via payloadsByHash.
       const viewer = defaultGateway.connection.viewer
       if (!viewer) return
       const head = Number(await viewer.finalization.headNumber())
@@ -205,7 +218,20 @@ function Leaderboard() {
         const hydrated = await viewer.block.blockByNumber(n)
         if (!hydrated) continue
         const [, payloads] = hydrated
-        results.push(...payloads.filter(isResultPayload))
+
+        const resultHashes: Hash[] = []
+        for (const p of payloads) {
+          if (!isTransactionBoundWitness(p)) continue
+          for (let i = 0; i < p.payload_hashes.length; i++) {
+            if (p.payload_schemas[i] === ResultSchema) {
+              resultHashes.push(p.payload_hashes[i])
+            }
+          }
+        }
+        if (resultHashes.length === 0) continue
+
+        const fetched = await viewer.block.payloadsByHash(resultHashes)
+        results.push(...fetched.filter(isResultPayload))
       }
 
       // Build leaderboard from raw payloads
@@ -301,7 +327,7 @@ Each browser session is isolated — payloads submitted by Player A are invisibl
 
 1. **Local archivist (`IndexedDbArchivist`)** — a browser-side archivist backed by IndexedDB. Updated immediately when this browser submits a payload. Provides instant UI feedback without a network round-trip, survives page refresh, and supports schema-based filtering and cursor pagination. Deduplication by data hash is built in — inserting the same payload twice is a no-op. Use the `inserted` event to drive React state updates. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
 
-2. **Remote datalake (dApp-configured)** — the dApp's own datalake endpoint, configured independently of the wallet's datalake. Use `RestDataLakeRunner` from `@xyo-network/xl1-sdk` for writes (every submit). For reads, **iterate the chain** via `gateway.connection.viewer.block.*` — the gateway's `ViewerWithDataLake` resolves off-chain payloads from the datalake transparently as you walk. Insert the freshly walked payloads into the local archivist — deduplication is automatic. Use `RestDataLakeViewer.get(hashes)` directly only when you have hashes from outside the gateway path. Because this is the dApp's own HTTP layer, writes work with or without a wallet, and reads work entirely without one.
+2. **Remote datalake (dApp-configured)** — the dApp's own datalake endpoint, configured independently of the wallet's datalake. Use `RestDataLakeRunner` from `@xyo-network/xl1-sdk` for writes (every submit). For reads, **iterate the chain** via `gateway.connection.viewer.block.*` to discover the on-chain `TransactionBoundWitness` instances, then fetch their referenced off-chain payloads through `viewer.block.payloadsByHash(hashes)` — that call goes through `ViewerWithDataLake` to resolve the bytes from the datalake. Insert the freshly walked payloads into the local archivist — deduplication is automatic. Use `RestDataLakeViewer.get(hashes)` directly only when you have hashes from outside the gateway path. Because this is the dApp's own HTTP layer, writes work with or without a wallet, and reads work entirely without one.
 
 ### Creating the local archivist
 
@@ -347,7 +373,7 @@ Steps 1 and 2 are dApp-controlled and work without a wallet. Step 3 requires the
 
 ### Poll flow
 
-On a 5-second interval, walk new finalized blocks since `lastSeenBlock`, filter by the application's schemas, and insert into the local archivist. The gateway's `ViewerWithDataLake` resolves off-chain payloads transparently, so a single block read returns hydrated payloads. Deduplication by data hash is automatic in the local archivist:
+On a 5-second interval, walk new finalized blocks since `lastSeenBlock` and pull in any application-schema payloads. Block reads return on-chain payloads only, so use the two-step pattern: scan each `TransactionBoundWitness` for matching schemas, then fetch the referenced off-chain payloads through `payloadsByHash`. Deduplication by data hash is automatic in the local archivist:
 
 ```ts
 const viewer = defaultGateway.connection.viewer
@@ -355,12 +381,26 @@ if (!viewer) return
 const head = Number(await viewer.finalization.headNumber())
 if (head <= lastSeenBlockRef.current) return
 
+const appSchemaSet = new Set<Schema>(appSchemas)
 const fresh: Payload[] = []
 for (let n = lastSeenBlockRef.current + 1; n <= head; n++) {
   const hydrated = await viewer.block.blockByNumber(n)
   if (!hydrated) continue
   const [, payloads] = hydrated
-  fresh.push(...payloads.filter(p => appSchemas.includes(p.schema as Schema)))
+
+  const offChainHashes: Hash[] = []
+  for (const p of payloads) {
+    if (!isTransactionBoundWitness(p)) continue
+    for (let i = 0; i < p.payload_hashes.length; i++) {
+      if (appSchemaSet.has(p.payload_schemas[i] as Schema)) {
+        offChainHashes.push(p.payload_hashes[i])
+      }
+    }
+  }
+  if (offChainHashes.length === 0) continue
+
+  const fetched = await viewer.block.payloadsByHash(offChainHashes)
+  fresh.push(...fetched)
 }
 await localArchivist.insert(fresh) // duplicates are ignored
 lastSeenBlockRef.current = head

@@ -71,7 +71,7 @@ The correct flow for application data:
 
 Custom payloads go in the `offChain` parameter because they are not `AllowedBlockPayload` system types. The chain stores the cryptographic reference (hash); the datalake stores the actual payload data.
 
-When querying transactions later, the gateway's `ViewerWithDataLake` can transparently resolve off-chain payloads from the datalake — but only if someone (wallet or dApp) stored them in a datalake that the viewer is configured to read from.
+When querying *that specific transaction* later via `viewer.transaction.byHash`, the gateway's `ViewerWithDataLake` transparently resolves the off-chain payloads from the datalake — but only if someone (wallet or dApp) stored them in a datalake that the viewer is configured to read from. Block-level reads do not do this; see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow).
 
 ---
 
@@ -98,7 +98,14 @@ The XL1 datalake is a content-addressed blob store. The chain is the index. The 
 1. **Iterate the chain** (via `gateway.connection.viewer.block.*` and `viewer.finalization.headNumber()`) to discover what payload hashes exist and in what order. The `TransactionBoundWitness.payload_hashes` on each transaction tells you which off-chain payloads the transaction references.
 2. **Fetch payload bytes by hash** via `viewer.get(hashes)`.
 
-In most cases the gateway does this for you: `viewer.block.blockByNumber(n)` and `viewer.block.payloadsByHash(hashes)` go through `ViewerWithDataLake`, which transparently resolves off-chain payloads from the datalake — that *is* the chain-iterate, hash-fetch pattern. Reach for `RestDataLakeViewer.get()` directly only when you have hashes from outside the gateway path (e.g., a hash you stored client-side or received out-of-band).
+The two-step pattern in practice splits across two viewer methods:
+
+- **`viewer.block.blockByNumber(n)`** is the chain-iterate step — it returns the block's on-chain payloads (`BlockBoundWitness`, `TransactionBoundWitness` instances, `transfer`, `time`). It does **not** fetch the off-chain payloads referenced inside those nested transactions.
+- **`viewer.block.payloadsByHash(hashes)`** is the hash-fetch step — it goes through `ViewerWithDataLake` and returns the off-chain payloads from the datalake.
+
+Walk the chain to discover what hashes exist (read each `TransactionBoundWitness.payload_hashes[]` and the parallel `payload_schemas[]` to filter), then call `payloadsByHash` to fetch them. See [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for why the asymmetry exists and the canonical block-walk shape. Reach for `RestDataLakeViewer.get()` directly only when you have hashes from outside the gateway path (e.g., a hash you stored client-side or received out-of-band).
+
+`viewer.transaction.byHash(txHash)` is the exception: it *does* hydrate its own off-chain payloads, because those hashes live in the transaction's own `payload_hashes[]` (which is what `addDataLakePayloads` actually inspects). Use it when you already have a tx hash and want everything that transaction wrapped in one round-trip.
 
 **Do not use `.next()` to browse a remote XL1 datalake.** The method exists on the standard `ArchivistFunctions` interface, but remote XL1 datalakes do not implement cursor pagination — `.next()` against a `RestDataLakeViewer` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee). It will appear to "work" on small datasets and silently scale poorly. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the chain-walk patterns that replace it.
 
@@ -161,6 +168,6 @@ interface RouterDataLakeConfig {
 
 ## Querying Datalake Data via Gateway
 
-The gateway exposes datalake data at the `/chain` endpoint using XYO archivist middleware. For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data — and `ViewerWithDataLake` transparently resolves off-chain payloads by hash, so a chain-side read like `viewer.block.blockByNumber(n)` returns hydrated payloads without you having to touch the datalake at all.
+The gateway exposes datalake data at the `/chain` endpoint using XYO archivist middleware. For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data — and `viewer.block.payloadsByHash(hashes)` goes through `ViewerWithDataLake` to fetch off-chain payloads from the datalake, so once you have hashes from a chain walk you do not have to touch the datalake client directly. Chain-side block reads (`viewer.block.blockByNumber(n)` and friends) return on-chain payloads only — see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full hydration semantics.
 
 When you do need to read the datalake directly, use `viewer.get(hashes)` with hashes you obtained from the chain. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the supported scan strategies.

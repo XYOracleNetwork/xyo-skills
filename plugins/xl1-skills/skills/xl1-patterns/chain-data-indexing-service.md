@@ -160,6 +160,39 @@ function startHttpApi(state: IndexerState, port: number) {
 
 ---
 
+## Progress Endpoint
+
+Every indexer service **must** expose its progress watermark through a programmatic endpoint. This is not a debugging affordance — it is part of the indexer service contract. Without it, downstream consumers cannot distinguish "still indexing" from "indexer broken," and headless verify scripts have no way to assert that the indexer has *processed* a given block (only that it *could have*). The chain-walk floor (`INDEXER_FLOOR_BLOCK`) is private to the indexer; the progress watermark is public.
+
+The canonical shape mounts under `/api/*` per the [Browser ↔ Service Wiring](browser-service-wiring.md) convention:
+
+```ts
+const HEALTHY_LAG_BLOCKS = 10  // tune per network — Sequence typically lags 1–3 blocks
+
+app.get('/api/indexer/status', (_req, res) => {
+  res.json({
+    lastIndexedBlock: state.lastProcessedBlock,
+    floorBlock: state.floorBlock,
+    finalizedHead: state.lastObservedFinalizedHead,
+    indexerHealthy:
+      state.lastObservedFinalizedHead - state.lastProcessedBlock < HEALTHY_LAG_BLOCKS,
+  })
+})
+```
+
+Field guarantees:
+
+- **`lastIndexedBlock`** — the highest block the indexer has fully processed (its `lastProcessedBlock` checkpoint). Monotonic across restarts. **This is the watermark verify scripts gate on.**
+- **`floorBlock`** — the indexer's `INDEXER_FLOOR_BLOCK` (captured during dApp creation; see [Floor Block](chain-data-indexing-protocol.md#floor-block)). Surfacing it lets clients sanity-check they are talking to the right deployment — a bounded indexer claiming `floorBlock: 0` is a misconfiguration.
+- **`finalizedHead`** — the most recent `viewer.finalization.headNumber()` the indexer has observed. Pair with `lastIndexedBlock` so a single fetch reveals whether the indexer is keeping up.
+- **`indexerHealthy`** — derived boolean: `finalizedHead - lastIndexedBlock < HEALTHY_LAG_BLOCKS`. Same predicate `/healthz` uses; expose both — `/api/indexer/status` for programmatic introspection by clients and verify scripts, `/healthz` for the load balancer or supervisor.
+
+For multi-indexer services, namespace per indexer: `/api/games/status`, `/api/leaderboard/status`, etc. Each indexer maintains its own `lastProcessedBlock` and reports its own watermark.
+
+This endpoint closes the loop with [Headless Verification — Verifying Derived State Through the Service](headless-verification.md#verifying-derived-state-through-the-service). The verify script polls `/api/indexer/status` until `lastIndexedBlock >= blockContaining(txHash)` *and* `viewer.finalization.headNumber() >= blockContaining(txHash)`, then asserts the application surface reflects the expected state. Without this endpoint, the verify script cannot make that assertion programmatically — and the agent falls back to rationalizing empty indexer results as "Sequence is slow." See [Debugging an Empty Indexer](#debugging-an-empty-indexer) for the diagnostic that replaces that rationalization.
+
+---
+
 ## Signer Indexers
 
 Some patterns require the indexer to **also act as an authoritative signer** — a market operator that signs settlement BoundWitnesses, an escrow service that releases held funds, an oracle that attests to off-chain facts.
@@ -194,6 +227,58 @@ The indexer is then both a *reader* (deriving state from the chain) and a *write
 | Exposing unfinalized state via the API | Clients see ghost state that disappears on reorg | API surface should reflect only finalized-block-derived state |
 | Blocking the sync loop on every API request | Indexer falls behind chain head when traffic spikes | Read API queries an in-memory snapshot; sync loop runs independently |
 | No lag monitoring | Indexer silently falls hours behind, clients get stale data without warning | Surface lag in `/healthz` and dashboards; alert when threshold exceeded |
+| Skipping the [progress endpoint](#progress-endpoint) ("the API is enough") | Verify scripts and downstream clients cannot distinguish "still indexing" from "indexer broken." The agent rationalizes empty results as network slowness | Mount `/api/<indexer>/status` returning `{ lastIndexedBlock, floorBlock, finalizedHead, indexerHealthy }` — it is part of the service contract |
+| Assuming `viewer.block.blockByNumber(n)` hydrates off-chain payloads inside the indexer | Indexer walks blocks, sees only `TransactionBoundWitness` instances, records nothing about the application payloads they reference. Indexer state stays empty even though the chain has the data | Use the two-step pattern from [Chain Data Indexing — Protocol § Via Block Walk](chain-data-indexing-protocol.md#via-block-walk--schema-discovery-from-the-chain): scan `payload_schemas[]`, gather matching `payload_hashes[]`, fetch via `viewer.block.payloadsByHash(hashes)`. See also [Debugging an Empty Indexer](#debugging-an-empty-indexer) below |
+
+---
+
+## Debugging an Empty Indexer
+
+When the indexer's API returns empty for state you know was submitted on chain, there is one specific failure mode to rule out before reaching for any other explanation: **the indexer assumed transparent block hydration**. The diagnostic is small and concrete; the rationalization it replaces is the one most likely to leak through unchallenged.
+
+### "It's just Sequence finalization lag" is a false-comfort hypothesis
+
+Sequence's slower finalization cadence is documented elsewhere in this skill stack (see [Gateway — `confirmSubmittedTransaction`](../xl1-knowledge/gateway.md#submitting-transactions) for the 30 × 10s budget). That makes "the indexer just hasn't caught up yet" feel like a plausible explanation when the indexer reports zero state. **It is not, when the watermark is past the tx block.**
+
+Read both watermarks before reaching for any network-slowness explanation:
+
+```ts
+const finalizedHead = Number(await viewer.finalization.headNumber())
+const status = await fetch('http://localhost:3001/api/indexer/status').then(r => r.json())
+const blockOfTx = /* block number from confirmSubmittedTransaction */
+```
+
+- If `finalizedHead < blockOfTx` — the chain has not finalized the tx's block yet. Wait. (This is the legitimate "Sequence is slow" case.)
+- If `status.lastIndexedBlock < blockOfTx` but `finalizedHead >= blockOfTx` — the chain is past the block but the indexer is not. Wait, but bound the wait: if the lag persists beyond the indexer's healthy threshold, treat it as a stuck indexer.
+- If both `finalizedHead >= blockOfTx` AND `status.lastIndexedBlock >= blockOfTx` — finalization is **not** the explanation. The indexer has walked past the block and chosen not to record anything from it. **That is a bug, not a wait.**
+
+### The diagnostic: chain vs. indexer view of the same block
+
+For the block that *should* contain the indexed payload, run both reads:
+
+```ts
+import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+
+// Chain view via block read
+const block = await viewer.block.blockByNumber(blockOfTx)
+const txs = (block?.[1] ?? []).filter(isTransactionBoundWitness)
+
+// Direct datalake fetch via the gateway
+const direct = await viewer.block.payloadsByHash([appPayloadHash])
+
+console.log('block payloads:', block?.[1].map(p => p.schema))
+console.log('block contains app payload:',
+  block?.[1].some(p => p._hash === appPayloadHash))  // → false
+console.log('payloadsByHash returns app payload:', direct.length > 0) // → true
+```
+
+If `direct` returns the application payload but `block[1]` does not contain it, the indexer is built around the assumption that block reads transparently hydrate off-chain payloads — they do not (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). The fix is the two-step pattern from [Chain Data Indexing — Protocol § Via Block Walk](chain-data-indexing-protocol.md#via-block-walk--schema-discovery-from-the-chain): scan each `TransactionBoundWitness.payload_schemas[]` for matching schemas, gather the parallel `payload_hashes[]`, then fetch via `viewer.block.payloadsByHash(hashes)`.
+
+### The agent failure mode this section exists to break
+
+The bias to name explicitly: when an indexer reports zero state, "Sequence finalization is just slow" is the explanation closest to hand because that warning is genuinely true *for `confirmSubmittedTransaction` budgets*. It does not apply once the watermark is past the tx block — finalization lag and an empty indexer are different failure modes with different evidence. Any time you catch yourself reasoning "well, Sequence finalization can take minutes, so maybe the indexer just hasn't caught up," check both watermarks first. If either is behind the tx block, wait. If both are past, run the diagnostic above. Do not commit and move on.
+
+This is also the canonical way to validate a fresh indexer deployment: submit one known transaction, capture its block number and the hash of its application payload, wait for both watermarks to pass, then assert the indexer's API returns the application state for that submission. If it does not — and the diagnostic shows the payload is reachable via `payloadsByHash` — the indexer needs the two-step pattern.
 
 ---
 
@@ -202,6 +287,8 @@ The indexer is then both a *reader* (deriving state from the chain) and a *write
 - [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md) — conceptual rules (scan strategies, schema design, anchoring choices)
 - [Chain Data Indexing — Protocol § Floor Block](chain-data-indexing-protocol.md#floor-block) — bounded vs. unbounded postures and the agentic capture step
 - [Chain Data Indexing — Client](chain-data-indexing-client.md) — browser-side consumption of indexer output
+- [Headless dApp Verification — Verifying Derived State Through the Service](headless-verification.md#verifying-derived-state-through-the-service) — the verify-script side of the progress endpoint contract
+- [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) — block hydration is shallow; this is what the indexer's two-step walk has to compensate for
 - [Inscription Substrate — Replay loop](inscription-substrate.md#replay-loop) — worked example of a global-walk indexer
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `buildSimpleXyoSignerV2`)
 - [Datalakes](../xl1-knowledge/datalakes.md) — datalake reads through the gateway viewer
