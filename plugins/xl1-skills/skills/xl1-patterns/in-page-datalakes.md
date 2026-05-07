@@ -49,7 +49,7 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 └───────────────────────────────────────────────────────────┘
 ```
 
-`GatewayProvider` (from `@xyo-network/react-chain-client`) combines the in-page gateway and wallet gateway into a single `defaultGateway`. It prefers the wallet when connected and falls back to the in-page gateway for read-only chain access. It requires `InPageGatewaysProvider` as an ancestor to supply the in-page gateways.
+`GatewayProvider` (from `@xyo-network/react-chain-client-sdk`) combines the in-page gateway and wallet gateway into a single `defaultGateway`. It prefers the wallet when connected and falls back to the in-page gateway for read-only chain access. It requires `InPageGatewaysProvider` as an ancestor to supply the in-page gateways.
 
 **Note:** `WalletGatewayProvider` is a separate, wallet-only provider with no in-page fallback. Use `GatewayProvider` (not `WalletGatewayProvider`) when your app needs read-only access without a wallet.
 
@@ -59,10 +59,10 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 
 ## Setup
 
-`GatewayProvider` requires `InPageGatewaysProvider` as an ancestor — it reads in-page gateways from that context. Both providers are in `@xyo-network/react-chain-client`:
+`GatewayProvider` requires `InPageGatewaysProvider` as an ancestor — it reads in-page gateways from that context. Both providers are in `@xyo-network/react-chain-client-sdk`:
 
 ```tsx
-import { InPageGatewaysProvider, GatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client'
+import { InPageGatewaysProvider, GatewayProvider, ConnectAccountsStack } from '@xyo-network/react-chain-client-sdk'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
@@ -112,7 +112,7 @@ The examples below use `datalakeRunner` for writes and `gateway.connection.viewe
 Components that only read chain data work immediately — no wallet prompt:
 
 ```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-client'
+import { useProvidedGateway } from '@xyo-network/react-chain-client-sdk'
 
 function GameHistory() {
   const { defaultGateway } = useProvidedGateway()

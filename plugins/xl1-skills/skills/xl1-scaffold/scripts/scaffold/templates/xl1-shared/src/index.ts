@@ -10,7 +10,7 @@
 // Avoid:
 //   - React components, hooks, browser globals
 //   - Express handlers, Node-only globals (fs, child_process, etc.)
-//   - @xyo-network/react-chain-client, @xyo-network/xl1-sdk imports — those belong in app/service
+//   - @xyo-network/react-chain-client-sdk, @xyo-network/xl1-sdk imports — those belong in app/service
 //
 // Other packages reference this via `"@<scope>/shared": "workspace:*"` in their
 // package.json dependencies, then `import { … } from '@<scope>/shared'`.

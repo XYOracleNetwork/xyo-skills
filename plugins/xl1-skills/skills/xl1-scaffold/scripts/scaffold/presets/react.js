@@ -8,7 +8,7 @@ const reactTemplateOverrides = {
             'react-dom',
             '@xyo-network/sdk-js',
             '@xyo-network/xl1-sdk',
-            '@xyo-network/react-chain-client',
+            '@xyo-network/react-chain-client-sdk',
             '@xyo-network/archivist-storage',
             '@xyo-network/archivist-indexeddb',
         ],
