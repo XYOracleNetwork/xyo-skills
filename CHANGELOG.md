@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.10](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.9...v1.1.10) (2026-05-07)
+
+
+### Features
+
+* release block hydration semantics + indexer round-trip DoD ([#65](https://github.com/XYOracleNetwork/xl1-skills/issues/65)) ([a9c57a4](https://github.com/XYOracleNetwork/xl1-skills/commit/a9c57a4027805d6a9a22fb682b4ac6e06c24203d))
+* **skills:** block hydration semantics + mandatory indexer round-trip ([#64](https://github.com/XYOracleNetwork/xl1-skills/issues/64)) ([83829ef](https://github.com/XYOracleNetwork/xl1-skills/commit/83829ef831411d6437e4d20b3a35bf9b6c4d9c8b))
+* **skills:** make indexer service round-trip mandatory in dApp DoD ([9f6e246](https://github.com/XYOracleNetwork/xl1-skills/commit/9f6e246ab334a96cb671a8ce00a9267463467347))
+
 ## [1.1.9](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.8...v1.1.9) (2026-05-06)
 
 
