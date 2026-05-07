@@ -23,6 +23,7 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] Datalake clients are constructed with the `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` factories from `@xyo-network/xl1-sdk` — not by calling `.create({ context, endpoint })` directly
 - [ ] Off-chain payloads are inserted into the dApp's datalake **before** submitting the transaction — the wallet does not do this automatically
 - [ ] The dApp does not assume the wallet's datalake covers its persistence needs — wallet and dApp are independent datalake clients
+- [ ] Block-walk indexers do not assume `viewer.block.blockByNumber(n)` hydrates off-chain payloads — they scan each `TransactionBoundWitness` for matching `payload_schemas[]`, gather the parallel `payload_hashes[]`, and fetch via `viewer.block.payloadsByHash(hashes)`. (Block reads are on-chain only; only `viewer.transaction.byHash` hydrates off-chain payloads in one shot.)
 
 **Source:** [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake), [Datalakes](../xl1-knowledge/datalakes.md)
 
@@ -110,7 +111,9 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] Domain functions accept a runner/gateway as a parameter so the same code runs in both browser and Node contexts
 - [ ] The signer is derived via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` + `buildSimpleXyoSignerV2` — addresses match what MetaMask / XYO extension show on the same seed
 - [ ] Multi-party flows derive distinct signers (`derivePath('0')`, `derivePath('1')`, …) and build one runner per signer
-- [ ] The script reads back through `connection.viewer` after submission — confirming the data shape the UI will render, not just that the tx was accepted
+- [ ] The script reads back through `connection.viewer` after submission — confirming the chain accepted the tx and the data shape is correct. This proves the **chain edge**; if the UI also reads from a service surface, see the next two items
+- [ ] If the dApp exposes derived state through a service (REST API, GraphQL, WebSocket — anything the UI calls that is not directly `connection.viewer`), the verification script also reads back through that service surface. **Do not synthesize derived state via direct `viewer.block.payloadsByHash` lookups in the verify script** — that proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI exercises
+- [ ] Before declaring "the service is just behind, not buggy," the script asserts BOTH `viewer.finalization.headNumber() ≥ blockContaining(txHash)` AND `indexer.lastIndexedBlock ≥ blockContaining(txHash)` (read from the indexer's progress endpoint — see [Chain Data Indexing — Service § Progress Endpoint](chain-data-indexing-service.md#progress-endpoint)). If both watermarks are past the tx block and the service still returns empty, that is a bug. "Sequence is slow" is not a valid explanation when both watermarks have advanced
 - [ ] `confirmSubmittedTransaction` calls pass explicit options for non-local networks (e.g., `{ attempts: 30, delay: 10_000 }` for Sequence) — defaults time out before finalization
 - [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
 - [ ] Script defaults to a non-mainnet network (e.g., `XL1_NETWORK=sequence`) — explicit override required to point at mainnet

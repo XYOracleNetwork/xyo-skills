@@ -255,12 +255,16 @@ The `byOwner` side-index is maintained alongside `artifacts` during replay. It c
 
 ### Replay loop
 
-A hydrated block is a tuple `[BlockBoundWitness, Payload[]]` where the payloads array contains both system payloads and the `TransactionBoundWitness` instances that introduced application data. The `TransactionBoundWitness` is the structural carrier of authorship — its `from` field is the signer, and its `payload_hashes[]` lists the payload hashes it wrapped. The replay does a two-pass scan: build a hash→signer index from the transactions in the block, then attribute application payloads through that index.
+A hydrated block is a tuple `[BlockBoundWitness, Payload[]]` where the payloads array contains the block's **on-chain** payloads only — system payloads and the `TransactionBoundWitness` instances that introduced application data. The off-chain inscription / transfer payloads referenced by each `TransactionBoundWitness.payload_hashes[]` are **not** in `payloads`, even with a datalake configured (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
+
+The `TransactionBoundWitness` is the structural carrier of authorship — its `from` field is the signer, its `payload_hashes[]` lists the wrapped payload hashes, and its parallel `payload_schemas[]` tells you what each one is *without* fetching it. The replay does a three-pass scan: build a hash→signer index from the transactions in the block, fetch the off-chain inscription/transfer payloads via `payloadsByHash`, then attribute the fetched payloads through the index.
 
 ```ts
 import type { XyoGateway } from '@xyo-network/xl1-sdk'
 import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
 import type { Address, Hash } from '@xyo-network/sdk-js'
+
+const SUBSTRATE_SCHEMAS = new Set<string>([InscriptionSchema, TransferSchema])
 
 async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
   const viewer = gateway.connection.viewer
@@ -275,20 +279,33 @@ async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
     if (!hydrated) continue
     const [, payloads] = hydrated
 
-    // Pass 1: index every payload hash to the address that wrapped it
+    // Pass 1: index every off-chain hash to its signer, and gather the hashes
+    // whose schema this indexer cares about. payload_hashes[i] / payload_schemas[i]
+    // are parallel arrays — read both together.
     const hashToSigner = new Map<Hash, Address>()
+    const offChainHashes: Hash[] = []
     for (const p of payloads) {
-      if (isTransactionBoundWitness(p)) {
-        for (const referencedHash of p.payload_hashes) {
-          hashToSigner.set(referencedHash, p.from)
+      if (!isTransactionBoundWitness(p)) continue
+      for (let i = 0; i < p.payload_hashes.length; i++) {
+        const hash = p.payload_hashes[i]
+        hashToSigner.set(hash, p.from)
+        if (SUBSTRATE_SCHEMAS.has(p.payload_schemas[i])) {
+          offChainHashes.push(hash)
         }
       }
     }
 
-    // Pass 2: process inscription/transfer payloads with structural authorship
-    for (const p of payloads) {
+    // Pass 2: fetch the off-chain payloads from the datalake by hash. This is
+    // the step that actually retrieves the inscription/transfer bodies — the
+    // block reader does not do it for you.
+    const offChain = offChainHashes.length > 0
+      ? await viewer.block.payloadsByHash(offChainHashes)
+      : []
+
+    // Pass 3: process inscription/transfer payloads with structural authorship
+    for (const p of offChain) {
       const signer = hashToSigner.get(p._hash)
-      if (!signer) continue // not wrapped by a transaction in this block
+      if (!signer) continue // hash mismatch — defensive only
 
       if (isInscriptionPayload(p)) {
         registerArtifact(state, p, signer, n)
@@ -302,7 +319,7 @@ async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
 }
 ```
 
-If `hashToSigner.get(p._hash)` returns `undefined`, the payload was not wrapped by a transaction in this block (e.g., it's a system payload). Drop it — only transaction-wrapped payloads carry application authorship.
+The `hashToSigner` index covers every off-chain hash a transaction in this block referenced; the schema filter in pass 1 keeps the `payloadsByHash` call narrow to substrate-relevant payloads only.
 
 ### A note on `tx.from` vs `transfer.from`
 
@@ -379,9 +396,11 @@ Four browse paths, picked by what the UI needs and what infrastructure is availa
 
 ### All inscriptions of a given content type
 
-Walk the chain and filter by schema. `ViewerWithDataLake` hydrates off-chain payloads transparently, so each block read returns hydrated inscription payloads — no separate datalake call. For an explorer-style "all inscriptions ever" view, persist `lastSeenBlock` between sessions so each load only walks new blocks; for a recent-window view, walk from `head - WINDOW`.
+Walk the chain and use the two-step pattern: each block read returns the on-chain `TransactionBoundWitness` instances, you scan their `payload_schemas[]` for the inscription schema, then fetch the matching `payload_hashes[]` from the datalake via `payloadsByHash`. Inscription payload bodies live in the datalake — they are not in `block[1]` (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). For an explorer-style "all inscriptions ever" view, persist `lastSeenBlock` between sessions so each load only walks new blocks; for a recent-window view, walk from `head - WINDOW`.
 
 ```ts
+import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+
 const viewer = defaultGateway.connection.viewer
 if (!viewer) throw new Error('Gateway has no viewer attached')
 
@@ -391,7 +410,20 @@ for (let n = lastSeenBlock + 1; n <= head; n++) {
   const hydrated = await viewer.block.blockByNumber(n)
   if (!hydrated) continue
   const [, payloads] = hydrated
-  inscriptions.push(...payloads.filter(isInscriptionPayload))
+
+  const inscriptionHashes: Hash[] = []
+  for (const p of payloads) {
+    if (!isTransactionBoundWitness(p)) continue
+    for (let i = 0; i < p.payload_hashes.length; i++) {
+      if (p.payload_schemas[i] === InscriptionSchema) {
+        inscriptionHashes.push(p.payload_hashes[i])
+      }
+    }
+  }
+  if (inscriptionHashes.length === 0) continue
+
+  const fetched = await viewer.block.payloadsByHash(inscriptionHashes)
+  inscriptions.push(...fetched.filter(isInscriptionPayload))
 }
 ```
 
