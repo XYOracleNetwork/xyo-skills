@@ -23,6 +23,7 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] Datalake clients are constructed with the `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` factories from `@xyo-network/xl1-sdk` — not by calling `.create({ context, endpoint })` directly
 - [ ] Off-chain payloads are inserted into the dApp's datalake **before** submitting the transaction — the wallet does not do this automatically
 - [ ] The dApp does not assume the wallet's datalake covers its persistence needs — wallet and dApp are independent datalake clients
+- [ ] Block-walk indexers do not assume `viewer.block.blockByNumber(n)` hydrates off-chain payloads — they scan each `TransactionBoundWitness` for matching `payload_schemas[]`, gather the parallel `payload_hashes[]`, and fetch via `viewer.block.payloadsByHash(hashes)`. (Block reads are on-chain only; only `viewer.transaction.byHash` hydrates off-chain payloads in one shot.)
 
 **Source:** [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake), [Datalakes](../xl1-knowledge/datalakes.md)
 

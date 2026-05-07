@@ -302,13 +302,19 @@ const tx = await gateway.connection.viewer?.transaction.byHash(txHash)
 // tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
 ```
 
-The gateway's `ViewerWithDataLake` transparently resolves off-chain payloads — you get complete hydrated transactions without querying the datalake separately.
+When called this way, the gateway's `ViewerWithDataLake` transparently resolves the transaction's off-chain payloads — you get a complete hydrated transaction in a single round-trip without querying the datalake separately. **This is specific to `transaction.byHash`** — block-level reads do not behave the same way; see below.
 
 ### Via Block Walk — Schema Discovery From the Chain
 
-When you need to find all payloads of a given type regardless of which transaction included them, walk the chain and filter by schema. The gateway's `ViewerWithDataLake` resolves off-chain payloads by hash transparently, so each block read returns hydrated payloads — you do not need to call the datalake separately:
+When you need to find all payloads of a given type regardless of which transaction included them, walk the chain and use a two-step pattern: each block read returns the on-chain `TransactionBoundWitness` instances, and you fetch the referenced off-chain payloads by hash in a follow-up call.
+
+`viewer.block.blockByNumber(n)` returns the block's **on-chain payloads only** — `BlockBoundWitness`, `TransactionBoundWitness` instances, `transfer`, `time`. The off-chain payloads referenced in each `TransactionBoundWitness.payload_hashes[]` are **not** included, even with a datalake configured. See [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for why.
+
+To find application-schema payloads from a block walk, scan each transaction's parallel `payload_hashes[]` / `payload_schemas[]` arrays for the schemas you care about, then fetch the matching hashes via `viewer.block.payloadsByHash(hashes)`:
 
 ```ts
+import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+
 const viewer = gateway.connection.viewer
 if (!viewer) throw new Error('Gateway has no viewer attached')
 
@@ -318,7 +324,22 @@ for (let n = lastSeenBlock + 1; n <= head; n++) {
   const hydrated = await viewer.block.blockByNumber(n)
   if (!hydrated) continue
   const [, payloads] = hydrated
-  moves.push(...payloads.filter(p => p.schema === MoveSchema))
+
+  // Pass 1: scan TransactionBoundWitness instances for the target schema
+  const moveHashes: Hash[] = []
+  for (const p of payloads) {
+    if (!isTransactionBoundWitness(p)) continue
+    for (let i = 0; i < p.payload_hashes.length; i++) {
+      if (p.payload_schemas[i] === MoveSchema) {
+        moveHashes.push(p.payload_hashes[i])
+      }
+    }
+  }
+  if (moveHashes.length === 0) continue
+
+  // Pass 2: fetch the off-chain payloads from the datalake by hash
+  const fetched = await viewer.block.payloadsByHash(moveHashes)
+  moves.push(...fetched)
 }
 ```
 
@@ -693,7 +714,7 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 | Indexing your dApp's own schemas? | **Bounded** — capture `INDEXER_FLOOR_BLOCK` during development, iterate from there. See [Floor Block](#floor-block) |
 | Indexing pre-existing schemas (transfers, substrate, older protocols)? | **Unbounded** — set `INDEXER_FLOOR_BLOCK=0`, iterate from genesis. Substrate-shaped protocols additionally require ordered replay and a permanently-zero floor |
 | Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
-| Just need payloads by type? | Walk blocks via `viewer.block.blockByNumber()` from `lastSeen + 1 → finalization.headNumber()` and filter by `payload.schema`. `ViewerWithDataLake` hydrates off-chain payloads transparently |
+| Just need payloads by type? | Two-step walk: `viewer.block.blockByNumber()` returns on-chain `TransactionBoundWitness` instances; scan their `payload_schemas[]` for your schema, gather the parallel `payload_hashes[]`, then fetch via `viewer.block.payloadsByHash(hashes)`. Block reads do **not** auto-hydrate off-chain payloads — see [Via Block Walk](#via-block-walk--schema-discovery-from-the-chain) |
 | Need a specific payload? | Use `connection.viewer.block.payloadsByHash(hashes)` (or `RestDataLakeViewer.get(hashes)` for hashes obtained outside the gateway path) |
 | Real-time updates with transient OK? | Poll `connection.viewer.block.currentBlockNumber()` on an interval |
 | Real-time updates that drive durable state? | Poll `connection.viewer.finalization.headNumber()` — never derive state from unfinalized blocks |
