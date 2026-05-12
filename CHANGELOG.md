@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.11](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.10...v1.1.11) (2026-05-12)
+
+
+### Features
+
+* add multi-source skills sync to xyo-skills mirror ([#70](https://github.com/XYOracleNetwork/xl1-skills/issues/70)) ([bc504a2](https://github.com/XYOracleNetwork/xl1-skills/commit/bc504a29ee268b743266466ac26f9730c272fe90))
+* release multi-source skills sync to xyo-skills ([#71](https://github.com/XYOracleNetwork/xl1-skills/issues/71)) ([25946f6](https://github.com/XYOracleNetwork/xl1-skills/commit/25946f67ef502ede82569b95dec68b7321ff12d4))
+
 ## [1.1.10](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.9...v1.1.10) (2026-05-07)
 
 
