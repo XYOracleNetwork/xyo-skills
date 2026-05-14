@@ -71,4 +71,4 @@ Once installed, Claude automatically activates the relevant skills based on your
 
 ## License
 
-MIT
+[LGPL-3.0-only](../../LICENSE)

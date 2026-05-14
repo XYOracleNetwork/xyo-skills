@@ -56,4 +56,4 @@ For local development, editing skills, building the scaffold package, and the re
 
 ## License
 
-MIT
+[LGPL-3.0-only](./LICENSE)
