@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.12](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.11...v1.1.12) (2026-05-14)
+
+
+### Bug Fixes
+
+* correct license metadata to LGPL-3.0 ([#75](https://github.com/XYOracleNetwork/xl1-skills/issues/75)) ([6004338](https://github.com/XYOracleNetwork/xl1-skills/commit/6004338896cd5bab2d2cac6d9ed2c264256bb0cd))
+* correct license metadata to LGPL-3.0 and split README ([#76](https://github.com/XYOracleNetwork/xl1-skills/issues/76)) ([cbfc0b3](https://github.com/XYOracleNetwork/xl1-skills/commit/cbfc0b3e3faa18cc14454b48c629937833daf0d6))
+
 ## [1.1.11](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.10...v1.1.11) (2026-05-12)
 
 
