@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.13](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.12...v1.1.13) (2026-05-23)
+
+
+### Features
+
+* flatten plugin layout to repo root for Marketplace compatibility ([#80](https://github.com/XYOracleNetwork/xl1-skills/issues/80)) ([a151edf](https://github.com/XYOracleNetwork/xl1-skills/commit/a151edfb040e65ce276e4f69d5da337842ea0f3f))
+
 ## [1.1.12](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.11...v1.1.12) (2026-05-14)
 
 
