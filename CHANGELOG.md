@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.14](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.13...v1.1.14) (2026-05-23)
+
+
+### Features
+
+* migrate to xyo-skills as the canonical repo ([d111241](https://github.com/XYOracleNetwork/xyo-skills/commit/d111241b87a82733519632d1711ea423761d857b))
+
 ## [1.1.13](https://github.com/XYOracleNetwork/xl1-skills/compare/v1.1.12...v1.1.13) (2026-05-23)
 
 
