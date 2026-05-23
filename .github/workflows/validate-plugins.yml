@@ -130,7 +130,7 @@ jobs:
       - name: Install workspace deps
         run: corepack pnpm@10 install --frozen-lockfile
 
-      - name: Build scaffold (mirrors into plugins/xl1-skills/bin/)
+      - name: Build scaffold (mirrors into skills/xl1-scaffold/scripts/scaffold/)
         run: corepack pnpm@10 -w run build
 
       - name: Run scaffold tests
@@ -138,7 +138,7 @@ jobs:
 
       - name: Fail if scaffold runtime drifted from source
         run: |
-          SYNC_PATH=plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold
+          SYNC_PATH=skills/xl1-scaffold/scripts/scaffold
           if ! git diff --exit-code "$SYNC_PATH"; then
             echo ""
             echo "✗ $SYNC_PATH is out of sync with packages/xl1-scaffold/."

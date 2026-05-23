@@ -6,19 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo serves three roles:
 
-1. **Claude Code plugin marketplace** — packages a 6-layer XL1/XYO skill stack as an installable plugin (`plugins/xl1-skills/`)
+1. **Claude Code plugin marketplace** — packages a 6-layer XL1/XYO skill stack as an installable plugin (this repo *is* the plugin — `.claude-plugin/` and `skills/` at the root)
 2. **Scaffold tool** — `packages/xl1-scaffold/` scaffolds a new XL1 app (React dApp or Node service) with the correct dep graph, tsconfig, ESLint, and smoke test wired up
 3. **Evaluation test bed** — `src/` is where a rock-paper-scissors game gets built to test the skill stack's quality
+
+The repo root is dual-purpose: plugin content (`.claude-plugin/`, `skills/`) sits alongside build infra (`packages/`, `pnpm-workspace.yaml`, `package.json`). Claude Code only loads the former at install time; the latter rides along on `git clone` but is otherwise invisible to the plugin runtime. Don't try to "tidy" the build infra into a subdirectory — it stays at the root so the scaffold's pnpm workspace works.
 
 The skills themselves are the primary artifact. When implementation reveals incorrect or misleading guidance in a skill, update the skill file — not just the application code.
 
 ## Plugin Architecture
 
-This repo follows the Claude Code plugin marketplace pattern:
+This repo follows the Claude Code plugin marketplace pattern with a **flat layout** — the repo root is the plugin:
 
-- **`.claude-plugin/marketplace.json`** — marketplace manifest (registers all plugins)
-- **`plugins/xl1-skills/`** — the main plugin, with its own `.claude-plugin/plugin.json`
-- **`plugins/xl1-skills/skills/`** — 6 skill layers using progressive loading
+- **`.claude-plugin/marketplace.json`** — marketplace manifest, `source: "./"`
+- **`.claude-plugin/plugin.json`** — plugin manifest (version source of truth)
+- **`skills/`** — 6 skill layers using progressive loading
 
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
@@ -55,7 +57,7 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 **Releases:** Automated by [release-please](https://github.com/googleapis/release-please).
 - Use conventional commit prefixes (`feat:`, `fix:`, `docs:`, `chore:`, `feat!:` for breaking) — release-please reads them for `CHANGELOG.md` content. Versioning is configured `always-bump-patch`, so any merge to `main` produces a release; the prefix only affects the changelog text.
 - `lint-pr-title.yml` enforces conventional titles on PRs into both `main` (only `feat:` / `fix:` accepted) and `develop` (any conventional type — `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.). The develop-side lint matters because feature-PR squash commits travel to `main` via the integration PR's merge commit, and release-please scans those individual subjects when building the changelog.
-- To ship: PR `develop` → `main` with a `feat:` or `fix:` title and merge using the **"Create a merge commit"** option (not squash). Release-please then opens a Release PR against `main` that bumps `plugins/xl1-skills/.claude-plugin/plugin.json` (source of truth), both version fields in `.claude-plugin/marketplace.json`, `version.txt`, and the manifest. Merging that PR tags and publishes the release.
+- To ship: PR `develop` → `main` with a `feat:` or `fix:` title and merge using the **"Create a merge commit"** option (not squash). Release-please then opens a Release PR against `main` that bumps `.claude-plugin/plugin.json` (source of truth), both version fields in `.claude-plugin/marketplace.json`, `version.txt`, and the manifest. Merging that PR tags and publishes the release.
 - After release, `sync-main-to-develop.yml` auto-opens **and auto-merges** a `main → develop` PR using the **merge-commit** method. Do not squash this PR if you ever merge it manually — squashing breaks the ancestry link between `main` and `develop` and makes them drift over time.
 - Release-please uses a fine-grained PAT (`secrets.RELEASE_PLEASE_TOKEN`) so its release PRs trigger downstream workflows; without it, the PR's checks would never report and branch protection would block the merge. Track PAT expiration.
 - Don't bump versions by hand — release-please owns those files. Anchored at `b1bc7eb`; older `feat:`/`fix:` commits are not rolled forward.
@@ -68,7 +70,7 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 To validate plugin structure locally:
 ```shell
 jq empty .claude-plugin/marketplace.json
-jq empty plugins/xl1-skills/.claude-plugin/plugin.json
+jq empty .claude-plugin/plugin.json
 ```
 
 **Workspace layout** (pnpm workspaces):
@@ -101,9 +103,9 @@ pnpm test:watch               # watch mode
 pnpm lint:fix                 # auto-fix lint issues
 ```
 
-**Scaffold build chain:** `clean → tsc → copy-templates → sync-to-plugin` compiles TS, copies template files, and writes the runtime into `plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold/`. CI fails if committed source drifts from the synced runtime.
+**Scaffold build chain:** `clean → tsc → copy-templates → sync-to-plugin` compiles TS, copies template files, and writes the runtime into `skills/xl1-scaffold/scripts/scaffold/`. CI fails if committed source drifts from the synced runtime.
 
-**Editing skills:** After modifying any file under `plugins/xl1-skills/skills/`, run `/reload-plugins` in your Claude Code session — there is no file watcher.
+**Editing skills:** After modifying any file under `skills/`, run `/reload-plugins` in your Claude Code session — there is no file watcher.
 
 ## Key Conventions (from the skills)
 

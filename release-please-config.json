@@ -14,7 +14,7 @@
       "extra-files": [
         {
           "type": "json",
-          "path": "plugins/xl1-skills/.claude-plugin/plugin.json",
+          "path": ".claude-plugin/plugin.json",
           "jsonpath": "$.version"
         },
         {
