@@ -1,4 +1,4 @@
-# Sync `plugins/xl1-skills/skills/` to the public `XYOracleNetwork/xyo-skills`
+# Sync `skills/` to the public `XYOracleNetwork/xyo-skills`
 # mirror so the skills are installable via `npx skills add
 # XYOracleNetwork/xyo-skills` (skills.sh CLI).
 #
@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'plugins/xl1-skills/skills/**'
+      - 'skills/**'
       - 'scripts/validate-skills.mjs'
       - 'scripts/sync-skills.sh'
       - '.github/workflows/sync-skills.yml'
@@ -38,7 +38,7 @@ concurrency:
 
 env:
   TARGET_REPO: XYOracleNetwork/xyo-skills
-  SOURCE_DIR: plugins/xl1-skills/skills
+  SOURCE_DIR: skills
   SOURCE_NAME: xl1-skills
 
 jobs:

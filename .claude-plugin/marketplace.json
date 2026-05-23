@@ -16,7 +16,7 @@
       "author": {
         "name": "XYO Network"
       },
-      "source": "./plugins/xl1-skills",
+      "source": "./",
       "category": "developer-tools",
       "tags": [
         "xl1",

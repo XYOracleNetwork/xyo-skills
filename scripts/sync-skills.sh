@@ -9,7 +9,7 @@
 #
 # Required env:
 #   SOURCE_DIR  — relative or absolute path to the source's skills tree
-#                 (e.g., "plugins/xl1-skills/skills")
+#                 (e.g., "skills")
 #   SOURCE_NAME — unique identifier for this source; appears in the manifest
 #                 filename. Must match ^[a-z0-9][a-z0-9-]*$.
 #   TARGET_DIR  — path to the target repo's working copy (must already exist

@@ -9,8 +9,8 @@ Audits every code snippet in the XL1 skills against this repo's import-hygiene r
 
 ## Scope
 
-- `plugins/xl1-skills/skills/**/*.md` — all skill markdown
-- `plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold/templates/**` — scaffold templates
+- `skills/**/*.md` — all skill markdown
+- `skills/xl1-scaffold/scripts/scaffold/templates/**` — scaffold templates
 
 Ignore everything else. Do **not** edit application code under `src/`.
 
@@ -86,7 +86,7 @@ Spawn one `general-purpose` agent per requested check, all in a single message. 
 
 ### Findings (<count>)
 - <one-line summary>
-  - plugins/xl1-skills/skills/<file>.md:<line> — `<current>` → `<recommended>`
+  - skills/<file>.md:<line> — `<current>` → `<recommended>`
 
 ### Unverified
 - <package> — <reason>

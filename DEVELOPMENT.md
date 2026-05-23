@@ -11,7 +11,7 @@ For contributors editing skill files, there are three ways to load the plugin fr
 Load the plugin for a single session — no installation required:
 
 ```shell
-claude --plugin-dir ./plugins/xl1-skills
+claude --plugin-dir ./
 ```
 
 ### Option 2: Local Marketplace (interactive)
@@ -45,7 +45,7 @@ Then run `/plugin install xl1-skills` in your next session.
 
 ### Building the Scaffold Package (required for the `xl1-scaffold` skill)
 
-The `xl1-scaffold` skill invokes a compiled CLI bundled under `plugins/xl1-skills/skills/xl1-scaffold/scripts/scaffold/`. That directory is **generated** from the TypeScript source at `packages/xl1-scaffold/`; it is not hand-authored. Before testing the scaffold skill locally, build it at least once:
+The `xl1-scaffold` skill invokes a compiled CLI bundled under `skills/xl1-scaffold/scripts/scaffold/`. That directory is **generated** from the TypeScript source at `packages/xl1-scaffold/`; it is not hand-authored. Before testing the scaffold skill locally, build it at least once:
 
 ```shell
 corepack enable                      # first time only — ensures pnpm 10.x is available
@@ -55,13 +55,13 @@ corepack pnpm@10 -w run build
 
 The build chain (`clean → tsc → copy-templates → sync-to-plugin`) compiles the TS source, mirrors the raw template files, and writes the resulting runtime into the skill directory.
 
-Rebuild after any change to `packages/xl1-scaffold/src/` or `packages/xl1-scaffold/templates/`. CI fails the PR if committed source drifts from the synced runtime (`git diff --exit-code plugins/xl1-skills/skills/xl1-scaffold/scripts`).
+Rebuild after any change to `packages/xl1-scaffold/src/` or `packages/xl1-scaffold/templates/`. CI fails the PR if committed source drifts from the synced runtime (`git diff --exit-code skills/xl1-scaffold/scripts`).
 
 ### Edit-Reload Cycle
 
 Claude Code loads skill content at startup. After editing any skill file, you must reload for changes to take effect:
 
-1. Edit a `SKILL.md` or sub-file in `plugins/xl1-skills/skills/`
+1. Edit a `SKILL.md` or sub-file in `skills/`
 2. Run `/reload-plugins` in your Claude Code session
 3. Changes are active for the rest of the session
 
@@ -69,10 +69,10 @@ There is no file watcher — `/reload-plugins` is required after every edit.
 
 ### Skill File Structure
 
-Each skill is a directory under `plugins/xl1-skills/skills/` containing a `SKILL.md` router and topic sub-files:
+Each skill is a directory under `skills/` containing a `SKILL.md` router and topic sub-files:
 
 ```
-plugins/xl1-skills/skills/
+skills/
 ├── xy-development/
 │   ├── SKILL.md          ← router (frontmatter + table of contents)
 │   ├── typescript.md
@@ -109,7 +109,7 @@ The CI workflow validates marketplace and plugin manifests. Run locally:
 
 ```shell
 jq empty .claude-plugin/marketplace.json
-jq empty plugins/xl1-skills/.claude-plugin/plugin.json
+jq empty .claude-plugin/plugin.json
 ```
 
 ## Releases
@@ -121,4 +121,4 @@ Versioning is automated by [release-please](https://github.com/googleapis/releas
 3. Release-please opens a Release PR against `main` with version bumps and a regenerated `CHANGELOG.md`. Review and merge it — the git tag and GitHub Release are created automatically.
 4. A `main → develop` sync PR is then opened **and auto-merged** with the merge-commit method, keeping `develop` aligned for the next cycle. No human action required.
 
-`plugins/xl1-skills/.claude-plugin/plugin.json` is the version source of truth. `.claude-plugin/marketplace.json` and `version.txt` are kept in lockstep automatically — don't edit them by hand.
+`.claude-plugin/plugin.json` is the version source of truth. `.claude-plugin/marketplace.json` and `version.txt` are kept in lockstep automatically — don't edit them by hand.

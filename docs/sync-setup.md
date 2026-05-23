@@ -4,7 +4,7 @@ This repo auto-publishes its skills to [`XYOracleNetwork/xyo-skills`](https://gi
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
-| `.github/workflows/sync-skills.yml` | Push to `main` touching `plugins/xl1-skills/skills/**`, or manual dispatch | Validate, mirror, push to `xyo-skills` |
+| `.github/workflows/sync-skills.yml` | Push to `main` touching `skills/**`, or manual dispatch | Validate, mirror, push to `xyo-skills` |
 | `.github/workflows/validate-skills.yml` | PR touching the skills tree | Catch malformed frontmatter before merge |
 | `.github/workflows/pat-health.yml` | Monthly cron + manual dispatch | Detect expired/revoked sync PAT and open a tracking issue |
 
@@ -59,11 +59,11 @@ Run these in order before relying on the auto-sync. Each step confirms a specifi
 
 2. **Confirm validator locally.** From this repo root:
    ```sh
-   node scripts/validate-skills.mjs plugins/xl1-skills/skills
+   node scripts/validate-skills.mjs skills
    ```
    Expect: `validated 6 skill(s) in ...`.
 
-3. **Confirm validator catches bad input.** Temporarily create `plugins/xl1-skills/skills/bad/SKILL.md` with frontmatter missing `description`. Re-run the validator. Expect non-zero exit with a `::error file=...,line=N::frontmatter missing required field: description` annotation. Delete the bad skill.
+3. **Confirm validator catches bad input.** Temporarily create `skills/bad/SKILL.md` with frontmatter missing `description`. Re-run the validator. Expect non-zero exit with a `::error file=...,line=N::frontmatter missing required field: description` annotation. Delete the bad skill.
 
 4. **Dry-run the sync.** From this repo's Actions tab → `Sync skills to xyo-skills` → "Run workflow", check `dry_run: true`, run against branch `main`. Expect logs ending in `dry_run=true — would push the staged diff above to XYOracleNetwork/xyo-skills, but skipping.` Confirm the diff stat shows all six skills being added (the target's `skills/` is currently empty).
 
@@ -83,7 +83,7 @@ Run these in order before relying on the auto-sync. Each step confirms a specifi
 
 8. **Confirm path-filter precision.** Push a commit to `main` that only touches a path outside the filter (e.g. `packages/xl1-scaffold/src/...`). Verify `Sync skills to xyo-skills` does **not** run.
 
-9. **Confirm deletion sync.** Rename a skill locally on a throwaway branch — e.g. `git mv plugins/xl1-skills/skills/xy-toolchain plugins/xl1-skills/skills/xy-toolchain-renamed` (be sure to update the frontmatter `name:` to match the new directory). PR → merge through your normal flow → push to `main`. The next sync should remove `skills/xy-toolchain/` and add `skills/xy-toolchain-renamed/` in a single commit on the target, with the manifest's `skills` array updated to reflect the rename. **Revert the rename** before continuing if this was a throwaway test.
+9. **Confirm deletion sync.** Rename a skill locally on a throwaway branch — e.g. `git mv skills/xy-toolchain skills/xy-toolchain-renamed` (be sure to update the frontmatter `name:` to match the new directory). PR → merge through your normal flow → push to `main`. The next sync should remove `skills/xy-toolchain/` and add `skills/xy-toolchain-renamed/` in a single commit on the target, with the manifest's `skills` array updated to reflect the rename. **Revert the rename** before continuing if this was a throwaway test.
 
 ## PAT rotation
 
@@ -96,7 +96,7 @@ Fine-grained PATs cap at 1 year. The flow:
 
 ## Curating the mirror
 
-By default every top-level directory under `plugins/xl1-skills/skills/` gets mirrored. To exclude one (e.g., keep `xy-toolchain` internal), filter inside the `for d in "${SOURCE_DIR}"/*/` loop in `scripts/sync-skills.sh`:
+By default every top-level directory under `skills/` gets mirrored. To exclude one (e.g., keep `xy-toolchain` internal), filter inside the `for d in "${SOURCE_DIR}"/*/` loop in `scripts/sync-skills.sh`:
 
 ```bash
 CURRENT=()
