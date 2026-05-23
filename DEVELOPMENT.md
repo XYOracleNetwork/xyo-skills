@@ -1,6 +1,6 @@
 # Development
 
-This guide is for contributors to the `xl1-skills` repository — editing skill files locally, building the scaffold package, and shipping releases. If you just want to install and use the skills, see the [README](./README.md).
+This guide is for contributors to the `xyo-skills` repository — editing skill files locally, building the scaffold package, and shipping releases. If you just want to install and use the skills, see the [README](./README.md).
 
 ## Developing Skills Locally
 
@@ -34,7 +34,7 @@ Add a directory-based marketplace to your `.claude/settings.json` (project or us
     "xl1-skills": {
       "source": {
         "source": "directory",
-        "path": "/absolute/path/to/xl1-skills"
+        "path": "/absolute/path/to/xyo-skills"
       }
     }
   }

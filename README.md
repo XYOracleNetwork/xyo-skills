@@ -25,7 +25,7 @@ Install the skills from GitHub — no need to clone the repo.
 
 ```shell
 # Add the marketplace
-/plugin marketplace add XYOracleNetwork/xl1-skills
+/plugin marketplace add XYOracleNetwork/xyo-skills
 
 # Install the XL1 skill stack
 /plugin install xl1-skills
@@ -41,7 +41,7 @@ Add to your project's `.claude/settings.json` so the marketplace is available fo
     "xl1-skills": {
       "source": {
         "source": "github",
-        "repo": "XYOracleNetwork/xl1-skills"
+        "repo": "XYOracleNetwork/xyo-skills"
       }
     }
   }
