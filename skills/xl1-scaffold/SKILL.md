@@ -166,7 +166,7 @@ If any step fails, the scaffold exits non-zero. Relay the failing output to the 
 **Does NOT belong in `shared/`:**
 - React components, hooks, browser globals → `packages/app/src/`
 - Express handlers, Node-only globals (`fs`, `child_process`) → `packages/service/src/`
-- `@xyo-network/react-chain-client-sdk` — browser-only, lives in `app`
+- `@xyo-network/xl1-react-client-sdk` — browser-only, lives in `app`
 - `@xyo-network/xl1-sdk` — typically lives in `service` (or both if app needs read-only chain queries; either way, don't re-export it through shared)
 
 **Adding cross-package imports:**

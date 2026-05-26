@@ -466,7 +466,7 @@ The `pending` phase covers the (usually short) window before `commit.nbf` — th
 Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets without connecting a wallet. Gate commit/reveal actions behind wallet connection. The parent app must use `GatewayProvider` (with `InPageGatewaysProvider` ancestor) — not `WalletGatewayProvider` — for read-only browsing to work without a wallet:
 
 ```tsx
-import { useProvidedGateway } from '@xyo-network/react-chain-client-sdk'
+import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
 import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
 
 function MarketPage({ marketId }: { marketId: string }) {

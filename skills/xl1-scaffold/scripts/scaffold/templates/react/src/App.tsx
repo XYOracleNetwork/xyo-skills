@@ -1,4 +1,4 @@
-import { ConnectAccountsStack } from '@xyo-network/react-chain-client-sdk'
+import { ConnectAccountsStack } from '@xyo-network/xl1-react-client-sdk'
 import { useState } from 'react'
 
 export function App() {
