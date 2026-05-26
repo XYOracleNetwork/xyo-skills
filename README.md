@@ -44,11 +44,28 @@ Browse and install through your coding agent's built-in skill marketplace.
 The `/plugin` slash commands aren't available in the Claude Code desktop app — use the **Customize** panel instead:
 
 1. Click **Customize** in the left sidebar.
+
+   ![Customize in the sidebar](docs/images/claude/install/01-customize.png)
+
 2. Under **Personal plugins**, click the **+** button.
-3. Choose **+ Create plugin** → **Add marketplace**.
-4. In the URL field, paste: `https://github.com/XYOracleNetwork/xyo-skills`
-5. Click **Sync**.
+
+   ![Personal plugins add button](docs/images/claude/install/02-personal-plugins-add.png)
+
+3. Choose **+ Create plugin**.
+
+   ![Create plugin menu option](docs/images/claude/install/03-create-plugin.png)
+
+4. Choose **Add marketplace**.
+
+   ![Add marketplace submenu option](docs/images/claude/install/04-add-marketplace.png)
+
+5. In the URL field, paste `https://github.com/XYOracleNetwork/xyo-skills` and click **Sync**.
+
+   ![Add marketplace URL dialog](docs/images/claude/install/05-add-marketplace-url.png)
+
 6. In the plugin directory that opens, find **XL1 Skills** and click the **+** to install.
+
+   ![Install XL1 Skills from the directory](docs/images/claude/install/06-install-from-directory.png)
 
 ##### Team setup
 
