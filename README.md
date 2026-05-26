@@ -1,4 +1,4 @@
-# XL1 Skills
+# XYO Skills
 
 XL1 / XYO development skills for AI coding assistants. The same skill content is published to agent skill marketplaces and to [Skills.sh](https://skills.sh), so you can install it whichever way fits your workflow.
 
