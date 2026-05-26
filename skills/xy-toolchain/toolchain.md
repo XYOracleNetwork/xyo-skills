@@ -86,28 +86,23 @@ Many XY projects are monorepos using workspaces.
 
 ## Vite Setup for XYO/XL1 dApps
 
-When building a browser dApp with Vite that uses XYO or XL1 packages, use these two plugins:
+When building a browser dApp with Vite that uses XYO or XL1 packages, two things matter: a modern build target so the XYO SDK's top-level `await` works natively, and Vite's built-in `tsconfigPaths` resolver so multi-target package builds resolve consistently. Both are native to Vite 8 — no extra plugins required.
 
 ```ts
 // vite.config.ts
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import topLevelAwait from 'vite-plugin-top-level-await'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [react(), topLevelAwait(), tsconfigPaths()],
+  plugins: [react()],
+  resolve: { tsconfigPaths: true },
+  build: { target: 'esnext' },
 })
 ```
 
-Install them:
-```sh
-pnpm add -D vite-plugin-top-level-await vite-tsconfig-paths
-```
-
-**Why these plugins:**
-- `vite-plugin-top-level-await` — XYO SDK dependencies (e.g., `@bitauth/libauth`) use top-level `await`. This plugin handles it for the dev server without requiring build target changes.
-- `vite-tsconfig-paths` — ensures Vite resolves paths consistently with the TypeScript config, which matters for the SDK's multi-target builds.
+**Why this shape:**
+- `build.target: 'esnext'` — XYO SDK dependencies (e.g., `@bitauth/libauth`) use top-level `await`. With `esnext`, modern browsers run it natively and Vite 8's bundler (rolldown) keeps it as-is. The older `vite-plugin-top-level-await` workaround pulls in a stale `rollup` CJS dependency that Vite 8 no longer ships — avoid it.
+- `resolve.tsconfigPaths: true` — Vite 8's native replacement for the old `vite-tsconfig-paths` plugin. Resolves path aliases declared in `tsconfig.json` so the SDK's multi-target build paths line up.
 
 **Browser compatibility:** XYO/XL1 SDK packages publish browser-specific builds via the `"browser"` condition in their `package.json` exports field. Vite automatically resolves these, so the consuming app typically does not need Node.js polyfills (`buffer`, `events`, `stream`, etc.). The `@xylabs/*` toolchain packages provide browser-safe alternatives internally (e.g., `@xylabs/buffer`).
 

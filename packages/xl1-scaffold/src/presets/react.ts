@@ -10,7 +10,7 @@ const reactTemplateOverrides: Override = {
       'react-dom',
       '@xyo-network/sdk-js',
       '@xyo-network/xl1-sdk',
-      '@xyo-network/react-chain-client-sdk',
+      '@xyo-network/xl1-react-client-sdk',
       '@xyo-network/archivist-storage',
       '@xyo-network/archivist-indexeddb',
     ],
@@ -32,10 +32,10 @@ const reactTemplateOverrides: Override = {
       'vite',
       'vite-plugin-checker',
       'vite-plugin-svgr',
-      'vite-plugin-top-level-await',
     ],
     versions: {
-      'typescript': '^5', '@mui/material': '^7', '@mui/icons-material': '^7',
+      'typescript': '^5', '@mui/material': '^9', '@mui/icons-material': '^9',
+      '@react-spring/web': '~10.0',
     },
   },
   tsconfig: {
