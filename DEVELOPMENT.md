@@ -21,7 +21,7 @@ Register the local checkout as a marketplace so the plugin persists across sessi
 ```shell
 # Inside a Claude Code session:
 /plugin marketplace add ./
-/plugin install xl1-skills
+/plugin install xyo-skills
 ```
 
 ### Option 3: Local Marketplace (settings.json)
@@ -31,7 +31,7 @@ Add a directory-based marketplace to your `.claude/settings.json` (project or us
 ```json
 {
   "extraKnownMarketplaces": {
-    "xl1-skills": {
+    "xyo-skills": {
       "source": {
         "source": "directory",
         "path": "/absolute/path/to/xyo-skills"
@@ -41,7 +41,7 @@ Add a directory-based marketplace to your `.claude/settings.json` (project or us
 }
 ```
 
-Then run `/plugin install xl1-skills` in your next session.
+Then run `/plugin install xyo-skills` in your next session.
 
 ### Building the Scaffold Package (required for the `xl1-scaffold` skill)
 
@@ -99,9 +99,9 @@ The body is a table of contents linking to sub-files with guidance on when to re
 
 After starting Claude Code or running `/reload-plugins`:
 
-- Run `/help` — skills appear as `/xl1-skills:<name>` (e.g., `/xl1-skills:xy-development`)
+- Run `/help` — skills appear as `/xyo-skills:<name>` (e.g., `/xyo-skills:xy-development`)
 - Check the reload output for the skill count: `Reloaded: 1 plugins · 5 skills · ...`
-- Invoke a skill directly: `/xl1-skills:xl1-patterns`
+- Invoke a skill directly: `/xyo-skills:xl1-patterns`
 
 ### Validating Plugin Structure
 

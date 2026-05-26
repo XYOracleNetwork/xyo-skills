@@ -1,5 +1,5 @@
 {
-  "name": "xl1-skills",
+  "name": "xyo-skills",
   "version": "1.1.14",
   "description": "Full-stack Claude Code skills for building dApps on the XL1 blockchain. Covers XYO primitives, XL1 chain operations, toolchain config, and prescriptive design patterns (commit-reveal, indexing, prediction markets).",
   "author": {
@@ -14,9 +14,6 @@
     "xl1",
     "xyo",
     "blockchain",
-    "dapp",
-    "commit-reveal",
-    "datalake",
-    "typescript"
+    "dapp"
   ]
 }

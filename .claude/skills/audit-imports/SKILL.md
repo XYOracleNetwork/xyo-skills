@@ -1,11 +1,11 @@
 ---
 name: audit-imports
-description: Audit import hygiene across the XL1 skill snippets — verify each named import resolves through the referenced barrel, flag deep imports that should use a barrel, surface cross-skill inconsistencies, validate subpath exports, catch unused/missing imports inside snippets, and confirm scaffold parity. Activates when the user wants to check, verify, or audit imports in this repo's skill content.
+description: Audit import hygiene across the XYO skill snippets — verify each named import resolves through the referenced barrel, flag deep imports that should use a barrel, surface cross-skill inconsistencies, validate subpath exports, catch unused/missing imports inside snippets, and confirm scaffold parity. Activates when the user wants to check, verify, or audit imports in this repo's skill content.
 ---
 
 # Audit Imports
 
-Audits every code snippet in the XL1 skills against this repo's import-hygiene rules. **Report-only by default** — only edits files when invoked with `--fix`, and only for the mechanical checks.
+Audits every code snippet in the XYO skills against this repo's import-hygiene rules. **Report-only by default** — only edits files when invoked with `--fix`, and only for the mechanical checks.
 
 ## Scope
 

@@ -76,7 +76,7 @@ jq empty .claude-plugin/plugin.json
 **Workspace layout** (pnpm workspaces):
 - `/` — workspace root (`package.json`, `pnpm-workspace.yaml`, `.npmrc`)
 - `/packages/xl1-scaffold/` — the scaffold CLI (TS source under `src/`, raw template files under `templates/`, compiled output in `dist/`)
-- `/src/` — target for the scaffolded app (not a workspace member; scaffold generates it as a standalone pnpm project)
+- `/src/` — target for the scaffolded app. **Not** a workspace member (`pnpm-workspace.yaml` only lists `packages/*`), so `pnpm -w` commands do not recurse into it. The scaffold generates `src/` as a standalone pnpm project; run its scripts from inside `src/`.
 
 **Scaffold usage** (run from repo root):
 ```shell
@@ -98,14 +98,16 @@ pnpm -w run typecheck         # type-check all packages
 
 **Scaffold package** (run from `packages/xl1-scaffold/`):
 ```shell
-pnpm test                     # run tests (vitest)
-pnpm test:watch               # watch mode
-pnpm lint:fix                 # auto-fix lint issues
+pnpm test                                   # run tests (vitest)
+pnpm test:watch                             # watch mode
+pnpm vitest run path/to/file.test.ts        # run a single test file
+pnpm vitest run -t "test name pattern"      # run tests matching a name
+pnpm lint:fix                               # auto-fix lint issues
 ```
 
 **Scaffold build chain:** `clean → tsc → copy-templates → sync-to-plugin` compiles TS, copies template files, and writes the runtime into `skills/xl1-scaffold/scripts/scaffold/`. CI fails if committed source drifts from the synced runtime.
 
-**Editing skills:** After modifying any file under `skills/`, run `/reload-plugins` in your Claude Code session — there is no file watcher.
+**Editing skills:** To load the plugin from this local checkout, start Claude with `claude --plugin-dir ./` (other loading options in `DEVELOPMENT.md`). After modifying any file under `skills/`, run `/reload-plugins` in your Claude Code session — there is no file watcher.
 
 ## Key Conventions (from the skills)
 
