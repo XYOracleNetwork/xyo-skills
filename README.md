@@ -36,7 +36,7 @@ Browse and install through your coding agent's built-in skill marketplace.
 /plugin marketplace add XYOracleNetwork/xyo-skills
 
 # Install the XL1 skill stack
-/plugin install xl1-skills
+/plugin install xyo-skills
 ```
 
 ##### Claude Desktop app
@@ -74,7 +74,7 @@ Add to your project's `.claude/settings.json` so the marketplace is auto-discove
 ```json
 {
   "extraKnownMarketplaces": {
-    "xl1-skills": {
+    "xyo-skills": {
       "source": {
         "source": "github",
         "repo": "XYOracleNetwork/xyo-skills"

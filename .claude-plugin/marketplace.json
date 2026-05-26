@@ -1,5 +1,5 @@
 {
-  "name": "xl1-skills",
+  "name": "xyo-skills",
   "owner": {
     "name": "XYO Network",
     "email": "support@xylabs.com"
@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "xl1-skills",
+      "name": "xyo-skills",
       "description": "Full-stack skills for building dApps on XL1 Blockchain using XYO primitives, chain ops, toolchain, and design patterns",
       "version": "1.1.14",
       "author": {
