@@ -29,7 +29,7 @@ Browse and install through your coding agent's built-in skill marketplace.
 
 #### Claude Code
 
-##### CLI
+##### Claude Code CLI
 
 ```shell
 # Add the marketplace
@@ -39,7 +39,7 @@ Browse and install through your coding agent's built-in skill marketplace.
 /plugin install xl1-skills
 ```
 
-##### Desktop app
+##### Claude Desktop app
 
 The `/plugin` slash commands aren't available in the Claude Code desktop app — use the **Customize** panel instead:
 
@@ -67,7 +67,7 @@ The `/plugin` slash commands aren't available in the Claude Code desktop app —
 
    ![Install XL1 Skills from the directory](docs/images/claude/install/06-install-from-directory.png)
 
-##### Team setup
+##### Claude Team Setup
 
 Add to your project's `.claude/settings.json` so the marketplace is auto-discovered for everyone on the team — works in both the CLI and the desktop app:
 
