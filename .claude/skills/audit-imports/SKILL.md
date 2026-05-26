@@ -1,11 +1,11 @@
 ---
 name: audit-imports
-description: Audit import hygiene across the XL1 skill snippets — verify each named import resolves through the referenced barrel, flag deep imports that should use a barrel, surface cross-skill inconsistencies, validate subpath exports, catch unused/missing imports inside snippets, and confirm scaffold parity. Activates when the user wants to check, verify, or audit imports in this repo's skill content.
+description: Audit import hygiene across the XYO skill snippets — verify each named import resolves through the referenced barrel, flag deep imports that should use a barrel, surface cross-skill inconsistencies, validate subpath exports, catch unused/missing imports inside snippets, and confirm scaffold parity. Activates when the user wants to check, verify, or audit imports in this repo's skill content.
 ---
 
 # Audit Imports
 
-Audits every code snippet in the XL1 skills against this repo's import-hygiene rules. **Report-only by default** — only edits files when invoked with `--fix`, and only for the mechanical checks.
+Audits every code snippet in the XYO skills against this repo's import-hygiene rules. **Report-only by default** — only edits files when invoked with `--fix`, and only for the mechanical checks.
 
 ## Scope
 
@@ -20,7 +20,7 @@ Ignore everything else. Do **not** edit application code under `src/`.
   - `@xyo-network/sdk-js`
   - `@xyo-network/xl1-sdk`
   - `@xyo-network/chain-sdk`
-  - `@xyo-network/react-chain-client-sdk`
+  - `@xyo-network/xl1-react-client-sdk`
 - Fall back to a sub-package only when a symbol is genuinely not re-exported through a barrel (e.g. storage drivers like `StorageArchivist` come from `@xyo-network/archivist-storage`).
 - The same symbol should be imported from the same package across all skills.
 - Every package referenced in a skill must be installable via the scaffold templates.

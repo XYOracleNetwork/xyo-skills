@@ -8,7 +8,7 @@
   "last-release-sha": "4696901",
   "packages": {
     ".": {
-      "package-name": "xl1-skills",
+      "package-name": "xyo-skills",
       "changelog-path": "CHANGELOG.md",
       "versioning": "always-bump-patch",
       "extra-files": [
@@ -25,7 +25,7 @@
         {
           "type": "json",
           "path": ".claude-plugin/marketplace.json",
-          "jsonpath": "$.plugins[?(@.name=='xl1-skills')].version"
+          "jsonpath": "$.plugins[?(@.name=='xyo-skills')].version"
         }
       ]
     }
