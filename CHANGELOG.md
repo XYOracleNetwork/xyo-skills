@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.15](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.14...v1.1.15) (2026-05-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename plugin to xyo-skills + multi-platform install docs ([#4](https://github.com/XYOracleNetwork/xyo-skills/issues/4))
+
+### Features
+
+* rename plugin to xyo-skills + multi-platform install docs ([#4](https://github.com/XYOracleNetwork/xyo-skills/issues/4)) ([0081693](https://github.com/XYOracleNetwork/xyo-skills/commit/008169303dbc767d3236f18bfd5cd6e75bb9c212))
+* ship xyo-skills rename + xl1-react-client-sdk migration ([8293984](https://github.com/XYOracleNetwork/xyo-skills/commit/829398417ec6dee180d79e1d8ce89847272abf69))
+
+
+### Bug Fixes
+
+* migrate scaffold + docs to @xyo-network/xl1-react-client-sdk ([1fe77cf](https://github.com/XYOracleNetwork/xyo-skills/commit/1fe77cf7796c9b20e3e05a9eec78ec57f2fd8686))
+* migrate scaffold + docs to @xyo-network/xl1-react-client-sdk ([e1777e2](https://github.com/XYOracleNetwork/xyo-skills/commit/e1777e2f867fc3ef3545e76656a522689de7e049))
+
 ## [1.1.14](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.13...v1.1.14) (2026-05-23)
 
 
