@@ -29,6 +29,8 @@ Browse and install through your coding agent's built-in skill marketplace.
 
 #### Claude Code
 
+##### CLI
+
 ```shell
 # Add the marketplace
 /plugin marketplace add XYOracleNetwork/xyo-skills
@@ -37,7 +39,20 @@ Browse and install through your coding agent's built-in skill marketplace.
 /plugin install xl1-skills
 ```
 
-**Team setup:** Add to your project's `.claude/settings.json` so the marketplace is auto-discovered for everyone on the team:
+##### Desktop app
+
+The `/plugin` slash commands aren't available in the Claude Code desktop app — use the **Customize** panel instead:
+
+1. Click **Customize** in the left sidebar.
+2. Under **Personal plugins**, click the **+** button.
+3. Choose **+ Create plugin** → **Add marketplace**.
+4. In the URL field, paste: `https://github.com/XYOracleNetwork/xyo-skills`
+5. Click **Sync**.
+6. In the plugin directory that opens, find **XL1 Skills** and click the **+** to install.
+
+##### Team setup
+
+Add to your project's `.claude/settings.json` so the marketplace is auto-discovered for everyone on the team — works in both the CLI and the desktop app:
 
 ```json
 {
@@ -52,7 +67,7 @@ Browse and install through your coding agent's built-in skill marketplace.
 }
 ```
 
-Each team member then runs `/plugin install xl1-skills` once.
+Each team member then installs the plugin through their preferred interface (CLI or desktop app) using the steps above.
 
 #### OpenAI Codex
 
