@@ -99,12 +99,6 @@ Each team member then installs the plugin through their preferred interface (CLI
 - **Node.js** (latest LTS recommended — download from [nodejs.org](https://nodejs.org))
 - `npx` ships with Node.js, so no separate install is needed.
 
-Platform-specific shortcuts for installing Node:
-
-- **macOS:** `brew install node`
-- **Windows:** `winget install OpenJS.NodeJS`
-- **Linux:** use your package manager (`apt install nodejs`, `dnf install nodejs`, etc.)
-
 #### Per-project install
 
 Run from the root of your project. Skills are written into your agent's project-local folder (e.g. `.claude/skills/` for Claude Code), which you can commit alongside the project so anyone who clones it gets the same skills.
