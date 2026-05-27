@@ -17,6 +17,15 @@ XL1 builds on the full skill stack. When working on XL1 projects, also consult:
 
 When you need to look up exact type definitions, install the relevant `@xyo-network/xl1-*` package and read the TypeScript declarations at `dist/neutral/index.d.ts`. The [XL1 Protocol Yellow Paper](https://docs.xyo.network) provides the full protocol specification.
 
+## Critical: Never Issue Raw RPC Calls
+
+The XL1 gateway is reached exclusively through the SDK. Two rules apply to every piece of code that touches chain access — dApp, service, indexer, test, verification script:
+
+1. **Never call XL1 JSON-RPC methods by name** (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, and any other `<viewer>_<method>` pair — whether via raw `fetch` to `/rpc` or a hand-rolled JSON-RPC client). Go through `gateway.connection.viewer.*` for reads and gateway methods for writes.
+2. **Never use Ethereum RPC methods** (`eth_getBalance`, `eth_blockNumber`, `eth_call`, `eth_sendTransaction`, `personal_sign`, etc.) or Ethereum SDKs (`ethers`, `viem`, `web3.js`) against XL1. XL1 is not an EVM chain. Address compatibility via shared BIP44 derivation is the *only* thing XL1 shares with Ethereum.
+
+See [Gateway — Never Issue Raw RPC Calls](gateway.md#never-issue-raw-rpc-calls) for the rationale, the XL1 equivalents for each Ethereum method, and the structural grep self-check that gates "done." Enforced by [dApp Checklist — Gateway & Chain Access](../xl1-patterns/dapp-checklist.md#gateway--chain-access).
+
 ## Table of Contents
 
 ### [XL1 Chain](chain.md)
