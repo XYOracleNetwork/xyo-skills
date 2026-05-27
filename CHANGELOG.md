@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.19](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.18...v1.1.19) (2026-05-27)
+
+
+### Bug Fixes
+
+* vendor-neutral skill descriptions and refreshed install docs ([dcc6723](https://github.com/XYOracleNetwork/xyo-skills/commit/dcc6723d95f5bf2fd3f8d6cbf1fae0813b7de327))
+
 ## [1.1.18](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.17...v1.1.18) (2026-05-27)
 
 
