@@ -63,9 +63,9 @@ The `/plugin` slash commands aren't available in the Claude Code desktop app —
 
    ![Add marketplace URL dialog](docs/images/claude/install/05-add-marketplace-url.png)
 
-6. In the plugin directory that opens, click the **Code** tab in the top row, then the **xl1-skills** marketplace pill in the second row. Find **Xyo skills** and click the **+** to install.
+6. In the plugin directory that opens, click the **Code** tab in the top row, then the **xyo-skills** marketplace pill in the second row. Find **Xyo skills** and click the **+** to install.
 
-   ![Navigate to Code → xl1-skills and install Xyo skills](docs/images/claude/install/06-install-from-directory.png)
+   ![Navigate to Code → xyo-skills and install Xyo skills](docs/images/claude/install/06-install-from-directory.png)
 
 ##### Claude Team Setup
 
