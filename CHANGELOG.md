@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.18](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.17...v1.1.18) (2026-05-27)
+
+
+### Features
+
+* add wallet skill and RPC guidance ([eccbc9f](https://github.com/XYOracleNetwork/xyo-skills/commit/eccbc9fc502bbfaa563f14102d3d75f3d6b0b696))
+* add wallet skill page with permissions section ([8d7c8cd](https://github.com/XYOracleNetwork/xyo-skills/commit/8d7c8cdf28cbe55c8a0e215aac2af7e499034960))
+* add wallet skill page with permissions section ([20550d6](https://github.com/XYOracleNetwork/xyo-skills/commit/20550d6ba2f16eac94fce48f41da06f95f1e24ac))
+
 ## [1.1.17](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.16...v1.1.17) (2026-05-27)
 
 
