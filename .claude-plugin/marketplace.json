@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Claude Code skills for XL1 blockchain and XYO protocol development",
-    "version": "1.1.17"
+    "version": "1.1.18"
   },
   "plugins": [
     {
       "name": "xyo-skills",
       "description": "Full-stack skills for building dApps on XL1 Blockchain using XYO primitives, chain ops, toolchain, and design patterns",
-      "version": "1.1.17",
+      "version": "1.1.18",
       "author": {
         "name": "XYO Network"
       },
