@@ -12,8 +12,11 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] `connection.viewer` is guarded before use (`?.` or null check) — it is `XyoViewer | undefined`
 - [ ] Transactions are submitted through gateway methods (`addPayloadsToChain`, `send`, `sendMany`) — no manual `TransactionBoundWitness` construction
 - [ ] Write capability is checked before submitting (`'addPayloadsToChain' in defaultGateway`)
+- [ ] **No raw XL1 RPC method names appear anywhere in the dApp, service, or test code.** Grep the diff for `blockViewer_`, `transactionViewer_`, `accountBalanceViewer_`, `finalizationViewer_`, `mempoolViewer_`, `stakeViewer_`, and `fetch(...\/rpc` — any hit means the SDK is being bypassed and must be replaced with the corresponding `connection.viewer.*` call before completion. See [Gateway — Never Issue Raw RPC Calls](../xl1-knowledge/gateway.md#never-issue-raw-rpc-calls)
+- [ ] **No Ethereum JSON-RPC method names appear anywhere.** XL1 is not an EVM chain. Grep the diff for `\beth_[a-zA-Z]+\b` and `personal_sign` — these methods do not exist on the XL1 gateway and will fail. Replace with the XL1 viewer/runner equivalents (`eth_getBalance` → `viewer.account.balance.accountBalance(...)`, `eth_blockNumber` → `viewer.block.currentBlockNumber()`, `eth_sendTransaction` → `gateway.addPayloadsToChain(...)` / `gateway.send(...)`, etc.)
+- [ ] **No Ethereum SDKs are imported for chain access.** Grep the diff for `from ['"](ethers|viem|web3|@ethersproject` and `EIP-?1193` — these speak the Ethereum JSON-RPC protocol and will not work against XL1. Use `@xyo-network/xl1-sdk` instead. (Address compatibility via shared BIP44 derivation is the *only* thing XL1 borrows from Ethereum.)
 
-**Source:** [Gateway](../xl1-knowledge/gateway.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
+**Source:** [Gateway](../xl1-knowledge/gateway.md), [Gateway — Never Issue Raw RPC Calls](../xl1-knowledge/gateway.md#never-issue-raw-rpc-calls), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
