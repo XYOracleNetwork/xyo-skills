@@ -25,8 +25,8 @@ import { ... } from '@xyo-network/chain-sdk'
 import { GatewayProvider, WalletGatewayProvider, ConnectAccountsStack, useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
 
 // Avoid — sub-package imports
-import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model' // audit-imports: ignore
-import { Payload } from '@xyo-network/payload-model' // audit-imports: ignore
+import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model'
+import { Payload } from '@xyo-network/payload-model'
 ```
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each root barrel package.
