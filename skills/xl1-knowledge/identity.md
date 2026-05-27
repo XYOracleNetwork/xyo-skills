@@ -69,4 +69,5 @@ These addresses match what MetaMask shows for accounts 1, 2, 3 on the same seed.
 - [Identity & Signing (XYO)](../xyo-knowledge/identity.md) — `Account`, `HDWallet`, lower-level primitives that the XL1 helpers compose
 - [Node Gateway](gateway-node.md) — wiring a wallet into a write-capable backend gateway
 - [Browser Gateway](gateway-browser.md) — browser wallet flow (extension-owned, not seed-phrase-loaded)
+- [Wallet](../xl1-patterns/wallet.md) — the browser wallet's permission surface; what a dApp may and may not request
 - [Chain Data Indexing Service](../xl1-patterns/chain-data-indexing-service.md) — signer-indexer pattern that loads a key at startup

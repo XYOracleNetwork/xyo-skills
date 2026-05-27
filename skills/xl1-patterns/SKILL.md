@@ -21,6 +21,9 @@ These patterns compose primitives from the full skill stack:
 ### [Browser UX](browser-ux.md)
 **REQUIRED reading for any dApp with a UI** — which is nearly all of them. Covers wallet connection lifecycle (`ConnectAccountsStack`), the `useConnectAccount` singleton pitfall, lifting connected address into app state, capability-aware components, dApp UI structure, and display conventions (hash/address clamping, copy-to-clipboard). The UX layer that sits on top of [Browser Gateway](../xl1-knowledge/gateway-browser.md) construction. Skip only if the work is genuinely UI-less (a pure indexer service or a CLI).
 
+### [Wallet](wallet.md)
+Read when a dApp needs to request permissions from the XL1 browser wallet beyond what `ConnectAccountsStack` handles by default — or when you are tempted to ask for "datalake permissions" and need to know why that is the wrong path. Documents the four registered RPC permissions, the two that are publicly supported (`xyoWallet_getAccounts`, `xyoSigner_address`), the hard rule against requesting `xyoDataLakes_*` (internal-only), and the SDK hooks (`RequestPermissionsButton`, `usePermissions`, `useAccountPermissions`) for going below `ConnectAccountsStack`.
+
 ### [Browser ↔ Service Wiring](browser-service-wiring.md)
 **REQUIRED reading whenever the dApp has both a React app and a companion HTTP service** (the default monorepo flow). Names the prescriptive port pair (`:3000` app, `:3001` service), the `/api/*` base-path convention, the Vite dev proxy that keeps everything same-origin, and the prod single-domain reverse-proxy story. Same-origin by default means **no CORS middleware** on the service. The escape hatch for genuinely cross-origin layouts is documented but treated as an exception. Skip only when there is no service (a pure read-only React app or a service-only project with no UI).
 

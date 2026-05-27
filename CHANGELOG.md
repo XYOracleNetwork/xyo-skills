@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.17](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.16...v1.1.17) (2026-05-27)
+
+
+### Bug Fixes
+
+* stop shipping audit-imports housekeeping skill + install-docs clarification ([96305d0](https://github.com/XYOracleNetwork/xyo-skills/commit/96305d0de6bda2228d1c13a59de7ae8bb33eac2d))
+
 ## [1.1.16](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.15...v1.1.16) (2026-05-27)
 
 
