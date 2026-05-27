@@ -5,7 +5,7 @@
     "email": "support@xylabs.com"
   },
   "metadata": {
-    "description": "Claude Code skills for XL1 blockchain and XYO protocol development",
+    "description": "Agent skills for XL1 blockchain and XYO protocol development",
     "version": "1.1.18"
   },
   "plugins": [
