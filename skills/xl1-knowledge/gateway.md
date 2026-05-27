@@ -30,7 +30,7 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 ## Never Issue Raw RPC Calls
 
-**This is never done.** Two regressions show up repeatedly when working on XL1 dApps and indexers — both must be caught before declaring work complete:
+**This is never done.** The XL1 gateway is reached exclusively through the SDK. Two rules apply equally to dApp code, services, indexers, tests, and verification scripts:
 
 ### 1. Raw XL1 JSON-RPC method names
 
@@ -64,18 +64,17 @@ XL1 shares Ethereum's secp256k1 keys and BIP44 derivation path (`m/44'/60'/0'/0/
 
 ### Self-check before completion
 
-Grep your diff for these tells. If any match, the work is not done:
+Grep your diff for these tells. If any match, the work is not done. The checks are structural — they look at protocol shape, not at an enumerated list of method names, so they stay valid as the XL1 method surface grows:
 
 ```shell
-# Raw XL1 RPC (any *_<method> pattern hitting /rpc)
-grep -rE "(blockViewer_|transactionViewer_|accountBalanceViewer_|finalizationViewer_|mempoolViewer_|stakeViewer_)" src/
-grep -rE "fetch\(.*\\/rpc" src/
+# Hand-rolled JSON-RPC envelopes. The "jsonrpc" field is required by JSON-RPC 2.0;
+# no legitimate SDK consumer writes it in source. Catches any bypass regardless of
+# which method name it carries — current or future.
+grep -rE '"jsonrpc"\s*:' src/
 
-# Ethereum RPC method names
-grep -rE "\\beth_[a-zA-Z]+\\b|personal_sign|EIP-?1193" src/
-
-# Ethereum SDKs (not for XL1)
-grep -rE "from ['\"](ethers|viem|web3|@ethersproject)" src/
+# Ethereum JSON-RPC namespaces. These are defined by the Ethereum spec and do not
+# exist on the XL1 gateway. Stable list — Ethereum namespaces are not being added.
+grep -rE "\b(eth|net|web3|personal|engine)_[a-zA-Z]+\b" src/
 ```
 
 A clean grep is part of the Definition of Done — see [dApp Checklist — Gateway & Chain Access](../xl1-patterns/dapp-checklist.md#gateway--chain-access).
