@@ -25,6 +25,8 @@ Do **not** activate when:
 
 If ambiguous, ask one question: *"Are you starting a new project, or adding to an existing one?"*
 
+If the user wants a new project but the request is **vague or exploratory** — they haven't named the archetype, the patterns, or the multi-party shape — defer to [xl1-build](../xl1-build/SKILL.md) **first**. That skill runs a short planning wizard and hands a refined prompt back here. Concrete prompts (the archetype is named, the patterns are implied, the network is specified) skip the wizard and come straight to this skill.
+
 ## Interpreting the prompt
 
 Before invoking the scaffold, scan the prompt and the working directory for conventions that change how you build and verify the dApp. These cues are easy to miss because they look like incidental context, but each one prescribes specific behavior.
