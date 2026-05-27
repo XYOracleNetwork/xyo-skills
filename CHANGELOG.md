@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.16](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.15...v1.1.16) (2026-05-27)
+
+
+### Bug Fixes
+
+* **ci:** integrate post-release sync workflow fixes ([54dd1c5](https://github.com/XYOracleNetwork/xyo-skills/commit/54dd1c59de45e9ccf632f202efed759ef9ac0393))
+* **ci:** use RELEASE_PLEASE_TOKEN for post-release sync and fail loudly on missing PR ([#8](https://github.com/XYOracleNetwork/xyo-skills/issues/8)) ([05991ec](https://github.com/XYOracleNetwork/xyo-skills/commit/05991ec59f8bf4be9968844e73f2cfe22b2acdf5))
+
 ## [1.1.15](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.14...v1.1.15) (2026-05-26)
 
 
