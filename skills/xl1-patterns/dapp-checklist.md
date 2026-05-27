@@ -36,8 +36,9 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] `ConnectAccountsStack` is rendered unconditionally — it manages both unconnected and connected states
 - [ ] The connected address is lifted into app-level state via `onAccountConnected` and passed as props — `useConnectAccount()` is not called in multiple components
 - [ ] When the wallet extension is missing, the UI prompts the user to install it — no silent fallback to a random account
+- [ ] Permission requests are scoped to the publicly supported wallet methods (`xyoWallet_getAccounts`, `xyoSigner_address`) — `xyoDataLakes_get` / `xyoDataLakes_insert` are never requested (datalake access from a dApp is plain HTTP via `RestDataLakeRunner` / `RestDataLakeViewer`)
 
-**Source:** [Browser UX — Wallet Connection](browser-ux.md)
+**Source:** [Browser UX — Wallet Connection](browser-ux.md), [Wallet — Permissions](wallet.md#permissions)
 
 ---
 
