@@ -28,6 +28,59 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 ---
 
+## Never Issue Raw RPC Calls
+
+**This is never done.** The XL1 gateway is reached exclusively through the SDK. Two rules apply equally to dApp code, services, indexers, tests, and verification scripts:
+
+### 1. Raw XL1 JSON-RPC method names
+
+The gateway speaks JSON-RPC 2.0 under the hood and exposes method names like `blockViewer_blocksByNumber`, `blockViewer_currentBlockNumber`, `transactionViewer_byHash`, `accountBalanceViewer_accountBalance`, etc. **Never call these directly** — not via `fetch('/rpc', { body: '{"method":"blockViewer_..."}' })`, not via a hand-rolled JSON-RPC client, not by importing internal transport classes.
+
+Calling them directly:
+- Loses the SDK's type definitions for params and return shapes
+- Skips off-chain payload hydration (the SDK's `ViewerWithDataLake` wrapper handles this — the raw RPC does not)
+- Skips block validators and provenance checks
+- Bypasses the transport abstraction (HTTP vs PostMessage vs Memory)
+- Will silently break when method names or shapes change
+
+**Always go through `gateway.connection.viewer.*` sub-viewers for reads and gateway methods (`addPayloadsToChain`, `send`, etc.) for writes.** If a method seems missing, read the `.d.ts` files in `@xyo-network/xl1-sdk` — the wrapper covers everything the raw RPC does.
+
+### 2. Ethereum RPC method names
+
+**XL1 is not an EVM chain.** Method names from the Ethereum JSON-RPC spec do not exist on the XL1 gateway and will return errors:
+
+| Ethereum method (does not work on XL1) | XL1 equivalent |
+|---|---|
+| `eth_blockNumber` | `gateway.connection.viewer.block.currentBlockNumber()` |
+| `eth_getBlockByNumber` | `gateway.connection.viewer.block.blockByNumber(n)` |
+| `eth_getBalance` | `gateway.connection.viewer.account.balance.accountBalance(address)` |
+| `eth_getTransactionByHash` | `gateway.connection.viewer.transaction.byHash(hash)` |
+| `eth_sendTransaction` / `eth_sendRawTransaction` | `gateway.addPayloadsToChain(...)` / `gateway.send(...)` |
+| `eth_call` | (no equivalent — XL1 has no contract execution model) |
+| `eth_chainId` | `gateway.connection.viewer.block.chainId()` |
+| `eth_accounts` / `personal_sign` | Use `XyoSigner` (browser: wallet extension; Node: `buildSimpleXyoSignerV2`) |
+
+XL1 shares Ethereum's secp256k1 keys and BIP44 derivation path (`m/44'/60'/0'/0/0`), so a single seed phrase produces the same address in MetaMask and the XYO wallet — but **the chain protocol is entirely different**. Address compatibility is the *only* thing the two chains share. Anything else borrowed from Ethereum tooling (`ethers`, `web3.js`, `viem`, hardhat helpers, EIP-1193 providers) will not work against XL1.
+
+### Self-check before completion
+
+Grep your diff for these tells. If any match, the work is not done. The checks are structural — they look at protocol shape, not at an enumerated list of method names, so they stay valid as the XL1 method surface grows:
+
+```shell
+# Hand-rolled JSON-RPC envelopes. The "jsonrpc" field is required by JSON-RPC 2.0;
+# no legitimate SDK consumer writes it in source. Catches any bypass regardless of
+# which method name it carries — current or future.
+grep -rE '"jsonrpc"\s*:' src/
+
+# Ethereum JSON-RPC namespaces. These are defined by the Ethereum spec and do not
+# exist on the XL1 gateway. Stable list — Ethereum namespaces are not being added.
+grep -rE "\b(eth|net|web3|personal|engine)_[a-zA-Z]+\b" src/
+```
+
+A clean grep is part of the Definition of Done — see [dApp Checklist — Gateway & Chain Access](../xl1-patterns/dapp-checklist.md#gateway--chain-access).
+
+---
+
 ## Networks
 
 XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is the network identifier — pass it to the React providers in browser dApps (see [Browser Gateway](gateway-browser.md)) or to `GatewayBuilder().name(id).rpcUrl(...)` in Node services (see [Node Gateway](gateway-node.md)). The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
@@ -354,7 +407,9 @@ pnpm run-api
 
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
-| Calling RPC methods directly (raw `fetch` to `/rpc`, manual JSON-RPC payloads) | Loses type safety, provenance, and transport abstraction | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
+| Calling XL1 RPC methods by name (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, etc. — whether via `fetch` to `/rpc` or a hand-rolled JSON-RPC client) | Loses type safety, off-chain payload hydration, provenance, validators, and transport abstraction. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
+| Calling Ethereum RPC methods (`eth_getBalance`, `eth_blockNumber`, `eth_call`, `eth_sendTransaction`, `personal_sign`, etc.) against the XL1 gateway | XL1 is not an EVM chain — these methods do not exist on the gateway. Address compatibility (shared BIP44 path) is the *only* thing XL1 borrows from Ethereum. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use the XL1 viewer/runner equivalents — `connection.viewer.account.balance`, `connection.viewer.block.*`, `gateway.send`, etc. |
+| Using Ethereum SDKs (`ethers`, `viem`, `web3.js`, `@ethersproject/*`, EIP-1193 providers) to talk to XL1 | These speak the Ethereum JSON-RPC protocol — XL1 does not. They will never work | Use `@xyo-network/xl1-sdk` (`GatewayBuilder` in Node, `useProvidedGateway` in browser) |
 | `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use `createRestDataLakeRunner` / `createRestDataLakeViewer` |
 | `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use `createRestDataLakeRunner` |
 | Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |

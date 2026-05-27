@@ -12,8 +12,11 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] `connection.viewer` is guarded before use (`?.` or null check) — it is `XyoViewer | undefined`
 - [ ] Transactions are submitted through gateway methods (`addPayloadsToChain`, `send`, `sendMany`) — no manual `TransactionBoundWitness` construction
 - [ ] Write capability is checked before submitting (`'addPayloadsToChain' in defaultGateway`)
+- [ ] **No hand-rolled JSON-RPC envelopes anywhere.** `grep -rE '"jsonrpc"\s*:' src/` returns nothing. The `"jsonrpc"` field is required by JSON-RPC 2.0 and is the structural tell of a bypass — catches any direct call regardless of which method name it carries, so the check stays valid as new XL1 viewers are added. Every chain read goes through `connection.viewer.*`; every write goes through gateway methods. See [Gateway — Never Issue Raw RPC Calls](../xl1-knowledge/gateway.md#never-issue-raw-rpc-calls)
+- [ ] **No Ethereum JSON-RPC method names anywhere.** XL1 is not an EVM chain. `grep -rE "\b(eth|net|web3|personal|engine)_[a-zA-Z]+\b" src/` returns nothing — these namespaces are defined by the Ethereum spec and do not exist on the XL1 gateway. Replace any hits with XL1 viewer/runner equivalents (`eth_getBalance` → `viewer.account.balance.accountBalance(...)`, `eth_blockNumber` → `viewer.block.currentBlockNumber()`, `eth_sendTransaction` → `gateway.addPayloadsToChain(...)` / `gateway.send(...)`, etc.)
+- [ ] **No Ethereum SDKs imported for chain access.** `grep -rE "from ['\"](ethers|viem|web3|@ethersproject|@walletconnect)" src/` returns nothing — these libraries speak the Ethereum JSON-RPC protocol and will not work against XL1, regardless of configuration. Use `@xyo-network/xl1-sdk` instead. (Address compatibility via shared BIP44 derivation is the *only* thing XL1 borrows from Ethereum.)
 
-**Source:** [Gateway](../xl1-knowledge/gateway.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
+**Source:** [Gateway](../xl1-knowledge/gateway.md), [Gateway — Never Issue Raw RPC Calls](../xl1-knowledge/gateway.md#never-issue-raw-rpc-calls), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
