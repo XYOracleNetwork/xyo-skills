@@ -43,6 +43,8 @@ These two configurations are **independent**. The relationship between them is a
 
 **Do not assume one covers the other.** The wallet may or may not write to a datalake the dApp can see, and vice versa. If the dApp needs payload data to be available for querying, it must write to its own datalake — regardless of what the wallet does.
 
+**There is no public wallet permission for datalake access.** A dApp that needs to read or write the datalake does it directly over HTTP via the factories below — it does not request a permission from the wallet. The wallet does register internal `xyoDataLakes_get` / `xyoDataLakes_insert` methods, but they are gated behind a debug flag and are not granted on standard wallet builds. See [Wallet — Permissions](../xl1-patterns/wallet.md#permissions) for the full rule.
+
 ```ts
 import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
 

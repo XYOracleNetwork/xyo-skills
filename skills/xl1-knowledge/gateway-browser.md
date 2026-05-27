@@ -27,6 +27,8 @@ The XL1 wallet is a Chrome browser extension for interacting with the XYO Layer 
 - Similar UX to MetaMask — extension-based, popup-based signing
 - Uses **PostMessage RPC transport** for communication between the dApp page and the wallet extension
 
+For the dApp-facing permission surface — what the wallet will and will not grant, the two publicly supported permission methods, and the hard rule against requesting datalake permissions — see [Wallet — Permissions](../xl1-patterns/wallet.md#permissions).
+
 ---
 
 ## Choosing Your Provider

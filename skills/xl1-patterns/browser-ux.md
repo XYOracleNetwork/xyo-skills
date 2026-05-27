@@ -8,6 +8,7 @@ How to build user-facing dApp UIs idiomatically — wallet connection, display c
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, `useProvidedGateway`
 - [Gateway](../xl1-knowledge/gateway.md) — capability detection, transaction submission, viewer API
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browsing patterns
+- [Wallet](wallet.md) — the wallet's permission surface (what `ConnectAccountsStack` is requesting under the hood, and what is off-limits)
 
 ---
 
@@ -41,6 +42,10 @@ Treat the connected account as a singleton: one `ConnectAccountsStack` at the ap
 ### No silent fallback to a random account
 
 Do not use `Account.random()` for user-facing wallet connections — it is for tests and non-interactive scripts only. If the wallet extension is not installed, `ConnectAccountsStack` already prompts the user to install it from the Chrome Web Store. Do not silently fall back to a random account.
+
+### Going beyond the default connect flow
+
+`ConnectAccountsStack` covers the standard "request accounts on connect" path. When a dApp needs more — re-prompting for permissions later, inspecting current grants, requesting `xyoSigner_address` explicitly — see [Wallet](wallet.md) for the publicly supported permission surface and the SDK hooks (`RequestPermissionsButton`, `usePermissions`, `useAccountPermissions`). That file also documents the hard rule against requesting `xyoDataLakes_*` permissions.
 
 ---
 
