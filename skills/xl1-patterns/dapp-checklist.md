@@ -61,7 +61,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Datalake access uses `RestDataLakeRunner` / `RestDataLakeViewer` — not raw `fetch()` to the endpoint
 - [ ] New types follow the Zod-first pattern: Zod schema is source of truth, TS type derived via `z.infer`, guards via `zodIsFactory` / `zodAsFactory` / `zodToFactory`
 - [ ] Payloads read from the chain or datalake are filtered through Zod-factory guards (`isXxxPayload`) before being honored — `payload.schema === '...'` is a tag check, not a validator. `isPayloadOfSchemaType` is not a substitute
-- [ ] Schemas are created with `asSchema('network.xyo.app.entity', true)` — not bare string literals
+- [ ] Schemas are created with `asSchema('com.your-org.app.entity', true)` — not bare string literals
 
 **Source:** [Protocol Best Practices](../xyo-knowledge/best-practices.md), [Development on XL1](../xl1-knowledge/development.md)
 
@@ -70,7 +70,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Payload & Schema Design
 
 - [ ] Application fields do not use `_*` or `$*` prefixes — these are reserved for storage infrastructure and client metadata
-- [ ] Schema names use reverse domain, dot-separated, lowercase: `network.xyo.<app>.<entity>`
+- [ ] Schema names use reverse domain, dot-separated, lowercase: `com.<your-org>.<app>.<entity>` — `network.xyo.*` is reserved for XY Labs (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming))
 - [ ] Each payload type represents one concept — game state, move, and result are separate schemas, not one combined payload
 - [ ] Related payloads are referenced by hash (`$sources`), not embedded inside other payloads
 
@@ -81,7 +81,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Indexer Floor Block
 
 - [ ] `INDEXER_FLOOR_BLOCK` is set in `.env` for every chain the dApp targets — captured during development, not at deploy time
-- [ ] Bounded dApps (any with self-authored `network.xyo.<myapp>.*` schemas) use a captured chain head as the floor
+- [ ] Bounded dApps (any with self-authored `com.<your-org>.<app>.*` schemas) use a captured chain head as the floor
 - [ ] Unbounded indexers (transfer ledgers, substrate indexers, XRC-20 ledgers) explicitly set `INDEXER_FLOOR_BLOCK=0` — never silently default
 - [ ] Browser dApps that read chain data directly also expose the floor as `VITE_INDEXER_FLOOR_BLOCK`, with backward walks bounded at it
 - [ ] The indexer fails closed when `INDEXER_FLOOR_BLOCK` is missing — no implicit floor of `0`

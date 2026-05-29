@@ -242,7 +242,7 @@ After the scaffold reports success:
 
 ## Capture the indexer floor block
 
-If the dApp introduces its own payload schemas (the default — any custom dApp under a fresh `network.xyo.<myapp>.*` namespace), capture a **sensible floor block** as part of dApp creation and record it in `.env` as `INDEXER_FLOOR_BLOCK`. The agent does this; the user never sees the step. This is part of the dApp Definition of Done — see [dApp Checklist](../xl1-patterns/dapp-checklist.md).
+If the dApp introduces its own payload schemas (the default — any custom dApp under a fresh `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)), capture a **sensible floor block** as part of dApp creation and record it in `.env` as `INDEXER_FLOOR_BLOCK`. The agent does this; the user never sees the step. This is part of the dApp Definition of Done — see [dApp Checklist](../xl1-patterns/dapp-checklist.md).
 
 The reason: the chain accepts arbitrary bytes for any schema, including before the dApp existed. An indexer that walks from block 0 will (a) waste hours on blocks that provably contain none of the dApp's data and (b) honor pre-deployment matches that cannot be the dApp's data. Capturing a floor makes correctness and performance the default. See [Chain Data Indexing — Floor Block](../xl1-patterns/chain-data-indexing-protocol.md#floor-block) for the full framing.
 

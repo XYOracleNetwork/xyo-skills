@@ -40,10 +40,10 @@ import { z } from 'zod'
 
 // --- Market Definition ---
 
-export const MarketSchema = asSchema('network.xyo.market', true)
+export const MarketSchema = asSchema('com.example.market', true)
 
 export const MarketPayloadZod = z.object({
-  schema: z.literal('network.xyo.market'),
+  schema: z.literal('com.example.market'),
   /** Unique market identifier */
   marketId: z.string(),
   /** The question or contest being predicted */
@@ -71,10 +71,10 @@ export const isMarketPayload = zodIsFactory(MarketPayloadZod)
 
 // --- Market Commit (extends the generic commit with market-specific fields) ---
 
-export const MarketCommitSchema = asSchema('network.xyo.market.commit', true)
+export const MarketCommitSchema = asSchema('com.example.market.commit', true)
 
 export const MarketCommitPayloadZod = z.object({
-  schema: z.literal('network.xyo.market.commit'),
+  schema: z.literal('com.example.market.commit'),
   /** References the market this commit belongs to */
   marketId: z.string(),
   /** hash(prediction + salt) */
@@ -86,10 +86,10 @@ export const isMarketCommitPayload = zodIsFactory(MarketCommitPayloadZod)
 
 // --- Market Reveal ---
 
-export const MarketRevealSchema = asSchema('network.xyo.market.reveal', true)
+export const MarketRevealSchema = asSchema('com.example.market.reveal', true)
 
 export const MarketRevealPayloadZod = z.object({
-  schema: z.literal('network.xyo.market.reveal'),
+  schema: z.literal('com.example.market.reveal'),
   marketId: z.string(),
   /** The actual prediction */
   prediction: z.string(),
@@ -102,10 +102,10 @@ export const isMarketRevealPayload = zodIsFactory(MarketRevealPayloadZod)
 
 // --- Market Settlement (lean outcome) ---
 
-export const MarketSettlementSchema = asSchema('network.xyo.market.settlement', true)
+export const MarketSettlementSchema = asSchema('com.example.market.settlement', true)
 
 export const MarketSettlementPayloadZod = z.object({
-  schema: z.literal('network.xyo.market.settlement'),
+  schema: z.literal('com.example.market.settlement'),
   marketId: z.string(),
   /** The declared outcome — must be one of MarketPayload.options */
   outcome: z.string(),
@@ -120,10 +120,10 @@ export const isMarketSettlementPayload = zodIsFactory(MarketSettlementPayloadZod
 // It is a derived view, not the source of truth — winners/losers are
 // computable from the settlement BW + verified reveals at any time.
 
-export const MarketResultsViewSchema = asSchema('network.xyo.market.results-view', true)
+export const MarketResultsViewSchema = asSchema('com.example.market.results-view', true)
 
 export const MarketResultsViewPayloadZod = z.object({
-  schema: z.literal('network.xyo.market.results-view'),
+  schema: z.literal('com.example.market.results-view'),
   marketId: z.string(),
   /** Hash of the authoritative settlement payload this view derives from */
   settlement: z.string(),

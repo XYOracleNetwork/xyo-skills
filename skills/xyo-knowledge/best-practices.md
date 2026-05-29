@@ -64,26 +64,55 @@ When using a native construct, add a brief comment noting why the SDK doesn't co
 
 ## Schema Naming
 
-Schemas are the primary mechanism for type discrimination in XYO. Choose them carefully.
+Schemas are the primary mechanism for type discrimination in XYO. Choose them carefully — the namespace they live under is a contract about who owns the name.
 
-### Convention
-- Use reverse domain notation: `network.xyo.*` for XYO system schemas, `com.yourorg.*` for custom
-- Lowercase only, dot-separated, alphanumeric: validated by `/^(?:[a-z0-9]+\.)*[a-z0-9]+$/`
-- Be specific and hierarchical: `network.xyo.rps.move` not `network.xyo.data`
+### Format
+
+- Reverse-DNS, lowercase, dot-separated, alphanumeric — validated by `/^(?:[a-z0-9]+\.)*[a-z0-9]+$/`
+- Specific and hierarchical: `com.example.rps.move`, not `com.example.data`
+
+### Namespace tiers
+
+| Tier | Namespace | Who authors it | Examples |
+|---|---|---|---|
+| 1. Protocol primitives | `network.xyo.*` | XY Labs, shipped in the SDK | `network.xyo.boundwitness`, `network.xyo.payload`, `network.xyo.node.manifest`, `network.xyo.transfer` |
+| 2. Canonical substrates | `network.xyo.*` | XY Labs, pending SDK migration | `network.xyo.ordinal.*` (inscription), `network.xyo.ordinal.token.*` (XRC-20), `network.xyo.exchange.*` |
+| 3. Application schemas | `com.<your-org>.<app>.*` | The application author | `com.acme.auction.bid`, `com.partner.market.position` |
+| 4. Documentation examples | `com.example.*` | Tutorials, skill examples, scaffolds | `com.example.rps.move`, `com.example.market.commit` |
+
+**`network.xyo.*` is reserved.** Application authors MUST NOT publish schemas under `network.xyo.*` — the namespace belongs to XY Labs and identifies primitives the protocol itself defines. Authoring there silently squats a slot that XY Labs may later claim, and trains downstream tooling to trust your payload shape as protocol-canonical.
+
+`com.example.*` is reserved by RFC 2606 for example/placeholder use, which makes it the right namespace for docs and scaffold templates — readers see `com.example.*` and know to replace it with their own reverse-DNS namespace before shipping.
+
+### Decision tree
+
+When you need a new schema:
+
+1. *Is this a payload the XYO SDK already defines, or one XY Labs intends to bless as a protocol-level primitive?* → `network.xyo.*` — and you are not the one authoring it; coordinate with XY Labs.
+2. *Am I building a real application?* → `com.<your-org>.<app>.*`. If you don't own a domain, use a namespace you control (e.g. `io.github.<user>.<app>`).
+3. *Am I writing docs, a tutorial, a scaffold template, or a skill example?* → `com.example.<app>.*`. The placeholder framing is intentional.
 
 ### Examples
 
 ```ts
-// System schemas (reserved)
+// Tier 1 — protocol primitives (SDK-owned)
 'network.xyo.boundwitness'
 'network.xyo.payload'
 'network.xyo.payload.bundle'
 'network.xyo.node.manifest'
 
-// Application schemas
-'network.xyo.rps.move'           // A player's move
-'network.xyo.rps.game'           // Game state
-'network.xyo.rps.result'         // Game outcome
+// Tier 2 — canonical XY Labs substrates (will migrate into the SDK)
+'network.xyo.ordinal.inscription'
+'network.xyo.ordinal.token.deploy'
+
+// Tier 3 — what a real application looks like
+'com.acme.auction.bid'           // Acme's sealed-bid auction app
+'com.partner.market.position'    // Partner's market position payload
+
+// Tier 4 — what this documentation uses
+'com.example.rps.move'           // A player's move (illustrative)
+'com.example.rps.game'           // Game state (illustrative)
+'com.example.rps.result'         // Game outcome (illustrative)
 ```
 
 ### Schema as Type Identity
@@ -128,7 +157,7 @@ const payload = new PayloadBuilder({ schema: MoveSchema })
   .build()
 
 // Avoid
-const payload = { schema: 'network.xyo.rps.move', move: 'rock' }
+const payload = { schema: 'com.example.rps.move', move: 'rock' }
 ```
 
 ---
