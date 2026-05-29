@@ -1,6 +1,14 @@
 # dApp Definition of Done
 
-Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. Each item corresponds to a rule or anti-pattern documented in the skill stack. The general [Definition of Done](../xy-development/workflow.md) (builds, lints, tests, dev server, no placeholders, no regressions) still applies — this checklist adds XL1-specific concerns on top of it.
+Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. Each item corresponds to a rule or anti-pattern documented in the skill stack.
+
+This checklist is **Layer 2** of a three-layer completion gate (see [xy-development/workflow.md § Applying the Definition of Done](../xy-development/workflow.md#applying-the-definition-of-done)):
+
+1. **Layer 1 — Generic DoD** ([xy-development/workflow.md](../xy-development/workflow.md)): builds, lints, tests, dev server, no placeholders, no regressions. Always applies.
+2. **Layer 2 — This file (dApp DoD)**: XL1/browser-specific concerns. Applies when the project is a browser-facing dApp on XL1.
+3. **Layer 3 — Project-specific acceptance criteria**: in `PRD.md` at the working directory, when present. Generated at planning time for each project — see [Writing Project-Specific Acceptance Criteria](../xy-development/workflow.md#writing-project-specific-acceptance-criteria).
+
+Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Walk Layer 3 when a `PRD.md` exists. If any item across any applicable layer fails, the work is not done — iterate until all layers pass.
 
 ---
 

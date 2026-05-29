@@ -109,4 +109,42 @@ A feature is not complete until **all of the following are true**:
 
 ### Applying the Definition of Done
 
-Before declaring any task complete, run through this checklist explicitly. If any step fails, the work is not done — fix it before moving on. This applies equally to new features, bug fixes, and refactors.
+The completion gate is **layered**. Before declaring any task complete, walk every layer that applies:
+
+1. **Layer 1 — Generic DoD** (this file): builds, lints, tests, dependencies, dev server, no placeholders, no regressions. Applies to every project.
+2. **Layer 2 — Domain DoD** (e.g. [xl1-patterns/dapp-checklist.md](../xl1-patterns/dapp-checklist.md) for browser dApps on XL1): extends Layer 1 with domain-specific gates. Applies when the project is in that domain.
+3. **Layer 3 — Project-specific acceptance criteria**: if a `PRD.md` exists at the working directory, its `## Acceptance criteria` section is also gating. Generated at planning time per the next section.
+
+**The rule:** if any item across any applicable layer fails, the work is not done. Fix the failing item and re-walk the relevant layer. **Continue iterating until every applicable layer passes.** Do not stop on partial pass. Do not report complete with known-failing items rationalized as "out of scope" unless the criterion was explicitly marked optional or skipped with a reason in the layer's own conventions (e.g. dApp DoD sections tagged "if applicable").
+
+This rule applies equally to new features, bug fixes, and refactors. It is the only definition of "done" that matters for agent-facing work.
+
+## Writing Project-Specific Acceptance Criteria
+
+When a project has a `PRD.md` (typically written by [xl1-build](../xl1-build/SKILL.md) at planning time, or by [xl1-scaffold](../xl1-scaffold/SKILL.md) from an inline prompt when the wizard is skipped), its `## Acceptance criteria` section is **generated** — not pulled from a fixed catalog. This is because the space of buildable projects is open-ended, and a project's success shape is best derived from its spec and the relevant domain skills loaded at planning time.
+
+When generating Layer 3 criteria for a PRD, follow this shape:
+
+### What goes in
+- **One criterion per user-facing requirement.** If the spec says "two players can play simultaneously," that's a criterion. If the spec says "anyone can browse past games without a wallet," that's a separate criterion.
+- **Both positive and negative assertions.** Positives describe what works ("the reveal phase records the outcome on-chain"). Negatives describe what is prevented ("no player can see the opponent's plaintext before both commit"). Negative criteria are often the most load-bearing — they capture the requirements the user implied but didn't articulate.
+- **Domain anti-patterns translated into project assertions.** The domain DoDs (e.g. `dapp-checklist.md`) enumerate generic anti-patterns. Convert the ones that apply to this project into PRD-style criteria so the loop has a project-local form to check. Example: dApp DoD says "no hand-rolled JSON-RPC envelopes"; PRD criterion becomes "`grep -rE '\"jsonrpc\"\\s*:' src/` returns nothing."
+- **Verification methodology.** When the project includes headless verification, name the script's pass condition explicitly: "`pnpm verify` exits 0 after running a full round end-to-end."
+
+### What stays out
+- **Restated DoDs.** Layer 1 and Layer 2 are already in scope by reference. Do not copy their bullets into Layer 3.
+- **Per-line / per-function tests.** Those belong in test files, not the PRD. Layer 3 criteria are observable from outside the implementation — UI flow, command output, file inspection, grep.
+- **Speculative requirements.** Only what the spec says or what the relevant patterns require. Do not add "while we're here" criteria.
+
+### Sizing
+- **5–10 items is the sweet spot.** Fewer suggests important user-facing behaviors are missing. More suggests the criteria are too granular.
+- **Group as `Positive:` and `Negative:` subheadings** so the agent can scan them and the user can sanity-check coverage in both directions.
+
+### Observability
+Each criterion must be observable without reading the implementation:
+- **UI-observable** — visible to a user in a browser session
+- **Command-observable** — exit code or stdout from a script (`pnpm verify`, `pnpm test`, `pnpm lint`)
+- **File-observable** — grep, file presence/absence, contents match a pattern
+- **Network-observable** — HTTP response from an endpoint matches an expectation
+
+If a criterion can't be checked without an agent re-reading the source, rewrite it until it can.
