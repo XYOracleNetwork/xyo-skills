@@ -26,7 +26,14 @@
           "type": "json",
           "path": ".claude-plugin/marketplace.json",
           "jsonpath": "$.plugins[?(@.name=='xyo-skills')].version"
-        }
+        },
+        "skills/xy-development/SKILL.md",
+        "skills/xy-toolchain/SKILL.md",
+        "skills/xyo-knowledge/SKILL.md",
+        "skills/xl1-knowledge/SKILL.md",
+        "skills/xl1-patterns/SKILL.md",
+        "skills/xl1-build/SKILL.md",
+        "skills/xl1-scaffold/SKILL.md"
       ]
     }
   }

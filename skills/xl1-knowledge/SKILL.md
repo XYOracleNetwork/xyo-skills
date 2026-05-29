@@ -1,11 +1,15 @@
 ---
 name: xl1-knowledge
 description: XL1 blockchain development (XYO Layer One). The top skill layer — covers the XL1 chain, datalakes, gateway (generic, browser, and Node), and building dApps. Activates when building on XL1, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
+metadata:
+  version: 1.1.19 # x-release-please-version
 ---
 
 # XL1 Blockchain Knowledge
 
 This skill covers the XL1 blockchain (XYO Layer One) — a data-focused Layer 1 designed for high-throughput data applications. XL1 extends the XYO protocol with blockchain primitives: blocks, transactions, fees, staking, and consensus.
+
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-knowledge v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## Lower Layer Skills
 

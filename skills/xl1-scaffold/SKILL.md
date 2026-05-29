@@ -1,11 +1,15 @@
 ---
 name: xl1-scaffold
 description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project. Do NOT activate for work in an existing project.
+metadata:
+  version: 1.1.19 # x-release-please-version
 ---
 
 # XL1 Scaffold
 
 Use this skill **only** when the user is starting a **new** XL1 project. For work in an existing repo — adding features, fixing bugs, or answering questions about XL1 concepts — use the appropriate lower-layer skill instead ([xl1-knowledge](../xl1-knowledge/SKILL.md) for the chain, [xl1-patterns](../xl1-patterns/SKILL.md) for design patterns).
+
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-scaffold v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## How to recognize the trigger
 
@@ -36,6 +40,12 @@ Before invoking the scaffold, scan the prompt and the working directory for conv
 - **Prompt names a network** (mainnet / sequence / local). Determines the `DefaultNetworks` entry the scaffold's gateway points at and which `INDEXER_FLOOR_BLOCK` is captured.
 
 Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread.
+
+### PRD.md fallback
+
+If the prompt itself is missing the synthesized spec from [xl1-build](../xl1-build/SKILL.md) — for example, a fresh conversation where the wizard ran in a prior session — **check the cwd for a `PRD.md` file before asking the user to repeat themselves.** The PRD is written by `xl1-build` at the end of its Phase 4 and contains the same fields as the inline synthesized prompt (`Shape`, `Network`, `Patterns`, `Multi-party`, `History/browse`, `Backend`, `Headless verification`, `Notes`) under structured markdown headings. Read it the same way you would read the inline prompt.
+
+If both the chat prompt and `PRD.md` are absent, fall back to asking the user — or, if the request is exploratory enough, defer to [xl1-build](../xl1-build/SKILL.md) to generate a PRD first.
 
 ## Invocation
 

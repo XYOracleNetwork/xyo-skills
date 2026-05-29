@@ -1,11 +1,15 @@
 ---
 name: xl1-patterns
 description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, and headless dApp verification. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, headless verification of browser dApps, or dApp UI conventions.
+metadata:
+  version: 1.1.19 # x-release-please-version
 ---
 
 # XL1 Design Patterns
 
 This skill provides prescriptive, recipe-style patterns for building common application features on XL1. Where the lower layers document *what XL1 is*, this layer documents *how to build things on it*.
+
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-patterns v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## Lower Layer Skills
 
