@@ -9,6 +9,7 @@ export default [
       'templates/',
       'eslint.config.mjs',
       'scripts/',
+      'vitest.config.ts',
     ],
   },
   ...xylabsConfig,

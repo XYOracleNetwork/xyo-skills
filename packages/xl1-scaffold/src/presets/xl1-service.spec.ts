@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import {
+  describe, expect, it,
+} from 'vitest'
 
 import { assertExtendsBase } from './shared-assertions.js'
 import { xl1ServiceTemplate } from './xl1-service.js'

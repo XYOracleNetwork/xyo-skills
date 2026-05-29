@@ -6,7 +6,9 @@
 // unless its author imports this helper. Once the preset stabilizes, copy one of
 // the sibling spec files as a template and add this assertion.
 
-import { describe, expect, it } from 'vitest'
+import {
+  describe, expect, it,
+} from 'vitest'
 
 import type { Template } from '../template.js'
 import { baseTemplate } from './base.js'
