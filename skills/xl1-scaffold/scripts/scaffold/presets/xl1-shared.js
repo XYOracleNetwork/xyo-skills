@@ -12,9 +12,7 @@ const xl1SharedTemplateOverrides = {
         // compiled `dist/` output via `workspace:*`.
         compilerOptions: { noEmit: false, allowImportingTsExtensions: false },
     },
-    scripts: {
-        build: 'tsc',
-    },
+    scripts: { build: 'tsc' },
     files: [
         { src: 'xl1-shared/src/index.ts', dest: 'src/index.ts' },
     ],

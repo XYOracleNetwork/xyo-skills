@@ -19,6 +19,12 @@ export interface Template {
   files: TemplateFile[]
   name: string
   nextSteps: string[]
+  // Set true on templates that don't need a tsconfig.json at all (e.g. the
+  // monorepo workspace root, which has no source — sub-packages each carry
+  // their own tsconfig). When true, scaffold skips emitting tsconfig.json;
+  // the template's `tsconfig` field is still required for type-shape
+  // consistency but is never written to disk.
+  omitTsconfig?: boolean
   scripts: Record<string, string>
   smokeTest?: { pnpmScript: string }
   tsconfig: {
@@ -26,10 +32,4 @@ export interface Template {
     extends: string
     include?: string[]
   }
-  // Set true on templates that don't need a tsconfig.json at all (e.g. the
-  // monorepo workspace root, which has no source — sub-packages each carry
-  // their own tsconfig). When true, scaffold skips emitting tsconfig.json;
-  // the template's `tsconfig` field is still required for type-shape
-  // consistency but is never written to disk.
-  omitTsconfig?: boolean
 }

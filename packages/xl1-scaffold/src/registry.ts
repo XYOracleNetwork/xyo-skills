@@ -1,6 +1,6 @@
 interface Packument {
-  version?: string
   peerDependencies?: Record<string, string>
+  version?: string
 }
 
 async function fetchJson(url: string): Promise<Packument & Record<string, unknown>> {

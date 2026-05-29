@@ -38,12 +38,12 @@ export const baseTemplate = {
 export function extend(parent, override) {
     const merged = deepMerge(parent, override);
     const seen = new Set();
-    merged.files = [...merged.files].reverse().filter((f) => {
+    merged.files = merged.files.toReversed().filter((f) => {
         if (seen.has(f.dest))
             return false;
         seen.add(f.dest);
         return true;
-    }).reverse();
+    }).toReversed();
     return merged;
 }
 export function extendBase(override) {
