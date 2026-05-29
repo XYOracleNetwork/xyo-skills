@@ -58,6 +58,8 @@ A lean payload — just `{ outcome: 'fulfilled' | 'rejected', terms: <hash> }` �
 
 ## Schema Design
 
+The `network.xyo.exchange.*` namespace is a canonical XY Labs–blessed protocol, reserved in `network.xyo.*` pending migration into the SDK. Use these schema names verbatim when participating in the protocol; application schemas you author on top still belong under your own `com.<your-org>.<app>.*` namespace (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
+
 ```ts
 import { asSchema, PayloadBuilder } from '@xyo-network/sdk-js'
 import { BlockDurationZod } from '@xyo-network/xl1-sdk'

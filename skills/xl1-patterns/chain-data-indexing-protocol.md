@@ -50,10 +50,11 @@ Follow the schema naming conventions from [XYO Best Practices](../xyo-knowledge/
 ```ts
 import { asSchema } from '@xyo-network/sdk-js'
 
-// Application schema namespace: network.xyo.<app>.<entity>
-const GameSchema = asSchema('network.xyo.rps.game', true)
-const MoveSchema = asSchema('network.xyo.rps.move', true)
-const ResultSchema = asSchema('network.xyo.rps.result', true)
+// Application schema namespace: com.<your-org>.<app>.<entity>
+// (This doc uses com.example.rps.* as a placeholder — replace with your reverse-DNS namespace.)
+const GameSchema = asSchema('com.example.rps.game', true)
+const MoveSchema = asSchema('com.example.rps.move', true)
+const ResultSchema = asSchema('com.example.rps.result', true)
 ```
 
 Define payload types using the [Zod-first pattern](../xl1-knowledge/development.md):
@@ -63,7 +64,7 @@ import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
 import { z } from 'zod'
 
 export const MovePayloadZod = z.object({
-  schema: z.literal('network.xyo.rps.move'),
+  schema: z.literal('com.example.rps.move'),
   gameId: z.string(),
   move: z.enum(['rock', 'paper', 'scissors']),
 })
@@ -407,8 +408,8 @@ The chain accepts arbitrary bytes for any schema, including before your applicat
 
 **Bounded.** The dApp's data lives under schemas the dApp itself introduced. Floor: a chain block captured during development, recorded as `INDEXER_FLOOR_BLOCK`.
 
-- Custom dApps with their own `network.xyo.<myapp>.*` namespace
-- Games (an RPS dApp's `network.xyo.rps.*` schemas)
+- Custom dApps with their own `com.<your-org>.<app>.*` namespace
+- Games (an RPS dApp's `com.example.rps.*` schemas in this doc; your real app uses its own namespace)
 - Any application that designed its own payload protocol from scratch
 
 This is the default for new dApps. Reading from `INDEXER_FLOOR_BLOCK` forward is both *correct* (no honoring of pre-app data) and *fast* (no scanning of blocks that provably contain none of the dApp's data).
@@ -460,7 +461,7 @@ The floor block is **per chain** and **per dApp deployment moment**. Every opera
 - A dApp deployed to mainnet, sequence, and a local devnet has three different `.env` files with three different floors.
 - A single indexer process should cover one chain. We do not currently support cross-chain indexers; if you need them, run separate processes.
 
-For shared / canonical protocols (where many operators run their own indexer of the same dApp), the floor must be a *socialized* canonical value, not each operator's local capture time. Late operators read the published `INDEXER_FLOOR_BLOCK` — out-of-band (README, docs, bootstrap scripts) or via a chain-recorded `network.xyo.<app>.genesis` payload they can verify. This is a day-2 concern; day-1 scaffolding bootstraps the local operator, and a canonical floor can be agreed on later.
+For shared / canonical protocols (where many operators run their own indexer of the same dApp), the floor must be a *socialized* canonical value, not each operator's local capture time. Late operators read the published `INDEXER_FLOOR_BLOCK` — out-of-band (README, docs, bootstrap scripts) or via a chain-recorded `com.<your-org>.<app>.genesis` payload they can verify. This is a day-2 concern; day-1 scaffolding bootstraps the local operator, and a canonical floor can be agreed on later.
 
 ### Retrofitting an already-deployed dApp
 
@@ -468,7 +469,7 @@ If a dApp is already deployed and the floor was never captured, recover it after
 
 - **Best-effort estimate.** Pick a recent block known to be after the first deployment — the deployer wallet's first relevant transaction, a known schema-introduction commit, a roughly-correct date-based estimate. Set `INDEXER_FLOOR_BLOCK` to that block and backfill from there.
 - **Schema-discovery scan.** Walk backward from `finalization.headNumber()` and stop on the first block containing the target schema. See [Direction of Iteration § Cold-start backward](#direction-of-iteration). Bounded by the depth at which the schema first appeared.
-- **Genesis payload sweep.** If the dApp ever published a `network.xyo.<app>.genesis` payload (recommended for shared protocols), find it via `accountBalanceHistory(deployer)` and use its block.
+- **Genesis payload sweep.** If the dApp ever published a `com.<your-org>.<app>.genesis` payload (recommended for shared protocols), find it via `accountBalanceHistory(deployer)` and use its block.
 
 The retrofit doesn't need to be exact — the floor is a performance optimization, and a slightly-too-low floor just costs a one-time cold-start scan.
 
@@ -478,9 +479,9 @@ A dApp that genuinely indexes both its own schemas *and* a pre-existing schema (
 
 ```ts
 const FLOORS: Record<string, number> = {
-  'network.xyo.rps.move':   floorBlock,  // self-authored, sourced from INDEXER_FLOOR_BLOCK
-  'network.xyo.rps.result': floorBlock,  // self-authored
-  'network.xyo.transfer':   0,           // pre-existing
+  'com.example.rps.move':   floorBlock,  // self-authored, sourced from INDEXER_FLOOR_BLOCK
+  'com.example.rps.result': floorBlock,  // self-authored
+  'network.xyo.transfer':   0,           // pre-existing (SDK-shipped schema)
 }
 
 function shouldHonor(payload: Payload, blockNumber: number): boolean {

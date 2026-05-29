@@ -14,7 +14,7 @@ The **payload** is the fundamental data unit in XYO. It's a JSON object with a r
 
 ```ts
 // Payload<T, S> — T = custom fields, S = schema string
-type MovePayload = Payload<{ move: 'rock' | 'paper' | 'scissors' }, 'network.xyo.rps.move'>
+type MovePayload = Payload<{ move: 'rock' | 'paper' | 'scissors' }, 'com.example.rps.move'>
 ```
 
 The `schema` field is a branded string created via `asSchema()`:
@@ -22,7 +22,7 @@ The `schema` field is a branded string created via `asSchema()`:
 ```ts
 import { asSchema } from '@xyo-network/sdk-js'
 
-const MoveSchema = asSchema('network.xyo.rps.move', true)
+const MoveSchema = asSchema('com.example.rps.move', true)
 ```
 
 Schema format: lowercase, dot-separated, alphanumeric — validated by `/^(?:[a-z0-9]+\.)*[a-z0-9]+$/`.
