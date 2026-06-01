@@ -15,11 +15,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate marketplace.json
+      - name: Validate Claude Code manifests
         run: |
-          echo "Validating marketplace.json..."
+          echo "Validating Claude Code manifests..."
           jq empty .claude-plugin/marketplace.json
-          echo "✓ Marketplace JSON is valid"
+          jq empty .claude-plugin/plugin.json
+          echo "✓ Claude Code JSON manifests are valid"
 
       - name: Validate Codex manifests
         run: |
@@ -28,9 +29,9 @@ jobs:
           jq empty .codex-plugin/plugin.json
           echo "✓ Codex JSON manifests are valid"
 
-      - name: Check required fields in marketplace
+      - name: Check required Claude Code marketplace fields
         run: |
-          echo "Checking required marketplace fields..."
+          echo "Checking required Claude Code marketplace fields..."
 
           for field in name owner plugins; do
             if ! jq -e ".$field" .claude-plugin/marketplace.json > /dev/null; then
@@ -84,16 +85,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate each plugin
+      - name: Validate Claude Code plugins
         run: |
-          echo "Validating plugin files..."
+          echo "Validating Claude Code plugin files..."
 
           plugins=$(jq -r '.plugins[] | select(.source | type == "string") | .source' .claude-plugin/marketplace.json)
 
           for plugin_path in $plugins; do
             plugin_name=$(basename "$plugin_path")
             echo ""
-            echo "Checking plugin: $plugin_name"
+            echo "Checking Claude Code plugin: $plugin_name"
             echo "================================"
 
             if [ ! -d "$plugin_path" ]; then
@@ -133,11 +134,15 @@ jobs:
               echo "  Found $skill_count skill(s)"
             fi
 
-            echo "✓ Plugin $plugin_name is valid"
+            echo "✓ Claude Code plugin $plugin_name is valid"
           done
 
           echo ""
-          echo "Checking Codex plugin: xyo-skills"
+          echo "✅ All Claude Code plugins validated successfully!"
+
+      - name: Validate Codex plugin
+        run: |
+          echo "Validating Codex plugin: xyo-skills"
           echo "================================"
 
           codex_plugin_json=".codex-plugin/plugin.json"
@@ -168,8 +173,7 @@ jobs:
           echo "✓ Codex plugin skills path points at ./skills/"
 
           echo ""
-          echo "================================"
-          echo "✅ All plugins validated successfully!"
+          echo "✅ Codex plugin validated successfully!"
 
   validate-scaffold-sync:
     name: Verify scaffold bin/ is in sync with source
@@ -217,24 +221,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for duplicate names
+      - name: Check Claude Code marketplace for duplicate plugin names
         run: |
-          echo "Checking for duplicate plugin names..."
+          echo "Checking Claude Code marketplace for duplicate plugin names..."
 
           duplicates=$(jq -r '.plugins[].name' .claude-plugin/marketplace.json | sort | uniq -d)
 
           if [ -n "$duplicates" ]; then
-            echo "✗ Duplicate plugin names found:"
+            echo "✗ Duplicate Claude Code plugin names found:"
             echo "$duplicates"
             exit 1
           fi
 
-          codex_duplicates=$(jq -r '.plugins[].name' .codex-plugin/marketplace.json | sort | uniq -d)
+          echo "✓ No duplicate Claude Code plugin names"
 
-          if [ -n "$codex_duplicates" ]; then
+      - name: Check Codex marketplace for duplicate plugin names
+        run: |
+          echo "Checking Codex marketplace for duplicate plugin names..."
+
+          duplicates=$(jq -r '.plugins[].name' .codex-plugin/marketplace.json | sort | uniq -d)
+
+          if [ -n "$duplicates" ]; then
             echo "✗ Duplicate Codex plugin names found:"
-            echo "$codex_duplicates"
+            echo "$duplicates"
             exit 1
           fi
 
-          echo "✓ No duplicate plugin names"
+          echo "✓ No duplicate Codex plugin names"
