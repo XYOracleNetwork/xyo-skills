@@ -1,0 +1,20 @@
+{
+  "name": "xyo-skills",
+  "interface": {
+    "displayName": "XYO Skills"
+  },
+  "plugins": [
+    {
+      "name": "xyo-skills",
+      "source": {
+        "source": "local",
+        "path": "./plugins/xyo-skills"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Engineering"
+    }
+  ]
+}
