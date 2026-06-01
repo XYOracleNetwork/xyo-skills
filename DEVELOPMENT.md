@@ -62,6 +62,8 @@ The Codex marketplace manifest lives at `.codex-plugin/marketplace.json` and the
 
 ### Building the Scaffold Package (required for the `xl1-scaffold` skill)
 
+The compiled scaffold ships inside the `skills/` tree and is consumed by both Claude Code and Codex, so this step is required for either local-install path above.
+
 The `xl1-scaffold` skill invokes a compiled CLI bundled under `skills/xl1-scaffold/scripts/scaffold/`. That directory is **generated** from the TypeScript source at `packages/xl1-scaffold/`; it is not hand-authored. Before testing the scaffold skill locally, build it at least once:
 
 ```shell
@@ -76,13 +78,19 @@ Rebuild after any change to `packages/xl1-scaffold/src/` or `packages/xl1-scaffo
 
 ### Edit-Reload Cycle
 
-Claude Code loads skill content at startup. After editing any skill file, you must reload for changes to take effect:
+Both Claude Code and Codex load skill content at startup. After editing any skill file, you must reload for changes to take effect — there is no file watcher in either tool.
+
+#### Claude Code
 
 1. Edit a `SKILL.md` or sub-file in `skills/`
 2. Run `/reload-plugins` in your Claude Code session
 3. Changes are active for the rest of the session
 
-There is no file watcher — `/reload-plugins` is required after every edit.
+#### Codex
+
+1. Edit a `SKILL.md` or sub-file in `skills/`
+2. Reinstall: `codex plugin add xyo-skills@xyo-skills`
+3. Start a new Codex thread so the updated skills are picked up
 
 ### Skill File Structure
 
@@ -114,10 +122,19 @@ The body is a table of contents linking to sub-files with guidance on when to re
 
 ### Verifying Skills Load
 
+#### Claude Code
+
 After starting Claude Code or running `/reload-plugins`:
 
 - Run `/help` — skills appear as `/xyo-skills:<name>` (e.g., `/xyo-skills:xy-development`)
 - Check the reload output for the skill count: `Reloaded: 1 plugins · 5 skills · ...`
+- Invoke a skill directly: `/xyo-skills:xl1-patterns`
+
+#### Codex
+
+After installing the plugin and starting a new Codex thread:
+
+- Open the plugin browser with `/plugins` — `xyo-skills` should appear as installed and enabled
 - Invoke a skill directly: `/xyo-skills:xl1-patterns`
 
 ### Validating Plugin Structure

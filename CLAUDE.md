@@ -18,9 +18,12 @@ The skills themselves are the primary artifact. When implementation reveals inco
 
 This repo follows the Claude Code plugin marketplace pattern with a **flat layout** — the repo root is the plugin:
 
-- **`.claude-plugin/marketplace.json`** — marketplace manifest, `source: "./"`
-- **`.claude-plugin/plugin.json`** — plugin manifest (version source of truth)
+- **`.claude-plugin/marketplace.json`** — Claude Code marketplace manifest, `source: "./"`
+- **`.claude-plugin/plugin.json`** — Claude Code plugin manifest
+- **`.codex-plugin/marketplace.json`** — Codex marketplace manifest, `source.path: "./"`
+- **`.codex-plugin/plugin.json`** — Codex plugin manifest
 - **`skills/`** — 6 skill layers using progressive loading
+- **`version.txt`** — release-please version source of truth; bumps cascade from here into the four manifests above and the per-skill `SKILL.md` frontmatter
 
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
@@ -57,7 +60,7 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 **Releases:** Automated by [release-please](https://github.com/googleapis/release-please).
 - Use conventional commit prefixes (`feat:`, `fix:`, `docs:`, `chore:`, `feat!:` for breaking) — release-please reads them for `CHANGELOG.md` content. Versioning is configured `always-bump-patch`, so any merge to `main` produces a release; the prefix only affects the changelog text.
 - `lint-pr-title.yml` enforces conventional titles on PRs into both `main` (only `feat:` / `fix:` accepted) and `develop` (any conventional type — `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.). The develop-side lint matters because feature-PR squash commits travel to `main` via the integration PR's merge commit, and release-please scans those individual subjects when building the changelog.
-- To ship: PR `develop` → `main` with a `feat:` or `fix:` title and merge using the **"Create a merge commit"** option (not squash). Release-please then opens a Release PR against `main` that bumps `.claude-plugin/plugin.json` (source of truth), both version fields in `.claude-plugin/marketplace.json`, `version.txt`, and the manifest. Merging that PR tags and publishes the release.
+- To ship: PR `develop` → `main` with a `feat:` or `fix:` title and merge using the **"Create a merge commit"** option (not squash). Release-please then opens a Release PR against `main` that bumps `version.txt` (the source of truth for `release-type: "simple"`) and cascades that version into `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, both version fields in `.claude-plugin/marketplace.json`, and the per-skill `SKILL.md` frontmatter. Merging that PR tags and publishes the release.
 - After release, `sync-main-to-develop.yml` auto-opens **and auto-merges** a `main → develop` PR using the **merge-commit** method. Do not squash this PR if you ever merge it manually — squashing breaks the ancestry link between `main` and `develop` and makes them drift over time.
 - Release-please uses a fine-grained PAT (`secrets.RELEASE_PLEASE_TOKEN`) so its release PRs trigger downstream workflows; without it, the PR's checks would never report and branch protection would block the merge. Track PAT expiration.
 - Don't bump versions by hand — release-please owns those files. Anchored at `b1bc7eb`; older `feat:`/`fix:` commits are not rolled forward.
@@ -67,10 +70,12 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 - Each plugin directory exists with a valid `plugin.json`
 - No duplicate plugin names
 
-To validate plugin structure locally:
+To validate plugin structure locally (both marketplaces):
 ```shell
 jq empty .claude-plugin/marketplace.json
 jq empty .claude-plugin/plugin.json
+jq empty .codex-plugin/marketplace.json
+jq empty .codex-plugin/plugin.json
 ```
 
 **Workspace layout** (pnpm workspaces):
