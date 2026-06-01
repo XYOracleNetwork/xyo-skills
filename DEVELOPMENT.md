@@ -6,7 +6,9 @@ This guide is for contributors to the `xyo-skills` repository — editing skill 
 
 For contributors editing skill files, there are Claude Code and Codex paths for loading the plugin from a local checkout.
 
-### Claude Code Option 1: CLI Flag
+### Claude Code
+
+#### Option 1: CLI Flag
 
 Load the plugin for a single session — no installation required:
 
@@ -14,7 +16,7 @@ Load the plugin for a single session — no installation required:
 claude --plugin-dir ./
 ```
 
-### Claude Code Option 2: Local Marketplace (interactive)
+#### Option 2: Local Marketplace (interactive)
 
 Register the local checkout as a marketplace so the plugin persists across sessions:
 
@@ -24,7 +26,7 @@ Register the local checkout as a marketplace so the plugin persists across sessi
 /plugin install xyo-skills
 ```
 
-### Option 3: Local Marketplace (settings.json)
+#### Option 3: Local Marketplace (settings.json)
 
 Add a directory-based marketplace to your `.claude/settings.json` (project or user level):
 
@@ -43,7 +45,9 @@ Add a directory-based marketplace to your `.claude/settings.json` (project or us
 
 Then run `/plugin install xyo-skills` in your next session.
 
-### Codex Local Marketplace
+### Codex
+
+#### Local Marketplace
 
 Register the local checkout as a Codex marketplace, then install the plugin from that marketplace:
 
