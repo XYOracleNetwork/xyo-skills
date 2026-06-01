@@ -109,7 +109,7 @@ codex plugin marketplace add /absolute/path/to/xyo-skills
 codex plugin add xyo-skills@xyo-skills
 ```
 
-The Codex marketplace and plugin manifests both live at `.codex-plugin/` — `marketplace.json` lists the plugin and `plugin.json` describes it.
+The Codex marketplace catalog lives at `.agents/plugins/marketplace.json` (the canonical repo-scoped path per OpenAI's docs) and the plugin manifest at `.codex-plugin/plugin.json`.
 
 ### Skills.sh
 

@@ -20,7 +20,7 @@ This repo follows the Claude Code plugin marketplace pattern with a **flat layou
 
 - **`.claude-plugin/marketplace.json`** — Claude Code marketplace manifest, `source: "./"`
 - **`.claude-plugin/plugin.json`** — Claude Code plugin manifest
-- **`.codex-plugin/marketplace.json`** — Codex marketplace manifest, `source.path: "./"`
+- **`.agents/plugins/marketplace.json`** — Codex marketplace manifest, `source.path: "./"` (canonical repo-scoped path per OpenAI's docs)
 - **`.codex-plugin/plugin.json`** — Codex plugin manifest
 - **`skills/`** — 6 skill layers using progressive loading
 - **`version.txt`** — release-please version source of truth; bumps cascade from here into the four manifests above and the per-skill `SKILL.md` frontmatter
@@ -74,7 +74,7 @@ To validate plugin structure locally (both marketplaces):
 ```shell
 jq empty .claude-plugin/marketplace.json
 jq empty .claude-plugin/plugin.json
-jq empty .codex-plugin/marketplace.json
+jq empty .agents/plugins/marketplace.json
 jq empty .codex-plugin/plugin.json
 ```
 
