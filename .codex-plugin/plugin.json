@@ -23,7 +23,7 @@
     "shortDescription": "XL1 and XYO development skills for Codex.",
     "longDescription": "A layered Codex skill stack for building XL1 dApps and XYO protocol integrations, including scaffold tooling, design patterns, chain knowledge, XYO primitives, TypeScript toolchain guidance, and development workflow standards.",
     "developerName": "XY Labs",
-    "category": "Engineering",
+    "category": "Developer Tools",
     "capabilities": [
       "Read",
       "Write"
@@ -34,6 +34,8 @@
       "Review this XYO integration",
       "Scaffold a new XL1 project"
     ],
-    "brandColor": "#0057FF"
+    "brandColor": "#0057FF",
+    "composerIcon": "./assets/xyo-icon.svg",
+    "logo": "./assets/xyo-logo.png"
   }
 }
