@@ -109,7 +109,7 @@ codex plugin marketplace add /absolute/path/to/xyo-skills
 codex plugin add xyo-skills@xyo-skills
 ```
 
-The Codex marketplace manifest lives at `.agents/plugins/marketplace.json`, and the plugin manifest lives at `.codex-plugin/plugin.json`.
+The Codex marketplace and plugin manifests both live at `.codex-plugin/` — `marketplace.json` lists the plugin and `plugin.json` describes it.
 
 ### Skills.sh
 

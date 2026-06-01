@@ -54,7 +54,7 @@ codex plugin add xyo-skills@xyo-skills
 
 After editing Codex plugin metadata or skill files, reinstall with `codex plugin add xyo-skills@xyo-skills` and start a new Codex thread so the updated skills are picked up.
 
-Codex marketplaces expect plugin sources under `plugins/<name>/`, so `plugins/xyo-skills/` is a thin wrapper over the root `.codex-plugin/` and `skills/` directories. Keep editing the root skill files; the wrapper is only there to satisfy marketplace layout.
+The Codex marketplace manifest lives at `.codex-plugin/marketplace.json` and the plugin manifest at `.codex-plugin/plugin.json`. Both reference the repo root, so `skills/` and the manifests are picked up in place — no embedded mirror directory is needed.
 
 ### Building the Scaffold Package (required for the `xl1-scaffold` skill)
 
@@ -123,7 +123,7 @@ The CI workflow validates marketplace and plugin manifests. Run locally:
 ```shell
 jq empty .claude-plugin/marketplace.json
 jq empty .claude-plugin/plugin.json
-jq empty .agents/plugins/marketplace.json
+jq empty .codex-plugin/marketplace.json
 jq empty .codex-plugin/plugin.json
 ```
 

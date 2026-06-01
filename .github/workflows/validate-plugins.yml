@@ -24,7 +24,7 @@ jobs:
       - name: Validate Codex manifests
         run: |
           echo "Validating Codex manifests..."
-          jq empty .agents/plugins/marketplace.json
+          jq empty .codex-plugin/marketplace.json
           jq empty .codex-plugin/plugin.json
           echo "✓ Codex JSON manifests are valid"
 
@@ -57,43 +57,24 @@ jobs:
           echo "Checking required Codex marketplace fields..."
 
           for field in name plugins; do
-            if ! jq -e ".$field" .agents/plugins/marketplace.json > /dev/null; then
+            if ! jq -e ".$field" .codex-plugin/marketplace.json > /dev/null; then
               echo "✗ Missing required field: $field"
               exit 1
             fi
             echo "✓ Field '$field' present"
           done
 
-          if ! jq -e ".plugins | type == \"array\"" .agents/plugins/marketplace.json > /dev/null; then
+          if ! jq -e ".plugins | type == \"array\"" .codex-plugin/marketplace.json > /dev/null; then
             echo "✗ Field 'plugins' must be an array"
             exit 1
           fi
           echo "✓ Field 'plugins' is an array"
 
-          if ! jq -e '.plugins[] | select(.name == "xyo-skills") | .source.source == "local" and .source.path and .policy.installation and .policy.authentication and .category' .agents/plugins/marketplace.json > /dev/null; then
-            echo "✗ Codex marketplace entry for xyo-skills is incomplete"
+          if ! jq -e '.plugins[] | select(.name == "xyo-skills") | .source.source == "local" and .source.path == "./" and .policy.installation and .policy.authentication and .category' .codex-plugin/marketplace.json > /dev/null; then
+            echo "✗ Codex marketplace entry for xyo-skills is incomplete or does not point at './'"
             exit 1
           fi
           echo "✓ Codex marketplace entry is complete"
-
-          codex_plugin_path=$(jq -r '.plugins[] | select(.name == "xyo-skills") | .source.path' .agents/plugins/marketplace.json)
-          if [ ! -d "$codex_plugin_path" ]; then
-            echo "✗ Codex plugin path not found: $codex_plugin_path"
-            exit 1
-          fi
-          echo "✓ Codex plugin path exists"
-
-          if [ ! -f "$codex_plugin_path/.codex-plugin/plugin.json" ]; then
-            echo "✗ Codex plugin manifest not found at $codex_plugin_path/.codex-plugin/plugin.json"
-            exit 1
-          fi
-          echo "✓ Codex plugin manifest exists at marketplace path"
-
-          if [ ! -d "$codex_plugin_path/skills" ]; then
-            echo "✗ Codex plugin skills directory not found at $codex_plugin_path/skills"
-            exit 1
-          fi
-          echo "✓ Codex plugin skills directory exists at marketplace path"
 
   validate-plugins:
     name: Validate Individual Plugins
@@ -159,8 +140,7 @@ jobs:
           echo "Checking Codex plugin: xyo-skills"
           echo "================================"
 
-          codex_plugin_path=$(jq -r '.plugins[] | select(.name == "xyo-skills") | .source.path' .agents/plugins/marketplace.json)
-          codex_plugin_json="$codex_plugin_path/.codex-plugin/plugin.json"
+          codex_plugin_json=".codex-plugin/plugin.json"
           if [ ! -f "$codex_plugin_json" ]; then
             echo "✗ Codex plugin.json not found at $codex_plugin_json"
             exit 1
@@ -249,7 +229,7 @@ jobs:
             exit 1
           fi
 
-          codex_duplicates=$(jq -r '.plugins[].name' .agents/plugins/marketplace.json | sort | uniq -d)
+          codex_duplicates=$(jq -r '.plugins[].name' .codex-plugin/marketplace.json | sort | uniq -d)
 
           if [ -n "$codex_duplicates" ]; then
             echo "✗ Duplicate Codex plugin names found:"

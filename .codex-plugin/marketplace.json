@@ -8,7 +8,7 @@
       "name": "xyo-skills",
       "source": {
         "source": "local",
-        "path": "./plugins/xyo-skills"
+        "path": "./"
       },
       "policy": {
         "installation": "AVAILABLE",
