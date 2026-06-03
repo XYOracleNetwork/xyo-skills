@@ -32,7 +32,9 @@ const reactTemplateOverrides = {
             'vite-plugin-svgr',
         ],
         versions: {
-            'typescript': '^5', '@mui/material': '^9', '@mui/icons-material': '^9',
+            'typescript': '^5',
+            '@mui/material': '^9',
+            '@mui/icons-material': '^9',
             '@react-spring/web': '~10.0',
         },
     },

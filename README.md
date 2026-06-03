@@ -88,7 +88,28 @@ Each team member then installs the plugin through their preferred interface (CLI
 
 #### OpenAI Codex
 
-*Coming soon.*
+##### Codex CLI
+
+```shell
+# Add the marketplace
+codex plugin marketplace add XYOracleNetwork/xyo-skills --ref main
+
+# Install the XL1 skill stack
+codex plugin add xyo-skills@xyo-skills
+```
+
+After installing or updating the plugin, start a new Codex thread so the skill list is refreshed.
+
+##### Local checkout
+
+For development against a local clone, register the checkout as a local marketplace:
+
+```shell
+codex plugin marketplace add /absolute/path/to/xyo-skills
+codex plugin add xyo-skills@xyo-skills
+```
+
+The Codex marketplace catalog lives at `.agents/plugins/marketplace.json` (the canonical repo-scoped path per OpenAI's docs) and the plugin manifest at `.codex-plugin/plugin.json`.
 
 ### Skills.sh
 

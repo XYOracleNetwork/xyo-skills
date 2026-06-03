@@ -4,9 +4,11 @@ This guide is for contributors to the `xyo-skills` repository — editing skill 
 
 ## Developing Skills Locally
 
-For contributors editing skill files, there are three ways to load the plugin from a local checkout.
+For contributors editing skill files, there are Claude Code and Codex paths for loading the plugin from a local checkout.
 
-### Option 1: CLI Flag
+### Claude Code
+
+#### Option 1: CLI Flag
 
 Load the plugin for a single session — no installation required:
 
@@ -14,7 +16,7 @@ Load the plugin for a single session — no installation required:
 claude --plugin-dir ./
 ```
 
-### Option 2: Local Marketplace (interactive)
+#### Option 2: Local Marketplace (interactive)
 
 Register the local checkout as a marketplace so the plugin persists across sessions:
 
@@ -24,7 +26,7 @@ Register the local checkout as a marketplace so the plugin persists across sessi
 /plugin install xyo-skills
 ```
 
-### Option 3: Local Marketplace (settings.json)
+#### Option 3: Local Marketplace (settings.json)
 
 Add a directory-based marketplace to your `.claude/settings.json` (project or user level):
 
@@ -43,7 +45,24 @@ Add a directory-based marketplace to your `.claude/settings.json` (project or us
 
 Then run `/plugin install xyo-skills` in your next session.
 
+### Codex
+
+#### Local Marketplace
+
+Register the local checkout as a Codex marketplace, then install the plugin from that marketplace:
+
+```shell
+codex plugin marketplace add /absolute/path/to/xyo-skills
+codex plugin add xyo-skills@xyo-skills
+```
+
+After editing Codex plugin metadata or skill files, reinstall with `codex plugin add xyo-skills@xyo-skills` and start a new Codex thread so the updated skills are picked up.
+
+The Codex marketplace manifest lives at `.agents/plugins/marketplace.json` (the canonical repo-scoped path per OpenAI's docs) and the plugin manifest at `.codex-plugin/plugin.json`. Both reference the repo root, so `skills/` and the manifests are picked up in place — no embedded mirror directory is needed.
+
 ### Building the Scaffold Package (required for the `xl1-scaffold` skill)
+
+The compiled scaffold ships inside the `skills/` tree and is consumed by both Claude Code and Codex, so this step is required for either local-install path above.
 
 The `xl1-scaffold` skill invokes a compiled CLI bundled under `skills/xl1-scaffold/scripts/scaffold/`. That directory is **generated** from the TypeScript source at `packages/xl1-scaffold/`; it is not hand-authored. Before testing the scaffold skill locally, build it at least once:
 
@@ -59,13 +78,19 @@ Rebuild after any change to `packages/xl1-scaffold/src/` or `packages/xl1-scaffo
 
 ### Edit-Reload Cycle
 
-Claude Code loads skill content at startup. After editing any skill file, you must reload for changes to take effect:
+Both Claude Code and Codex load skill content at startup. After editing any skill file, you must reload for changes to take effect — there is no file watcher in either tool.
+
+#### Claude Code
 
 1. Edit a `SKILL.md` or sub-file in `skills/`
 2. Run `/reload-plugins` in your Claude Code session
 3. Changes are active for the rest of the session
 
-There is no file watcher — `/reload-plugins` is required after every edit.
+#### Codex
+
+1. Edit a `SKILL.md` or sub-file in `skills/`
+2. Reinstall: `codex plugin add xyo-skills@xyo-skills`
+3. Start a new Codex thread so the updated skills are picked up
 
 ### Skill File Structure
 
@@ -97,10 +122,19 @@ The body is a table of contents linking to sub-files with guidance on when to re
 
 ### Verifying Skills Load
 
+#### Claude Code
+
 After starting Claude Code or running `/reload-plugins`:
 
 - Run `/help` — skills appear as `/xyo-skills:<name>` (e.g., `/xyo-skills:xy-development`)
 - Check the reload output for the skill count: `Reloaded: 1 plugins · 5 skills · ...`
+- Invoke a skill directly: `/xyo-skills:xl1-patterns`
+
+#### Codex
+
+After installing the plugin and starting a new Codex thread:
+
+- Open the plugin browser with `/plugins` — `xyo-skills` should appear as installed and enabled
 - Invoke a skill directly: `/xyo-skills:xl1-patterns`
 
 ### Validating Plugin Structure
@@ -110,6 +144,8 @@ The CI workflow validates marketplace and plugin manifests. Run locally:
 ```shell
 jq empty .claude-plugin/marketplace.json
 jq empty .claude-plugin/plugin.json
+jq empty .agents/plugins/marketplace.json
+jq empty .codex-plugin/plugin.json
 ```
 
 ## Releases
@@ -121,4 +157,4 @@ Versioning is automated by [release-please](https://github.com/googleapis/releas
 3. Release-please opens a Release PR against `main` with version bumps and a regenerated `CHANGELOG.md`. Review and merge it — the git tag and GitHub Release are created automatically.
 4. A `main → develop` sync PR is then opened **and auto-merged** with the merge-commit method, keeping `develop` aligned for the next cycle. No human action required.
 
-`.claude-plugin/plugin.json` is the version source of truth. `.claude-plugin/marketplace.json` and `version.txt` are kept in lockstep automatically — don't edit them by hand.
+`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` are kept in lockstep automatically. `.claude-plugin/marketplace.json`, skill frontmatter versions, and `version.txt` are also part of the release version flow — don't edit release versions by hand.

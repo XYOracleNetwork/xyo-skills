@@ -13,8 +13,8 @@ import { nodeTemplate, reactTemplate, xl1MonorepoTemplate, xl1ServiceTemplate, x
 import { expandWithPeers, resolveLatestPnpmByMajor, resolveVersions, } from './registry.js';
 import { copyTemplateFile, ensureTargetDir, resolveTemplatesRoot, runPnpmStep, writeJson, } from './writer.js';
 const TEMPLATES = {
-    react: reactTemplate,
-    node: nodeTemplate,
+    'react': reactTemplate,
+    'node': nodeTemplate,
     'xl1-service': xl1ServiceTemplate,
     'xl1-monorepo': xl1MonorepoTemplate,
     'xl1-shared': xl1SharedTemplate,
@@ -151,6 +151,40 @@ async function resolveVersionsForTemplate(template) {
         dependencies, devDependencies, packageManager,
     };
 }
+// Resolve the package's `name` field. Workspace members get a scoped name
+// (`@<scope>/<basename>`); standalones use the target dir's basename so the
+// generated package.json reflects the project's actual location.
+function resolvePackageName(workspaceMember, workspaceScope, target) {
+    if (!workspaceMember)
+        return path.basename(target);
+    const scope = workspaceScope ?? deriveWorkspaceScope(target);
+    const name = `${scope}/${path.basename(target)}`;
+    console.log(`Workspace member mode: package name = ${name}`);
+    return name;
+}
+// Auto-wire a `workspace:*` dep on the sibling `shared` package when
+// scaffolding any workspace member OTHER than xl1-shared itself. The shared
+// package only exists if it was scaffolded earlier — if we don't find it,
+// skip silently (caller can add the dep manually later).
+function addWorkspaceSharedDep(deps, workspaceMember, templateName, target) {
+    if (!workspaceMember || templateName === 'xl1-shared')
+        return deps;
+    const wsRoot = findWorkspaceRoot(target);
+    const sharedName = wsRoot ? findSharedPackageName(wsRoot) : undefined;
+    if (!sharedName)
+        return deps;
+    console.log(`  + workspace dep: ${sharedName}@workspace:*`);
+    return { ...deps, [sharedName]: 'workspace:*' };
+}
+function installAndVerify(target, template) {
+    runPnpmStep(target, 'Running pnpm install', ['install']);
+    runPnpmStep(target, 'Running typecheck', ['typecheck']);
+    runPnpmStep(target, 'Running lint', ['lint']);
+    runPnpmStep(target, 'Running build', ['build']);
+    if (template.smokeTest) {
+        runPnpmStep(target, `Running smoke test (pnpm ${template.smokeTest.pnpmScript})`, [template.smokeTest.pnpmScript]);
+    }
+}
 async function main() {
     const { target: targetArg, templateName, force, noInstall, workspaceMember, workspaceScope, } = parseArgs(process.argv.slice(2));
     const template = TEMPLATES[templateName];
@@ -163,34 +197,11 @@ async function main() {
     const invocationCwd = process.env.INIT_CWD ?? process.cwd();
     const target = path.resolve(invocationCwd, targetArg);
     const templatesRoot = resolveTemplatesRoot(import.meta.url);
-    // Resolve the package's `name` field. Workspace members get a scoped name
-    // (`@<scope>/<basename>`); standalones use the target dir's basename so the
-    // generated package.json reflects the project's actual location.
-    let packageName;
-    if (workspaceMember) {
-        const scope = workspaceScope ?? deriveWorkspaceScope(target);
-        packageName = `${scope}/${path.basename(target)}`;
-        console.log(`Workspace member mode: package name = ${packageName}`);
-    }
-    else {
-        packageName = path.basename(target);
-    }
+    const packageName = resolvePackageName(workspaceMember, workspaceScope, target);
     console.log(`Scaffolding ${template.description} at: ${target}`);
     ensureTargetDir(target, force);
     const { dependencies, devDependencies, packageManager, } = await resolveVersionsForTemplate(template);
-    // Auto-wire a `workspace:*` dep on the sibling `shared` package when
-    // scaffolding any workspace member OTHER than xl1-shared itself. The shared
-    // package only exists if it was scaffolded earlier — if we don't find it,
-    // skip silently (caller can add the dep manually later).
-    const finalDeps = { ...dependencies };
-    if (workspaceMember && template.name !== 'xl1-shared') {
-        const wsRoot = findWorkspaceRoot(target);
-        const sharedName = wsRoot ? findSharedPackageName(wsRoot) : undefined;
-        if (sharedName) {
-            finalDeps[sharedName] = 'workspace:*';
-            console.log(`  + workspace dep: ${sharedName}@workspace:*`);
-        }
-    }
+    const finalDeps = addWorkspaceSharedDep(dependencies, workspaceMember, template.name, target);
     writeJson(target, 'package.json', buildPackageJson({
         template, dependencies: finalDeps, devDependencies, packageManager, workspaceMember, name: packageName,
     }));
@@ -212,13 +223,7 @@ async function main() {
         console.log(`Next: cd ${targetArg} && pnpm install && ${template.nextSteps.join(' && ')}`);
         return;
     }
-    runPnpmStep(target, 'Running pnpm install', ['install']);
-    runPnpmStep(target, 'Running typecheck', ['typecheck']);
-    runPnpmStep(target, 'Running lint', ['lint']);
-    runPnpmStep(target, 'Running build', ['build']);
-    if (template.smokeTest) {
-        runPnpmStep(target, `Running smoke test (pnpm ${template.smokeTest.pnpmScript})`, [template.smokeTest.pnpmScript]);
-    }
+    installAndVerify(target, template);
     console.log('\nScaffold complete. Next:');
     console.log(`  cd ${targetArg}`);
     for (const step of template.nextSteps)

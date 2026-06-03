@@ -1,6 +1,14 @@
 # dApp Definition of Done
 
-Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. Each item corresponds to a rule or anti-pattern documented in the skill stack. The general [Definition of Done](../xy-development/workflow.md) (builds, lints, tests, dev server, no placeholders, no regressions) still applies — this checklist adds XL1-specific concerns on top of it.
+Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. Each item corresponds to a rule or anti-pattern documented in the skill stack.
+
+This checklist is **Layer 2** of a three-layer completion gate (see [xy-development/workflow.md § Applying the Definition of Done](../xy-development/workflow.md#applying-the-definition-of-done)):
+
+1. **Layer 1 — Generic DoD** ([xy-development/workflow.md](../xy-development/workflow.md)): builds, lints, tests, dev server, no placeholders, no regressions. Always applies.
+2. **Layer 2 — This file (dApp DoD)**: XL1/browser-specific concerns. Applies when the project is a browser-facing dApp on XL1.
+3. **Layer 3 — Project-specific acceptance criteria**: in `PRD.md` at the working directory, when present. Generated at planning time for each project — see [Writing Project-Specific Acceptance Criteria](../xy-development/workflow.md#writing-project-specific-acceptance-criteria).
+
+Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Walk Layer 3 when a `PRD.md` exists. If any item across any applicable layer fails, the work is not done — iterate until all layers pass.
 
 ---
 
@@ -53,7 +61,7 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 - [ ] Datalake access uses `RestDataLakeRunner` / `RestDataLakeViewer` — not raw `fetch()` to the endpoint
 - [ ] New types follow the Zod-first pattern: Zod schema is source of truth, TS type derived via `z.infer`, guards via `zodIsFactory` / `zodAsFactory` / `zodToFactory`
 - [ ] Payloads read from the chain or datalake are filtered through Zod-factory guards (`isXxxPayload`) before being honored — `payload.schema === '...'` is a tag check, not a validator. `isPayloadOfSchemaType` is not a substitute
-- [ ] Schemas are created with `asSchema('network.xyo.app.entity', true)` — not bare string literals
+- [ ] Schemas are created with `asSchema('com.your-org.app.entity', true)` — not bare string literals
 
 **Source:** [Protocol Best Practices](../xyo-knowledge/best-practices.md), [Development on XL1](../xl1-knowledge/development.md)
 
@@ -62,7 +70,7 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 ## Payload & Schema Design
 
 - [ ] Application fields do not use `_*` or `$*` prefixes — these are reserved for storage infrastructure and client metadata
-- [ ] Schema names use reverse domain, dot-separated, lowercase: `network.xyo.<app>.<entity>`
+- [ ] Schema names use reverse domain, dot-separated, lowercase: `com.<your-org>.<app>.<entity>` — `network.xyo.*` is reserved for XY Labs (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming))
 - [ ] Each payload type represents one concept — game state, move, and result are separate schemas, not one combined payload
 - [ ] Related payloads are referenced by hash (`$sources`), not embedded inside other payloads
 
@@ -73,7 +81,7 @@ Walk this checklist before declaring any XL1 dApp work complete. This is an **ag
 ## Indexer Floor Block
 
 - [ ] `INDEXER_FLOOR_BLOCK` is set in `.env` for every chain the dApp targets — captured during development, not at deploy time
-- [ ] Bounded dApps (any with self-authored `network.xyo.<myapp>.*` schemas) use a captured chain head as the floor
+- [ ] Bounded dApps (any with self-authored `com.<your-org>.<app>.*` schemas) use a captured chain head as the floor
 - [ ] Unbounded indexers (transfer ledgers, substrate indexers, XRC-20 ledgers) explicitly set `INDEXER_FLOOR_BLOCK=0` — never silently default
 - [ ] Browser dApps that read chain data directly also expose the floor as `VITE_INDEXER_FLOOR_BLOCK`, with backward walks bounded at it
 - [ ] The indexer fails closed when `INDEXER_FLOOR_BLOCK` is missing — no implicit floor of `0`

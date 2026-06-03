@@ -68,7 +68,7 @@ TransactionBoundWitness ──────────────► canonical 
 
 ## Step 1: Define Schemas
 
-Two schemas form the substrate. Both follow the chain-agnostic `network.xyo.ordinal.*` namespace.
+Two schemas form the substrate. Both follow the chain-agnostic `network.xyo.ordinal.*` namespace — this is a canonical XY Labs–blessed substrate, reserved in `network.xyo.*` pending migration into the SDK. Application schemas built *on top* of the substrate still belong under your own `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming).
 
 ```ts
 import { asSchema } from '@xyo-network/sdk-js'
@@ -251,7 +251,7 @@ type IndexerState = {
 }
 ```
 
-The `byOwner` side-index is maintained alongside `artifacts` during replay. It costs no extra block reads and turns "show me address X's inscriptions" into a single map lookup — see [Scan Strategies — Strategy 3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index).
+The `byOwner` side-index is maintained alongside `artifacts` during replay. It costs no extra block reads and turns "show me address X's inscriptions" into a single map lookup — see [Scan Strategies — Strategy 3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index-forward-iteration).
 
 ### Replay loop
 
@@ -325,7 +325,7 @@ The `hashToSigner` index covers every off-chain hash a transaction in this block
 
 The actor for any application payload is `transactionBoundWitness.from`. The sentinel `Transfer` payload accompanying an inscription has its own `from` field, but the indexer doesn't read it — the chain's balance validator already enforces `transfer.from === tx.from`, and reading authorship out of payload content would mix declarative content with structural authorship.
 
-Chain-native consumers using [Scan Strategy 4](chain-data-indexing-protocol.md#strategy-4-sentinel-transfer) end up reading `transfer.from` because that's what `accountBalanceHistory` returns directly — they arrive at the same minter address by a different path. Both views agree by construction.
+Chain-native consumers using [Scan Strategy 4](chain-data-indexing-protocol.md#strategy-4-sentinel-transfer-typically-backward) end up reading `transfer.from` because that's what `accountBalanceHistory` returns directly — they arrive at the same minter address by a different path. Both views agree by construction.
 
 ### Register an artifact
 
@@ -431,7 +431,7 @@ Do not reach for `datalakeViewer.next({ allowedSchemas: [InscriptionSchema] })` 
 
 ### Ownership-aware browsing (per-address side-index)
 
-Query the indexer (or its diviner equivalent). The indexer's `artifacts` map plus a `byOwner: Map<Address, Set<ArtifactId>>` side-index ([Strategy 3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index)) is the read model — expose it via a query interface that returns `ArtifactRecord[]` filtered by `owner`, by `creator`, or by ID. This is the canonical "show me my inscriptions" path when you control an indexer.
+Query the indexer (or its diviner equivalent). The indexer's `artifacts` map plus a `byOwner: Map<Address, Set<ArtifactId>>` side-index ([Strategy 3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index-forward-iteration)) is the read model — expose it via a query interface that returns `ArtifactRecord[]` filtered by `owner`, by `creator`, or by ID. This is the canonical "show me my inscriptions" path when you control an indexer.
 
 ### Free chain-native per-address browsing (sentinel transfers)
 

@@ -15,15 +15,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate marketplace.json
+      - name: Validate Claude Code manifests
         run: |
-          echo "Validating marketplace.json..."
+          echo "Validating Claude Code manifests..."
           jq empty .claude-plugin/marketplace.json
-          echo "✓ Marketplace JSON is valid"
+          jq empty .claude-plugin/plugin.json
+          echo "✓ Claude Code JSON manifests are valid"
 
-      - name: Check required fields in marketplace
+      - name: Validate Codex manifests
         run: |
-          echo "Checking required marketplace fields..."
+          echo "Validating Codex manifests..."
+          jq empty .agents/plugins/marketplace.json
+          jq empty .codex-plugin/plugin.json
+          echo "✓ Codex JSON manifests are valid"
+
+      - name: Check required Claude Code marketplace fields
+        run: |
+          echo "Checking required Claude Code marketplace fields..."
 
           for field in name owner plugins; do
             if ! jq -e ".$field" .claude-plugin/marketplace.json > /dev/null; then
@@ -45,6 +53,30 @@ jobs:
           fi
           echo "✓ Field 'plugins' is an array"
 
+      - name: Check required Codex marketplace fields
+        run: |
+          echo "Checking required Codex marketplace fields..."
+
+          for field in name plugins; do
+            if ! jq -e ".$field" .agents/plugins/marketplace.json > /dev/null; then
+              echo "✗ Missing required field: $field"
+              exit 1
+            fi
+            echo "✓ Field '$field' present"
+          done
+
+          if ! jq -e ".plugins | type == \"array\"" .agents/plugins/marketplace.json > /dev/null; then
+            echo "✗ Field 'plugins' must be an array"
+            exit 1
+          fi
+          echo "✓ Field 'plugins' is an array"
+
+          if ! jq -e '.plugins[] | select(.name == "xyo-skills") | .source.source == "local" and .source.path == "./" and .policy.installation and .policy.authentication and .category' .agents/plugins/marketplace.json > /dev/null; then
+            echo "✗ Codex marketplace entry for xyo-skills is incomplete or does not point at './'"
+            exit 1
+          fi
+          echo "✓ Codex marketplace entry is complete"
+
   validate-plugins:
     name: Validate Individual Plugins
     runs-on: ubuntu-latest
@@ -53,16 +85,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate each plugin
+      - name: Validate Claude Code plugins
         run: |
-          echo "Validating plugin files..."
+          echo "Validating Claude Code plugin files..."
 
           plugins=$(jq -r '.plugins[] | select(.source | type == "string") | .source' .claude-plugin/marketplace.json)
 
           for plugin_path in $plugins; do
             plugin_name=$(basename "$plugin_path")
             echo ""
-            echo "Checking plugin: $plugin_name"
+            echo "Checking Claude Code plugin: $plugin_name"
             echo "================================"
 
             if [ ! -d "$plugin_path" ]; then
@@ -102,12 +134,46 @@ jobs:
               echo "  Found $skill_count skill(s)"
             fi
 
-            echo "✓ Plugin $plugin_name is valid"
+            echo "✓ Claude Code plugin $plugin_name is valid"
           done
 
           echo ""
+          echo "✅ All Claude Code plugins validated successfully!"
+
+      - name: Validate Codex plugin
+        run: |
+          echo "Validating Codex plugin: xyo-skills"
           echo "================================"
-          echo "✅ All plugins validated successfully!"
+
+          codex_plugin_json=".codex-plugin/plugin.json"
+          if [ ! -f "$codex_plugin_json" ]; then
+            echo "✗ Codex plugin.json not found at $codex_plugin_json"
+            exit 1
+          fi
+          echo "✓ Codex plugin.json exists"
+
+          if ! jq empty "$codex_plugin_json" 2>/dev/null; then
+            echo "✗ Invalid JSON in $codex_plugin_json"
+            exit 1
+          fi
+          echo "✓ Codex plugin.json is valid JSON"
+
+          for field in name version description author.name skills interface.displayName interface.shortDescription interface.longDescription interface.developerName interface.category interface.defaultPrompt; do
+            if ! jq -e ".$field" "$codex_plugin_json" > /dev/null; then
+              echo "✗ Missing required Codex plugin field: $field"
+              exit 1
+            fi
+            echo "✓ Codex plugin field '$field' present"
+          done
+
+          if ! jq -e '.skills == "./skills/" or .skills == "./skills"' "$codex_plugin_json" > /dev/null; then
+            echo "✗ Codex plugin skills path must point at ./skills/"
+            exit 1
+          fi
+          echo "✓ Codex plugin skills path points at ./skills/"
+
+          echo ""
+          echo "✅ Codex plugin validated successfully!"
 
   validate-scaffold-sync:
     name: Verify scaffold bin/ is in sync with source
@@ -155,16 +221,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for duplicate names
+      - name: Check Claude Code marketplace for duplicate plugin names
         run: |
-          echo "Checking for duplicate plugin names..."
+          echo "Checking Claude Code marketplace for duplicate plugin names..."
 
           duplicates=$(jq -r '.plugins[].name' .claude-plugin/marketplace.json | sort | uniq -d)
 
           if [ -n "$duplicates" ]; then
-            echo "✗ Duplicate plugin names found:"
+            echo "✗ Duplicate Claude Code plugin names found:"
             echo "$duplicates"
             exit 1
           fi
 
-          echo "✓ No duplicate plugin names"
+          echo "✓ No duplicate Claude Code plugin names"
+
+      - name: Check Codex marketplace for duplicate plugin names
+        run: |
+          echo "Checking Codex marketplace for duplicate plugin names..."
+
+          duplicates=$(jq -r '.plugins[].name' .agents/plugins/marketplace.json | sort | uniq -d)
+
+          if [ -n "$duplicates" ]; then
+            echo "✗ Duplicate Codex plugin names found:"
+            echo "$duplicates"
+            exit 1
+          fi
+
+          echo "✓ No duplicate Codex plugin names"

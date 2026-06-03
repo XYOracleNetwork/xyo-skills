@@ -33,6 +33,7 @@ function parseFrontmatter(content, filePath) {
   for (let i = 1; i < endIdx; i++) {
     const raw = lines[i]
     if (raw.trim() === '' || raw.trimStart().startsWith('#')) continue
+    if (/^\s/.test(raw)) continue
     const match = raw.match(/^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/)
     if (!match) {
       err(filePath, i + 1, `unparseable frontmatter line: ${JSON.stringify(raw)}`)

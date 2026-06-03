@@ -45,11 +45,11 @@ export type Override = DeepPartial<Template> & Pick<Template, 'name' | 'descript
 export function extend(parent: Template, override: Override): Template {
   const merged = deepMerge(parent, override)
   const seen = new Set<string>()
-  merged.files = [...merged.files].reverse().filter((f) => {
+  merged.files = merged.files.toReversed().filter((f) => {
     if (seen.has(f.dest)) return false
     seen.add(f.dest)
     return true
-  }).reverse()
+  }).toReversed()
   return merged
 }
 

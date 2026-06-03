@@ -61,7 +61,7 @@ Both passes read the same canonical block stream; they produce independent read 
 
 ## Step 1: Define the Three Schemas
 
-Three narrow schemas under `network.xyo.ordinal.token.*`. Narrow schemas keep Zod types sharp, datalake filtering surgical, and the indexer's discriminated union exhaustive.
+Three narrow schemas under `network.xyo.ordinal.token.*`. Narrow schemas keep Zod types sharp, datalake filtering surgical, and the indexer's discriminated union exhaustive. The `network.xyo.ordinal.token.*` namespace is a canonical XY Labs–blessed protocol (XRC-20), reserved in `network.xyo.*` pending migration into the SDK; applications consuming this protocol use these schema names verbatim, but any *new* application schemas you author belong under `com.<your-org>.<app>.*` (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
 
 ```ts
 import { asSchema } from '@xyo-network/sdk-js'
@@ -417,9 +417,9 @@ The "drop" pattern is intentional and matches BRC-20: the chain accepted these p
 | Need to expose the indexer over RPC? | Wrap as an XYO diviner module ([Module System](../xyo-knowledge/modules.md)); query payloads return `TickerRecord` or balance lookups |
 | Multiple competing indexers? | Encouraged. Determinism guarantees they converge given the same finalized stream — disagreement is a bug in one of them, not a protocol question |
 | Want per-block snapshots / historical balance queries? | Persist `(blockHeight, address, tick) -> balance` deltas during replay. Out of scope for v1; layered on later |
-| dApp wants to show "user X's XRC-20 activity" without running a global indexer? | Use the dual-sentinel pattern — `accountBalanceHistory(userAddress)` filtered for transactions hitting `XRC20_SENTINEL` returns every XRC-20 op the user submitted ([Scan Strategies §4](chain-data-indexing-protocol.md#strategy-4-sentinel-transfer)) |
+| dApp wants to show "user X's XRC-20 activity" without running a global indexer? | Use the dual-sentinel pattern — `accountBalanceHistory(userAddress)` filtered for transactions hitting `XRC20_SENTINEL` returns every XRC-20 op the user submitted ([Scan Strategies §4](chain-data-indexing-protocol.md#strategy-4-sentinel-transfer-typically-backward)) |
 | Need a chain-native list of every XRC-20 protocol invocation? | `accountBalanceHistory(XRC20_SENTINEL)` — the static sentinel collects every `Transfer` from any user submitting an XRC-20 op |
-| Want fast "list all holders of a ticker"? | Add a per-ticker `holders: Set<Address>` side-index inside the global indexer ([Scan Strategies §3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index)) |
+| Want fast "list all holders of a ticker"? | Add a per-ticker `holders: Set<Address>` side-index inside the global indexer ([Scan Strategies §3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index-forward-iteration)) |
 | Need to stop further mints (cap reached, founder pause)? | Out of v1 scope. Either let `max` exhaust naturally or define a dedicated event schema (`network.xyo.ordinal.token.freeze`) |
 
 ---

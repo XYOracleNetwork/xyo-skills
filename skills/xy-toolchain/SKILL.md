@@ -1,6 +1,8 @@
 ---
 name: xy-toolchain
 description: XY Labs development toolchain (@xylabs packages). Covers @xylabs/toolchain CLI, ESLint flat config, TypeScript config variants, and Vitest. Activates when setting up projects, running builds, configuring linting, or writing tests in XY/XYO/XL1 projects.
+metadata:
+  version: 1.1.19 # x-release-please-version
 ---
 
 # XY Toolchain
@@ -8,6 +10,8 @@ description: XY Labs development toolchain (@xylabs packages). Covers @xylabs/to
 XY Labs publishes a coordinated set of development packages from the [xylabs/config](https://github.com/xylabs/config) monorepo. This skill covers how to use them.
 
 This builds on the [Development Skill](../xy-development/SKILL.md) which covers universal principles. This skill covers the **specific tools**.
+
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xy-toolchain v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## Table of Contents
 

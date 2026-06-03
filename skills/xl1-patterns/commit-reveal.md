@@ -34,10 +34,10 @@ import { z } from 'zod'
 
 // --- Commit ---
 
-export const CommitSchema = asSchema('network.xyo.commit', true)
+export const CommitSchema = asSchema('com.example.rps.commit', true)
 
 export const CommitPayloadZod = z.object({
-  schema: z.literal('network.xyo.commit'),
+  schema: z.literal('com.example.rps.commit'),
   /** Identifies the game/market/session this commit belongs to */
   topic: z.string(),
   /** hash(choice + salt) — the hidden commitment */
@@ -51,10 +51,10 @@ export const toCommitPayload = zodToFactory(CommitPayloadZod, 'toCommitPayload')
 
 // --- Reveal ---
 
-export const RevealSchema = asSchema('network.xyo.reveal', true)
+export const RevealSchema = asSchema('com.example.rps.reveal', true)
 
 export const RevealPayloadZod = z.object({
-  schema: z.literal('network.xyo.reveal'),
+  schema: z.literal('com.example.rps.reveal'),
   /** Must match the commit's topic */
   topic: z.string(),
   /** The actual choice that was committed */
@@ -69,7 +69,7 @@ export const asRevealPayload = zodAsFactory(RevealPayloadZod, 'asRevealPayload')
 export const toRevealPayload = zodToFactory(RevealPayloadZod, 'toRevealPayload')
 ```
 
-**Naming note:** These schemas use the generic `network.xyo.commit` / `network.xyo.reveal` namespace. For application-specific commits, use your app's namespace (e.g., `network.xyo.rps.commit`).
+**Naming note:** The protocol does not ship canonical `commit` / `reveal` schemas — each application names its own under its reverse-DNS namespace (e.g. `com.acme.auction.commit`, `com.partner.market.reveal`). This document uses `com.example.rps.*` as a placeholder; replace the namespace when adapting the pattern. See [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming) for the namespace tiers — application schemas MUST NOT be published under `network.xyo.*`.
 
 > The `asCommitPayload(... .build(), true)` pattern used throughout this file narrows `PayloadBuilder.build()`'s result to the specific Zod-inferred type at runtime. See [PayloadBuilder — Narrowing the built payload](../xyo-knowledge/primitives.md#payloadbuilder) for the full rationale.
 
@@ -163,7 +163,7 @@ const secretStore = await StorageArchivist.create({
 })
 
 // After commit — persist salt as a payload
-const saltPayload = new PayloadBuilder({ schema: 'network.xyo.commit.salt' })
+const saltPayload = new PayloadBuilder({ schema: 'com.example.rps.commit.salt' })
   .fields({ topic, salt, choice })
   .build()
 await secretStore.insert([saltPayload])
@@ -259,7 +259,7 @@ XL1 already standardizes this convention on `TransactionBoundWitness` itself —
 import { BlockDurationZod, type XL1BlockNumber } from '@xyo-network/xl1-sdk'
 
 export const SessionPayloadZod = z.object({
-  schema: z.literal('network.xyo.session'),
+  schema: z.literal('com.example.rps.session'),
   sessionId: z.string(),
   /** Commit window — commits must arrive while current block ∈ [commit.nbf, commit.exp) */
   commit: BlockDurationZod,

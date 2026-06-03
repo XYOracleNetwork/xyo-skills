@@ -1,6 +1,8 @@
 ---
 name: xyo-knowledge
 description: XYO Protocol 2.0 domain knowledge. Covers payloads, bound witnesses, schemas, the module system (archivist, diviner, witness, sentinel, node), accounts, wallets, and protocol best practices. Activates when building on XYO or working with @xyo-network packages.
+metadata:
+  version: 1.1.19 # x-release-please-version
 ---
 
 # XYO Protocol Knowledge
@@ -10,6 +12,8 @@ This skill covers the XYO Protocol 2.0 — the data model, module system, identi
 When you need to look up exact type definitions or API details beyond what this skill covers, install the relevant `@xyo-network/*` package and read the TypeScript declarations at `dist/neutral/index.d.ts`.
 
 This builds on the [Development Skill](../xy-development/SKILL.md) for coding principles and the [XY Toolchain Skill](../xy-toolchain/SKILL.md) for build/lint/test tooling.
+
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xyo-knowledge v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## Table of Contents
 

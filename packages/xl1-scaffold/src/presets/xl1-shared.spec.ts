@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import {
+  describe, expect, it,
+} from 'vitest'
 
 import { assertExtendsBase } from './shared-assertions.js'
 import { xl1SharedTemplate } from './xl1-shared.js'
