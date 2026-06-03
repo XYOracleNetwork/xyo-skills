@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.1.20](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.19...v1.1.20) (2026-06-03)
+
+
+### Features
+
+* add Codex marketplace support ([3745175](https://github.com/XYOracleNetwork/xyo-skills/commit/374517581a410debc4d74727c929ce7355ce6e26))
+* add Codex plugin support ([7b5e883](https://github.com/XYOracleNetwork/xyo-skills/commit/7b5e8837656e59908bc78d8ca5ab66a3aa354d9e))
+* add Codex plugin support, xl1-build wizard, and schema namespace guidance ([4b6df23](https://github.com/XYOracleNetwork/xyo-skills/commit/4b6df23a5c692843a65071877d187740e2afa92d))
+* add Layer 3 acceptance criteria to the agent completion gate ([a42dae5](https://github.com/XYOracleNetwork/xyo-skills/commit/a42dae5a5efb5e5c8d7878bc2c54c5f1419cc19c))
+* add Layer 3 acceptance criteria to the agent completion gate ([d349ac0](https://github.com/XYOracleNetwork/xyo-skills/commit/d349ac084d9e2aa8c5e43739eb76ec0a24e81c42))
+* add xl1-build planning wizard skill ([a7ba3d8](https://github.com/XYOracleNetwork/xyo-skills/commit/a7ba3d83fa5808cf0c26db17f3dbdb0da5ba730a))
+* add xl1-build planning wizard skill ([339ad18](https://github.com/XYOracleNetwork/xyo-skills/commit/339ad18dd2c1c95daf1f1ba33f40b149d692b8a9))
+* add XYO brand icon/logo to Codex plugin and set Developer Tools category ([50f42a5](https://github.com/XYOracleNetwork/xyo-skills/commit/50f42a581c1864f2c85f74ebf4c249f9aa974449))
+* reserve network.xyo.* and steer app schemas to com.example.* ([37a1ea9](https://github.com/XYOracleNetwork/xyo-skills/commit/37a1ea9e7da4d7460f2011d5e7358fe0707655e6))
+* reserve network.xyo.* and steer app schemas to com.example.* ([4380639](https://github.com/XYOracleNetwork/xyo-skills/commit/4380639ef14350f6d42349804980b6354bd50c08))
+* surface skill versions and persist xl1-build PRD ([a60dfbf](https://github.com/XYOracleNetwork/xyo-skills/commit/a60dfbf9154b6c506514ab203eab6a6eb9b5d885))
+* surface skill versions and persist xl1-build PRD ([4f02d95](https://github.com/XYOracleNetwork/xyo-skills/commit/4f02d9535cf9c9d02c23b671c1dbe1288fe2cd00))
+
+
+### Bug Fixes
+
+* bump brace-expansion to 5.0.6 to clear Dependabot alert ([8e1e999](https://github.com/XYOracleNetwork/xyo-skills/commit/8e1e99954946bc2db1329048d93d574ac3e46ab3))
+* expand truncated anchor links to chain-data-indexing-protocol ([2cfb1d2](https://github.com/XYOracleNetwork/xyo-skills/commit/2cfb1d2cca2990a7bdfcafe5ec33fc5ed7872060))
+* move Codex marketplace to canonical .agents/plugins/ path ([9a5b28f](https://github.com/XYOracleNetwork/xyo-skills/commit/9a5b28f37cca11c123b0ddea4870a231ff46d1a1))
+
 ## [1.1.19](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.18...v1.1.19) (2026-05-27)
 
 
