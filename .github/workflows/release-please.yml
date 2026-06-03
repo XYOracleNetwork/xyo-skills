@@ -12,10 +12,73 @@ jobs:
   release-please:
     name: Release Please
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - id: release
+        uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  sync-marketplaces:
+    name: Sync ${{ matrix.target.name }} marketplace
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: claude
+            repo: XYOracleNetwork/xyo-skills-claude
+            script: build-claude.mjs
+          - name: codex
+            repo: XYOracleNetwork/xyo-skills-codex
+            script: build-codex.mjs
+    steps:
+      - name: Checkout source at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+
+      - name: Clone target marketplace repo
+        env:
+          GH_TOKEN: ${{ secrets.MARKETPLACE_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${{ matrix.target.repo }}.git" target
+          cd target
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Render marketplace tree into target
+        run: node scripts/marketplace-sync/${{ matrix.target.script }} --out target --version ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Commit, push, and tag
+        working-directory: target
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to sync — target already at this version."
+          else
+            git commit -m "Sync from xyo-skills@${TAG}"
+            git push origin HEAD
+          fi
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists on target — skipping."
+          else
+            git tag "${TAG}"
+            git push origin "${TAG}"
+          fi

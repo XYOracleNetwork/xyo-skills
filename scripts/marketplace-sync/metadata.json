@@ -1,0 +1,43 @@
+{
+  "name": "xyo-skills",
+  "version": "1.1.19",
+  "displayName": "XYO Skills",
+  "description": "Full-stack agent skills for building dApps on the XL1 blockchain. Covers XYO primitives, XL1 chain operations, toolchain config, and prescriptive design patterns (commit-reveal, indexing, prediction markets).",
+  "shortDescription": "XL1 and XYO development skills.",
+  "longDescription": "A layered skill stack for building XL1 dApps and XYO protocol integrations, including scaffold tooling, design patterns, chain knowledge, XYO primitives, TypeScript toolchain guidance, and development workflow standards.",
+  "keywords": [
+    "xl1",
+    "xyo",
+    "blockchain",
+    "dapp",
+    "typescript"
+  ],
+  "category": {
+    "slug": "developer-tools",
+    "display": "Developer Tools"
+  },
+  "author": {
+    "name": "XY Labs",
+    "email": "support@xylabs.com",
+    "url": "https://github.com/XYOracleNetwork"
+  },
+  "owner": {
+    "name": "XYO Network",
+    "email": "support@xylabs.com"
+  },
+  "homepage": "https://github.com/XYOracleNetwork/xyo-skills",
+  "repository": "https://github.com/XYOracleNetwork/xyo-skills",
+  "license": "LGPL-3.0-only",
+  "brandColor": "#0057FF",
+  "logo": "./assets/xyo-logo.png",
+  "icon": "./assets/xyo-icon.svg",
+  "defaultPrompts": [
+    "Build an XL1 dApp",
+    "Review this XYO integration",
+    "Scaffold a new XL1 project"
+  ],
+  "capabilities": [
+    "Read",
+    "Write"
+  ]
+}
