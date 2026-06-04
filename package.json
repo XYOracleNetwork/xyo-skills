@@ -9,7 +9,9 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "scaffold": "pnpm --filter @xyo-network/xl1-scaffold run scaffold",
-    "scaffold:dev": "pnpm --filter @xyo-network/xl1-scaffold run scaffold:dev"
+    "scaffold:dev": "pnpm --filter @xyo-network/xl1-scaffold run scaffold:dev",
+    "sync:claude": "node scripts/marketplace-sync/build-claude.mjs",
+    "sync:codex": "node scripts/marketplace-sync/build-codex.mjs"
   },
   "engines": {
     "node": ">=24"

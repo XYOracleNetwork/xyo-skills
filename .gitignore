@@ -146,5 +146,8 @@ vite.config.ts.timestamp-*
 # ignore personal overrides
 .claude/settings.local.json
 
+# Local marketplace renders for `pnpm sync:claude` / `pnpm sync:codex`
+.preview/
+
 # Testing Prompts
 Prompts.md
