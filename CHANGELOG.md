@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.21](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.20...v1.1.21) (2026-06-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* marketplace install URLs change. Claude Code users should add XYOracleNetwork/xyo-claude-plugin; Codex users should add XYOracleNetwork/xyo-codex-plugin. Skills.sh URL is unchanged.
+
+### Features
+
+* split distribution into Claude/Codex mirror repos ([00ae679](https://github.com/XYOracleNetwork/xyo-skills/commit/00ae6799f3c9d7bc0234de49e7c6814b613f4d5f))
+
 ## [1.1.20](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.19...v1.1.20) (2026-06-03)
 
 
