@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Vitest** is the standard test runner for XY Labs projects. It's fast, TypeScript-native, and integrates cleanly with the XY toolchain.
+**Vitest** is the standard test runner for XYO Foundation projects. It's fast, TypeScript-native, and integrates cleanly with the XY toolchain.
 
 - **Install:** `pnpm add -D vitest`
 - **Run:** `pnpm test` (wired to `vitest run` in package.json scripts)

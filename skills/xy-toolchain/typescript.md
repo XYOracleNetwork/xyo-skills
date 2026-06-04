@@ -2,7 +2,7 @@
 
 ## @xylabs/tsconfig Variants
 
-XY Labs publishes three TypeScript config packages. Choose the right one based on your project's target environment:
+XYO Foundation publishes three TypeScript config packages. Choose the right one based on your project's target environment:
 
 | Package | Extends | Use When |
 |---------|---------|----------|

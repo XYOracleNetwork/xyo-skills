@@ -75,12 +75,12 @@ Schemas are the primary mechanism for type discrimination in XYO. Choose them ca
 
 | Tier | Namespace | Who authors it | Examples |
 |---|---|---|---|
-| 1. Protocol primitives | `network.xyo.*` | XY Labs, shipped in the SDK | `network.xyo.boundwitness`, `network.xyo.payload`, `network.xyo.node.manifest`, `network.xyo.transfer` |
-| 2. Canonical substrates | `network.xyo.*` | XY Labs, pending SDK migration | `network.xyo.ordinal.*` (inscription), `network.xyo.ordinal.token.*` (XRC-20), `network.xyo.exchange.*` |
+| 1. Protocol primitives | `network.xyo.*` | XYO Foundation, shipped in the SDK | `network.xyo.boundwitness`, `network.xyo.payload`, `network.xyo.node.manifest`, `network.xyo.transfer` |
+| 2. Canonical substrates | `network.xyo.*` | XYO Foundation, pending SDK migration | `network.xyo.ordinal.*` (inscription), `network.xyo.ordinal.token.*` (XRC-20), `network.xyo.exchange.*` |
 | 3. Application schemas | `com.<your-org>.<app>.*` | The application author | `com.acme.auction.bid`, `com.partner.market.position` |
 | 4. Documentation examples | `com.example.*` | Tutorials, skill examples, scaffolds | `com.example.rps.move`, `com.example.market.commit` |
 
-**`network.xyo.*` is reserved.** Application authors MUST NOT publish schemas under `network.xyo.*` — the namespace belongs to XY Labs and identifies primitives the protocol itself defines. Authoring there silently squats a slot that XY Labs may later claim, and trains downstream tooling to trust your payload shape as protocol-canonical.
+**`network.xyo.*` is reserved.** Application authors MUST NOT publish schemas under `network.xyo.*` — the namespace belongs to XYO Foundation and identifies primitives the protocol itself defines. Authoring there silently squats a slot that XYO Foundation may later claim, and trains downstream tooling to trust your payload shape as protocol-canonical.
 
 `com.example.*` is reserved by RFC 2606 for example/placeholder use, which makes it the right namespace for docs and scaffold templates — readers see `com.example.*` and know to replace it with their own reverse-DNS namespace before shipping.
 
@@ -88,7 +88,7 @@ Schemas are the primary mechanism for type discrimination in XYO. Choose them ca
 
 When you need a new schema:
 
-1. *Is this a payload the XYO SDK already defines, or one XY Labs intends to bless as a protocol-level primitive?* → `network.xyo.*` — and you are not the one authoring it; coordinate with XY Labs.
+1. *Is this a payload the XYO SDK already defines, or one XYO Foundation intends to bless as a protocol-level primitive?* → `network.xyo.*` — and you are not the one authoring it; coordinate with XYO Foundation.
 2. *Am I building a real application?* → `com.<your-org>.<app>.*`. If you don't own a domain, use a namespace you control (e.g. `io.github.<user>.<app>`).
 3. *Am I writing docs, a tutorial, a scaffold template, or a skill example?* → `com.example.<app>.*`. The placeholder framing is intentional.
 
@@ -101,7 +101,7 @@ When you need a new schema:
 'network.xyo.payload.bundle'
 'network.xyo.node.manifest'
 
-// Tier 2 — canonical XY Labs substrates (will migrate into the SDK)
+// Tier 2 — canonical XYO Foundation substrates (will migrate into the SDK)
 'network.xyo.ordinal.inscription'
 'network.xyo.ordinal.token.deploy'
 

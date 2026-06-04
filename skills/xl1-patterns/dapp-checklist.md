@@ -70,7 +70,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Payload & Schema Design
 
 - [ ] Application fields do not use `_*` or `$*` prefixes — these are reserved for storage infrastructure and client metadata
-- [ ] Schema names use reverse domain, dot-separated, lowercase: `com.<your-org>.<app>.<entity>` — `network.xyo.*` is reserved for XY Labs (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming))
+- [ ] Schema names use reverse domain, dot-separated, lowercase: `com.<your-org>.<app>.<entity>` — `network.xyo.*` is reserved for XYO Foundation (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming))
 - [ ] Each payload type represents one concept — game state, move, and result are separate schemas, not one combined payload
 - [ ] Related payloads are referenced by hash (`$sources`), not embedded inside other payloads
 
