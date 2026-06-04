@@ -9,8 +9,8 @@ This repo is the **source of truth** for the skills (`skills/`) and the marketpl
 | Audience | Install target |
 | --- | --- |
 | [Skills.sh](https://skills.sh) | `XYOracleNetwork/xyo-skills` (this repo) |
-| Claude Code marketplace | `XYOracleNetwork/xyo-skills-claude` |
-| Codex marketplace | `XYOracleNetwork/xyo-skills-codex` |
+| Claude Code marketplace | `XYOracleNetwork/xyo-claude-plugin` |
+| Codex marketplace | `XYOracleNetwork/xyo-codex-plugin` |
 
 The render scripts live under `scripts/marketplace-sync/`. See [CLAUDE.md](./CLAUDE.md#distribution-model) for the full picture.
 
@@ -178,7 +178,7 @@ Versioning is automated by [release-please](https://github.com/googleapis/releas
 1. Use [conventional commit](https://www.conventionalcommits.org/) prefixes (`feat:`, `fix:`, `feat!:` for breaking, etc.) — release-please reads them to generate the `CHANGELOG.md`. Versioning is configured `always-bump-patch`, so any merge to `main` produces a release; the prefix only affects changelog content.
 2. PR `develop` → `main` with a `feat:` or `fix:` title (enforced by `lint-pr-title.yml`) and merge when ready to release.
 3. Release-please opens a Release PR against `main` with version bumps (in `version.txt`, `metadata.json`, and each `SKILL.md` frontmatter) and a regenerated `CHANGELOG.md`. Review and merge it — the git tag and GitHub Release are created automatically.
-4. The `sync-marketplaces` job in `release-please.yml` then runs the renderers and pushes the new version into `xyo-skills-claude` and `xyo-skills-codex` (matrix, `fail-fast: false`). Each mirror gets one commit per release plus a matching tag.
+4. The `sync-marketplaces` job in `release-please.yml` then runs the renderers and pushes the new version into `xyo-claude-plugin` and `xyo-codex-plugin` (matrix, `fail-fast: false`). Each mirror gets one commit per release plus a matching tag.
 5. A `main → develop` sync PR is opened **and auto-merged** with the merge-commit method, keeping `develop` aligned for the next cycle. No human action required.
 
 Release versions are owned end-to-end by release-please plus the renderers — don't edit them by hand. The marketplace-mirror repos are write-only; never commit directly to them.

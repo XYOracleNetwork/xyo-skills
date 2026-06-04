@@ -17,8 +17,8 @@ The skills themselves are the primary artifact. When implementation reveals inco
 The Claude Code and Codex marketplaces want incompatible repository layouts, so this repo ships *just the source* and renders marketplace-shaped trees into two mirror repos on each release:
 
 - **`XYOracleNetwork/xyo-skills`** (this repo) — source of truth. Skills.sh installs from here directly.
-- **`XYOracleNetwork/xyo-skills-claude`** — Claude Code marketplace target. Written by release automation; do not edit by hand.
-- **`XYOracleNetwork/xyo-skills-codex`** — Codex marketplace target. Written by release automation; do not edit by hand.
+- **`XYOracleNetwork/xyo-claude-plugin`** — Claude Code marketplace target. Written by release automation; do not edit by hand.
+- **`XYOracleNetwork/xyo-codex-plugin`** — Codex marketplace target. Written by release automation; do not edit by hand.
 
 The render pipeline lives at `scripts/marketplace-sync/`:
 
@@ -74,12 +74,12 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 - To ship: PR `develop` → `main` with a `feat:` or `fix:` title and merge using the **"Create a merge commit"** option (not squash). Release-please then opens a Release PR against `main` that bumps `version.txt` (the source of truth for `release-type: "simple"`) and cascades that version into `scripts/marketplace-sync/metadata.json` and the per-skill `SKILL.md` frontmatter. Merging that PR tags the release; the `sync-marketplaces` job then renders and pushes the new version into the Claude and Codex mirror repos.
 - After release, `sync-main-to-develop.yml` auto-opens **and auto-merges** a `main → develop` PR using the **merge-commit** method. Do not squash this PR if you ever merge it manually — squashing breaks the ancestry link between `main` and `develop` and makes them drift over time.
 - Release-please uses a fine-grained PAT (`secrets.RELEASE_PLEASE_TOKEN`) so its release PRs trigger downstream workflows; without it, the PR's checks would never report and branch protection would block the merge. Track PAT expiration.
-- The marketplace sync uses `secrets.MARKETPLACE_SYNC_TOKEN` (a PAT or GitHub App token with `contents: write` on `xyo-skills-claude` and `xyo-skills-codex`). Track its expiration alongside `RELEASE_PLEASE_TOKEN`.
+- The marketplace sync uses `secrets.MARKETPLACE_SYNC_TOKEN` (a PAT or GitHub App token with `contents: write` on `xyo-claude-plugin` and `xyo-codex-plugin`). Track its expiration alongside `RELEASE_PLEASE_TOKEN`.
 - Don't bump versions by hand — release-please owns those files. Anchored at `b1bc7eb`; older `feat:`/`fix:` commits are not rolled forward.
 
 **CI:**
 - `validate-plugins.yml` (push/PR to `main`/`develop`) — runs both renderers into tmp dirs and validates the generated manifests pass marketplace structural assertions. Also verifies the scaffold runtime in `skills/xl1-scaffold/` is in sync with its TS source.
-- `release-please.yml` (push to `main`) — opens/merges release PRs. When release-please tags a release, the follow-up `sync-marketplaces` job renders and pushes to `xyo-skills-claude` and `xyo-skills-codex` (matrix; `fail-fast: false`).
+- `release-please.yml` (push to `main`) — opens/merges release PRs. When release-please tags a release, the follow-up `sync-marketplaces` job renders and pushes to `xyo-claude-plugin` and `xyo-codex-plugin` (matrix; `fail-fast: false`).
 - `validate-skills.yml`, `lint-pr-title.yml`, `sync-main-to-develop.yml` — unchanged.
 
 To validate manifest generation locally:

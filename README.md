@@ -25,8 +25,8 @@ The Claude Code and Codex marketplaces require incompatible repository layouts, 
 
 | Install via | Repo to point at | Notes |
 | --- | --- | --- |
-| Claude Code marketplace | `XYOracleNetwork/xyo-skills-claude` | Mirror — written by release automation. |
-| Codex marketplace | `XYOracleNetwork/xyo-skills-codex` | Mirror — written by release automation. |
+| Claude Code marketplace | `XYOracleNetwork/xyo-claude-plugin` | Mirror — written by release automation. |
+| Codex marketplace | `XYOracleNetwork/xyo-codex-plugin` | Mirror — written by release automation. |
 | Skills.sh | `XYOracleNetwork/xyo-skills` | Source of truth. |
 
 ## Install
@@ -41,7 +41,7 @@ Browse and install through your coding agent's built-in skill marketplace.
 
 ```shell
 # Add the marketplace
-/plugin marketplace add XYOracleNetwork/xyo-skills-claude
+/plugin marketplace add XYOracleNetwork/xyo-claude-plugin
 
 # Install the XL1 skill stack
 /plugin install xyo-skills
@@ -67,7 +67,7 @@ The `/plugin` slash commands aren't available in the Claude Code desktop app —
 
    ![Add marketplace submenu option](docs/images/claude/install/04-add-marketplace.png)
 
-5. In the URL field, paste `https://github.com/XYOracleNetwork/xyo-skills-claude` and click **Sync**.
+5. In the URL field, paste `https://github.com/XYOracleNetwork/xyo-claude-plugin` and click **Sync**.
 
    ![Add marketplace URL dialog](docs/images/claude/install/05-add-marketplace-url.png)
 
@@ -85,7 +85,7 @@ Add to your project's `.claude/settings.json` so the marketplace is auto-discove
     "xyo-skills": {
       "source": {
         "source": "github",
-        "repo": "XYOracleNetwork/xyo-skills-claude"
+        "repo": "XYOracleNetwork/xyo-claude-plugin"
       }
     }
   }
@@ -100,7 +100,7 @@ Each team member then installs the plugin through their preferred interface (CLI
 
 ```shell
 # Add the marketplace
-codex plugin marketplace add XYOracleNetwork/xyo-skills-codex --ref main
+codex plugin marketplace add XYOracleNetwork/xyo-codex-plugin --ref main
 
 # Install the XL1 skill stack
 codex plugin add xyo-skills@xyo-skills

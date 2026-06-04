@@ -35,10 +35,10 @@ jobs:
       matrix:
         target:
           - name: claude
-            repo: XYOracleNetwork/xyo-skills-claude
+            repo: XYOracleNetwork/xyo-claude-plugin
             script: build-claude.mjs
           - name: codex
-            repo: XYOracleNetwork/xyo-skills-codex
+            repo: XYOracleNetwork/xyo-codex-plugin
             script: build-codex.mjs
     steps:
       - name: Checkout source at release tag
