@@ -54,13 +54,21 @@ async function writeJson(file, obj) {
   await fs.writeFile(file, JSON.stringify(obj, null, 2) + '\n');
 }
 
-async function copyStaticTree(sourceRoot, outDir) {
-  await fs.cp(path.join(sourceRoot, 'skills'), path.join(outDir, 'skills'), { recursive: true });
-  await fs.cp(path.join(sourceRoot, 'assets'), path.join(outDir, 'assets'), { recursive: true });
-  await fs.copyFile(path.join(sourceRoot, 'LICENSE'), path.join(outDir, 'LICENSE'));
+async function copyStaticTree(sourceRoot, outDir, copies) {
+  for (const { from, to } of copies) {
+    const src = path.join(sourceRoot, from);
+    const dest = path.join(outDir, to);
+    const stat = await fs.stat(src);
+    if (stat.isDirectory()) {
+      await fs.cp(src, dest, { recursive: true });
+    } else {
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.copyFile(src, dest);
+    }
+  }
 }
 
-export async function runRenderer({ name, managedPaths, generate }) {
+export async function runRenderer({ name, managedPaths, copies, generate }) {
   try {
     const args = parseArgs(process.argv.slice(2));
     const source = args.source ? path.resolve(args.source) : REPO_ROOT;
@@ -68,7 +76,7 @@ export async function runRenderer({ name, managedPaths, generate }) {
     const metadata = await loadMetadata(source, args.version);
 
     await resetManaged(out, managedPaths);
-    await copyStaticTree(source, out);
+    await copyStaticTree(source, out, copies);
 
     const files = generate({ metadata });
     for (const [relPath, obj] of Object.entries(files)) {
