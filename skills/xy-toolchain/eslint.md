@@ -2,7 +2,7 @@
 
 ## @xylabs/eslint-config-flat
 
-The standard ESLint configuration for XY Labs projects. Uses the modern [flat config format](https://eslint.org/docs/latest/use/configure/configuration-files) (ESLint 9.x).
+The standard ESLint configuration for XYO Foundation projects. Uses the modern [flat config format](https://eslint.org/docs/latest/use/configure/configuration-files) (ESLint 9.x).
 
 - **Package:** `@xylabs/eslint-config-flat` (non-React) or `@xylabs/eslint-config-react-flat` (React projects)
 - **Install:** `pnpm add -D @xylabs/eslint-config-flat eslint` (or `@xylabs/eslint-config-react-flat` for React)
