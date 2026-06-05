@@ -37,22 +37,24 @@ jobs:
         run: |
           set -euo pipefail
           jq empty /tmp/render/codex/.agents/plugins/marketplace.json
-          jq empty /tmp/render/codex/.codex-plugin/plugin.json
-          jq -e '.name and (.plugins | type == "array") and (.plugins[] | select(.name == "xyo-skills") | .source.source == "local" and .source.path == "./" and .policy.installation and .policy.authentication and .category)' /tmp/render/codex/.agents/plugins/marketplace.json > /dev/null
+          jq empty /tmp/render/codex/plugins/xyo-skills/.codex-plugin/plugin.json
+          jq -e '.name and (.plugins | type == "array") and (.plugins[] | select(.name == "xyo-skills") | .source.source == "local" and .source.path == "./plugins/xyo-skills" and .policy.installation and .policy.authentication and .category)' /tmp/render/codex/.agents/plugins/marketplace.json > /dev/null
           for field in name version description author.name skills interface.displayName interface.shortDescription interface.longDescription interface.developerName interface.category interface.defaultPrompt; do
-            jq -e ".$field" /tmp/render/codex/.codex-plugin/plugin.json > /dev/null || { echo "✗ Missing Codex plugin field: $field"; exit 1; }
+            jq -e ".$field" /tmp/render/codex/plugins/xyo-skills/.codex-plugin/plugin.json > /dev/null || { echo "✗ Missing Codex plugin field: $field"; exit 1; }
           done
           echo "✓ Codex manifests valid"
 
       - name: Validate rendered tree shape
         run: |
           set -euo pipefail
-          for target in claude codex; do
-            for path in skills assets LICENSE; do
-              test -e "/tmp/render/$target/$path" || { echo "✗ $target missing $path"; exit 1; }
-            done
+          for path in skills assets LICENSE; do
+            test -e "/tmp/render/claude/$path" || { echo "✗ claude missing $path"; exit 1; }
           done
-          echo "✓ Both rendered trees include skills/, assets/, and LICENSE"
+          test -e /tmp/render/codex/LICENSE || { echo "✗ codex missing LICENSE"; exit 1; }
+          for path in skills assets; do
+            test -e "/tmp/render/codex/plugins/xyo-skills/$path" || { echo "✗ codex missing plugins/xyo-skills/$path"; exit 1; }
+          done
+          echo "✓ Rendered trees include expected static content"
 
   validate-scaffold-sync:
     name: Verify scaffold bin/ is in sync with source

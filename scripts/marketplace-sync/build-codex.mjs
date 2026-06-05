@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 import { runRenderer } from './lib.mjs';
 
+const PLUGIN_DIR = 'plugins/xyo-skills';
+
 await runRenderer({
   name: 'Codex',
-  managedPaths: ['skills', 'assets', 'LICENSE', '.agents', '.codex-plugin'],
+  managedPaths: ['plugins', '.agents', 'LICENSE'],
+  copies: [
+    { from: 'skills', to: `${PLUGIN_DIR}/skills` },
+    { from: 'assets', to: `${PLUGIN_DIR}/assets` },
+    { from: 'LICENSE', to: 'LICENSE' },
+  ],
   generate: ({ metadata }) => ({
     '.agents/plugins/marketplace.json': {
       name: metadata.name,
@@ -13,13 +20,13 @@ await runRenderer({
       plugins: [
         {
           name: metadata.name,
-          source: { source: 'local', path: './' },
+          source: { source: 'local', path: `./${PLUGIN_DIR}` },
           policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
           category: metadata.category.display,
         },
       ],
     },
-    '.codex-plugin/plugin.json': {
+    [`${PLUGIN_DIR}/.codex-plugin/plugin.json`]: {
       name: metadata.name,
       version: metadata.version,
       description: metadata.description,

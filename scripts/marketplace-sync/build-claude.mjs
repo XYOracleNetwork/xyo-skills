@@ -4,6 +4,11 @@ import { runRenderer } from './lib.mjs';
 await runRenderer({
   name: 'Claude',
   managedPaths: ['skills', 'assets', 'LICENSE', '.claude-plugin'],
+  copies: [
+    { from: 'skills', to: 'skills' },
+    { from: 'assets', to: 'assets' },
+    { from: 'LICENSE', to: 'LICENSE' },
+  ],
   generate: ({ metadata }) => {
     const pluginEntry = {
       name: metadata.name,
