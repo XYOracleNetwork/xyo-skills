@@ -5,7 +5,10 @@ const PLUGIN_DIR = 'plugins/xyo-skills';
 
 await runRenderer({
   name: 'Codex',
-  managedPaths: ['plugins', '.agents', 'LICENSE'],
+  // Legacy `.codex-plugin/`, `skills/`, `assets/` at the repo root are left over
+  // from the pre-nesting layout shipped through 1.1.21. Listing them here clears
+  // them on the next sync so the target repo doesn't carry orphaned trees.
+  managedPaths: ['plugins', '.agents', 'LICENSE', '.codex-plugin', 'skills', 'assets'],
   copies: [
     { from: 'skills', to: `${PLUGIN_DIR}/skills` },
     { from: 'assets', to: `${PLUGIN_DIR}/assets` },
