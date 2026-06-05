@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.22](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.21...v1.1.22) (2026-06-05)
+
+
+### Features
+
+* nest Codex plugin under plugins/xyo-skills/ ([d64fe4a](https://github.com/XYOracleNetwork/xyo-skills/commit/d64fe4a65eeddbfc10b12b4c1d6548c8986db6a7))
+* nest Codex plugin under plugins/xyo-skills/ ([#37](https://github.com/XYOracleNetwork/xyo-skills/issues/37)) ([acac923](https://github.com/XYOracleNetwork/xyo-skills/commit/acac9238e3f8b0c9bb1bca808cd26650595b8dff))
+
 ## [1.1.21](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.20...v1.1.21) (2026-06-04)
 
 
