@@ -68,7 +68,7 @@ TransactionBoundWitness ──────────────► canonical 
 
 ## Step 1: Define Schemas
 
-Two schemas form the substrate. Both follow the chain-agnostic `network.xyo.ordinal.*` namespace — this is a canonical XY Labs–blessed substrate, reserved in `network.xyo.*` pending migration into the SDK. Application schemas built *on top* of the substrate still belong under your own `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming).
+Two schemas form the substrate. Both follow the chain-agnostic `network.xyo.ordinal.*` namespace — this is a canonical XYO Foundation–blessed substrate, reserved in `network.xyo.*` pending migration into the SDK. Application schemas built *on top* of the substrate still belong under your own `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming).
 
 ```ts
 import { asSchema } from '@xyo-network/sdk-js'

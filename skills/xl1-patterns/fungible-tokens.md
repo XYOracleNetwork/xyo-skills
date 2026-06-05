@@ -61,7 +61,7 @@ Both passes read the same canonical block stream; they produce independent read 
 
 ## Step 1: Define the Three Schemas
 
-Three narrow schemas under `network.xyo.ordinal.token.*`. Narrow schemas keep Zod types sharp, datalake filtering surgical, and the indexer's discriminated union exhaustive. The `network.xyo.ordinal.token.*` namespace is a canonical XY Labs–blessed protocol (XRC-20), reserved in `network.xyo.*` pending migration into the SDK; applications consuming this protocol use these schema names verbatim, but any *new* application schemas you author belong under `com.<your-org>.<app>.*` (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
+Three narrow schemas under `network.xyo.ordinal.token.*`. Narrow schemas keep Zod types sharp, datalake filtering surgical, and the indexer's discriminated union exhaustive. The `network.xyo.ordinal.token.*` namespace is a canonical XYO Foundation–blessed protocol (XRC-20), reserved in `network.xyo.*` pending migration into the SDK; applications consuming this protocol use these schema names verbatim, but any *new* application schemas you author belong under `com.<your-org>.<app>.*` (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
 
 ```ts
 import { asSchema } from '@xyo-network/sdk-js'

@@ -11,7 +11,7 @@
 
 ## @xylabs/toolchain
 
-The `@xylabs/toolchain` package provides a unified CLI for building, linting, compiling, and managing TypeScript projects. It is the standard build tool for XY Labs projects.
+The `@xylabs/toolchain` package provides a unified CLI for building, linting, compiling, and managing TypeScript projects. It is the standard build tool for XYO Foundation projects.
 
 - **Repository:** https://github.com/xylabs/config
 - **Install:** `pnpm add -D @xylabs/toolchain`
