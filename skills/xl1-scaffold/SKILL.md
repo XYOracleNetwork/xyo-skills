@@ -2,7 +2,7 @@
 name: xl1-scaffold
 description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project. Do NOT activate for work in an existing project.
 metadata:
-  version: 1.1.21 # x-release-please-version
+  version: 1.1.22 # x-release-please-version
 ---
 
 # XL1 Scaffold

@@ -2,7 +2,7 @@
 name: xl1-patterns
 description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, and headless dApp verification. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, headless verification of browser dApps, or dApp UI conventions.
 metadata:
-  version: 1.1.21 # x-release-please-version
+  version: 1.1.22 # x-release-please-version
 ---
 
 # XL1 Design Patterns
