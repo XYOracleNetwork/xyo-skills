@@ -66,52 +66,32 @@ TransactionBoundWitness ──────────────► canonical 
 
 ---
 
-## Step 1: Define Schemas
+## Step 1: Use the Substrate Types
 
-Two schemas form the substrate. Both follow the chain-agnostic `network.xyo.ordinal.*` namespace — this is a canonical XYO Foundation–blessed substrate, reserved in `network.xyo.*` pending migration into the SDK. Application schemas built *on top* of the substrate still belong under your own `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming).
-
-```ts
-import { asSchema } from '@xyo-network/sdk-js'
-import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
-import { z } from 'zod'
-
-export const InscriptionSchema = asSchema('network.xyo.ordinal.inscription', true)
-export const TransferSchema    = asSchema('network.xyo.ordinal.transfer', true)
-```
-
-### The inscription payload
-
-Pure declarative content. No `from`, no `creator`, no `owner` — those are derived structurally from the wrapping BoundWitness.
+Both schemas ship from the SDK under the chain-agnostic `network.xyo.ordinal.*` namespace — import them rather than redefining. Application schemas built *on top* of the substrate still belong under your own `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming).
 
 ```ts
-export const InscriptionPayloadZod = z.object({
-  schema: z.literal('network.xyo.ordinal.inscription'),
-  contentType: z.string(),         // e.g. 'text/plain', 'image/png', 'application/json'
-  content: z.string(),             // base64 for binary, raw for text/JSON
-})
-
-export type InscriptionPayload = z.infer<typeof InscriptionPayloadZod>
-export const isInscriptionPayload = zodIsFactory(InscriptionPayloadZod)
-export const asInscriptionPayload = zodAsFactory(InscriptionPayloadZod, 'asInscriptionPayload')
-export const toInscriptionPayload = zodToFactory(InscriptionPayloadZod, 'toInscriptionPayload')
+import {
+  Inscription, InscriptionSchema, isInscription, asInscription,
+  OrdinalTransfer, OrdinalTransferSchema, isOrdinalTransfer, asOrdinalTransfer,
+} from '@xyo-network/xl1-sdk'
 ```
 
-### The transfer payload
+### The inscription artifact
 
-References the target inscription by its content-addressed ID and declares the new owner. The current owner is *not* in the payload — it is derived from the BoundWitness signer at index time.
+Pure declarative content. No `from`, no `creator`, no `owner` — those are derived structurally from the wrapping BoundWitness. Fields:
 
-```ts
-export const TransferPayloadZod = z.object({
-  schema: z.literal('network.xyo.ordinal.transfer'),
-  inscriptionId: z.string(),       // hex hash of the target inscription payload
-  to: z.string(),                  // recipient address (declarative content — fact about the world)
-})
+- `contentType` (string) — MIME type (`'text/plain'`, `'image/png'`, `'application/json'`)
+- `content` (string) — base64 for binary, raw for text/JSON
 
-export type TransferPayload = z.infer<typeof TransferPayloadZod>
-export const isTransferPayload = zodIsFactory(TransferPayloadZod)
-export const asTransferPayload = zodAsFactory(TransferPayloadZod, 'asTransferPayload')
-export const toTransferPayload = zodToFactory(TransferPayloadZod, 'toTransferPayload')
-```
+The inscription ID is the data hash of the payload, established by the wrapping BoundWitness rather than any payload field.
+
+### The transfer event
+
+References the target inscription by its content-addressed ID and declares the new owner. The current owner is *not* in the payload — it is derived from the BoundWitness signer at index time. Fields:
+
+- `inscriptionId` (`Hash`) — content-addressed hash of the target inscription
+- `to` (`XyoAddress`) — recipient address (declarative content — fact about the world)
 
 `to` is content (a fact the signer is declaring); `from` would be authorship (already on the BoundWitness). Only `to` belongs in the payload.
 
@@ -128,12 +108,9 @@ import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 // Pinned protocol sentinel — equals sentinelAddressFromSchema('network.xyo.ordinal')
 const ORDINAL_SENTINEL = '4b210503f8caa8e82d38617997f2eaf612c0ec04'
 
-const inscription = asInscriptionPayload(
-  new PayloadBuilder({ schema: InscriptionSchema })
-    .fields({ contentType: 'text/plain', content: 'Hello, XL1.' })
-    .build(),
-  true,
-)
+const inscription = new PayloadBuilder<Inscription>({ schema: InscriptionSchema })
+  .fields({ contentType: 'text/plain', content: 'Hello, XL1.' })
+  .build()
 
 // Per-payload burn address — verifiably no key, bound to this specific inscription
 const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', inscription._hash)
@@ -173,15 +150,12 @@ If gas economy is critical and you can run a global indexer ([Step 4](#step-4-bu
 A transfer is signed by the **current owner** (whoever the indexer's ledger shows as the owner of `inscriptionId` at the moment the transfer lands). The same dual-sentinel pattern applies, so transfers are also discoverable via address-scoped balance history.
 
 ```ts
-const transfer = asTransferPayload(
-  new PayloadBuilder({ schema: TransferSchema })
-    .fields({
-      inscriptionId: 'abc123…',  // the inscription's data hash, no 0x prefix
-      to: 'recipient40HexChars…',
-    })
-    .build(),
-  true,
-)
+const transfer = new PayloadBuilder<OrdinalTransfer>({ schema: OrdinalTransferSchema })
+  .fields({
+    inscriptionId: 'abc123…',  // the inscription's data hash, no 0x prefix
+    to: 'recipient40HexChars…',
+  })
+  .build()
 
 const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', transfer._hash)
 
@@ -264,7 +238,7 @@ import type { XyoGateway } from '@xyo-network/xl1-sdk'
 import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
 import type { Address, Hash } from '@xyo-network/sdk-js'
 
-const SUBSTRATE_SCHEMAS = new Set<string>([InscriptionSchema, TransferSchema])
+const SUBSTRATE_SCHEMAS = new Set<string>([InscriptionSchema, OrdinalTransferSchema])
 
 async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
   const viewer = gateway.connection.viewer
@@ -307,9 +281,9 @@ async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
       const signer = hashToSigner.get(p._hash)
       if (!signer) continue // hash mismatch — defensive only
 
-      if (isInscriptionPayload(p)) {
+      if (isInscription(p)) {
         registerArtifact(state, p, signer, n)
-      } else if (isTransferPayload(p)) {
+      } else if (isOrdinalTransfer(p)) {
         applyTransfer(state, p, signer)
       }
     }
@@ -363,7 +337,7 @@ Three structural changes: validate target exists, validate signer is current own
 ```ts
 function applyTransfer(
   state: IndexerState,
-  payload: TransferPayload,
+  payload: OrdinalTransfer,
   signer: Address,
 ) {
   const record = state.artifacts.get(payload.inscriptionId)
@@ -423,7 +397,7 @@ for (let n = lastSeenBlock + 1; n <= head; n++) {
   if (inscriptionHashes.length === 0) continue
 
   const fetched = await viewer.block.payloadsByHash(inscriptionHashes)
-  inscriptions.push(...fetched.filter(isInscriptionPayload))
+  inscriptions.push(...fetched.filter(isInscription))
 }
 ```
 
@@ -445,7 +419,7 @@ const myInscriptions = []
 for (const [, tx, transfer] of history ?? []) {
   if (!transfer.transfers[ORDINAL_SENTINEL]) continue
   const payloads = await defaultGateway.connection.viewer?.block.payloadsByHash(tx.payload_hashes)
-  myInscriptions.push(...(payloads ?? []).filter(isInscriptionPayload))
+  myInscriptions.push(...(payloads ?? []).filter(isInscription))
 }
 ```
 

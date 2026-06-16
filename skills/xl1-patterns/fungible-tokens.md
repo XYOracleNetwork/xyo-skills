@@ -59,69 +59,44 @@ Both passes read the same canonical block stream; they produce independent read 
 
 ---
 
-## Step 1: Define the Three Schemas
+## Step 1: Use the Three XRC-20 Types
 
-Three narrow schemas under `network.xyo.ordinal.token.*`. Narrow schemas keep Zod types sharp, datalake filtering surgical, and the indexer's discriminated union exhaustive. The `network.xyo.ordinal.token.*` namespace is a canonical XYO Foundation–blessed protocol (XRC-20), reserved in `network.xyo.*` pending migration into the SDK; applications consuming this protocol use these schema names verbatim, but any *new* application schemas you author belong under `com.<your-org>.<app>.*` (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
+Three narrow schemas under `network.xyo.ordinal.token.*` ship from the SDK. Narrow schemas keep types sharp, datalake filtering surgical, and the indexer's discriminated union exhaustive. Import them — these schema names are reserved to the XYO Foundation; any *new* application schemas you author belong under `com.<your-org>.<app>.*` (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
 
 ```ts
-import { asSchema } from '@xyo-network/sdk-js'
-import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
-import { z } from 'zod'
-
-export const TokenDeploySchema   = asSchema('network.xyo.ordinal.token.deploy', true)
-export const TokenMintSchema     = asSchema('network.xyo.ordinal.token.mint', true)
-export const TokenTransferSchema = asSchema('network.xyo.ordinal.token.transfer', true)
+import {
+  TokenDeploy, TokenDeploySchema, isTokenDeploy, asTokenDeploy,
+  TokenMint, TokenMintSchema, isTokenMint, asTokenMint,
+  TokenTransfer, TokenTransferSchema, isTokenTransfer, asTokenTransfer,
+  TickerZod, TokenAmountZod,
+} from '@xyo-network/xl1-sdk'
 ```
+
+The SDK also exports `TickerZod` (1-8 char string) and `TokenAmountZod` (decimal-string big integer) as the canonical primitives — reuse them in any application-layer schema that needs the same shapes.
 
 ### Deploy (artifact)
 
-A deploy is an inscription artifact. It has a content-addressed ID and an owner (the BoundWitness signer). Whoever owns the deploy artifact owns the ticker.
+A deploy is an inscription artifact. It has a content-addressed ID and an owner (the BoundWitness signer). Whoever owns the deploy artifact owns the ticker. Fields:
 
-```ts
-export const TokenDeployPayloadZod = z.object({
-  schema: z.literal('network.xyo.ordinal.token.deploy'),
-  tick:   z.string().min(1).max(8),    // ticker symbol (case-folded by the indexer)
-  max:    z.string(),                  // total supply, decimal string for big-number safety
-  lim:    z.string(),                  // per-mint cap, decimal string
-  decimals: z.number().int().min(0).max(18).optional(),
-})
-
-export type TokenDeployPayload = z.infer<typeof TokenDeployPayloadZod>
-export const isTokenDeployPayload = zodIsFactory(TokenDeployPayloadZod)
-export const asTokenDeployPayload = zodAsFactory(TokenDeployPayloadZod, 'asTokenDeployPayload')
-export const toTokenDeployPayload = zodToFactory(TokenDeployPayloadZod, 'toTokenDeployPayload')
-```
+- `tick` (`Ticker`) — ticker symbol, 1-8 characters; case-folded by the indexer
+- `max` (`TokenAmount`) — total supply, decimal string for big-integer safety
+- `lim` (`TokenAmount`) — per-mint cap
+- `decimals` (optional integer 0-18) — display decimals; defaults to 0
 
 ### Mint (event)
 
-```ts
-export const TokenMintPayloadZod = z.object({
-  schema: z.literal('network.xyo.ordinal.token.mint'),
-  tick:   z.string(),
-  amt:    z.string(),                  // amount minted, decimal string
-})
+Fields:
 
-export type TokenMintPayload = z.infer<typeof TokenMintPayloadZod>
-export const isTokenMintPayload = zodIsFactory(TokenMintPayloadZod)
-export const asTokenMintPayload = zodAsFactory(TokenMintPayloadZod, 'asTokenMintPayload')
-export const toTokenMintPayload = zodToFactory(TokenMintPayloadZod, 'toTokenMintPayload')
-```
+- `tick` (`Ticker`) — ticker being minted
+- `amt` (`TokenAmount`) — amount minted
 
 ### Transfer (event)
 
-```ts
-export const TokenTransferPayloadZod = z.object({
-  schema: z.literal('network.xyo.ordinal.token.transfer'),
-  tick:   z.string(),
-  to:     z.string(),                  // recipient address — declarative content
-  amt:    z.string(),                  // decimal string
-})
+Fields:
 
-export type TokenTransferPayload = z.infer<typeof TokenTransferPayloadZod>
-export const isTokenTransferPayload = zodIsFactory(TokenTransferPayloadZod)
-export const asTokenTransferPayload = zodAsFactory(TokenTransferPayloadZod, 'asTokenTransferPayload')
-export const toTokenTransferPayload = zodToFactory(TokenTransferPayloadZod, 'toTokenTransferPayload')
-```
+- `tick` (`Ticker`) — ticker being transferred
+- `to` (`XyoAddress`) — recipient address (declarative content)
+- `amt` (`TokenAmount`) — amount transferred
 
 None of these payloads carry a `from`. The actor is always the BoundWitness signer, derived structurally — see [Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md).
 
@@ -155,12 +130,9 @@ Deploys are inscriptions claiming a ticker. The first finalized deploy for a giv
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk-js'
 
-const deploy = asTokenDeployPayload(
-  new PayloadBuilder({ schema: TokenDeploySchema })
-    .fields({ tick: 'XL1', max: '21000000', lim: '1000' })
-    .build(),
-  true,
-)
+const deploy = new PayloadBuilder<TokenDeploy>({ schema: TokenDeploySchema })
+  .fields({ tick: 'XL1', max: '21000000', lim: '1000' })
+  .build()
 
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({
@@ -186,12 +158,9 @@ Ticker ownership is the substrate's ownership of the deploy artifact: whoever si
 Anyone can attempt to mint, up to the per-deploy `lim` per mint event and the cumulative `max`.
 
 ```ts
-const mint = asTokenMintPayload(
-  new PayloadBuilder({ schema: TokenMintSchema })
-    .fields({ tick: 'XL1', amt: '1000' })
-    .build(),
-  true,
-)
+const mint = new PayloadBuilder<TokenMint>({ schema: TokenMintSchema })
+  .fields({ tick: 'XL1', amt: '1000' })
+  .build()
 
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({
@@ -217,12 +186,9 @@ The indexer credits the signer of the wrapping `TransactionBoundWitness`. Two us
 A single signed payload moves balance from the signer to `to`. No two-step inscribe-intent dance.
 
 ```ts
-const transfer = asTokenTransferPayload(
-  new PayloadBuilder({ schema: TokenTransferSchema })
-    .fields({ tick: 'XL1', to: 'recipient40HexChars…', amt: '500' })
-    .build(),
-  true,
-)
+const transfer = new PayloadBuilder<TokenTransfer>({ schema: TokenTransferSchema })
+  .fields({ tick: 'XL1', to: 'recipient40HexChars…', amt: '500' })
+  .build()
 
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({
@@ -271,7 +237,7 @@ type TokenState = {
 function applyTokenDeploy(
   substrate: IndexerState,
   state: TokenState,
-  payload: TokenDeployPayload,
+  payload: TokenDeploy,
   signer: Address,
   blockHeight: XL1BlockNumber,
 ) {
@@ -305,7 +271,7 @@ function tickerOwner(substrate: IndexerState, ticker: TickerRecord): Address | u
 
 function applyTokenMint(
   state: TokenState,
-  payload: TokenMintPayload,
+  payload: TokenMint,
   signer: Address,
 ) {
   const tick = payload.tick.toLowerCase()
@@ -324,7 +290,7 @@ function applyTokenMint(
 
 function applyTokenTransfer(
   state: TokenState,
-  payload: TokenTransferPayload,
+  payload: TokenTransfer,
   signer: Address,
 ) {
   const tick = payload.tick.toLowerCase()
@@ -358,13 +324,13 @@ for (const p of payloads) {
   if (!signer) continue // payload not wrapped by a transaction in this block
 
   // Substrate pass (existing — see Inscription Substrate)
-  if (isInscriptionPayload(p))      registerArtifact(substrate, p, signer, n)
-  else if (isTransferPayload(p))    applyTransfer(substrate, p, signer)
+  if (isInscription(p))           registerArtifact(substrate, p, signer, n)
+  else if (isOrdinalTransfer(p))  applyTransfer(substrate, p, signer)
 
   // Token pass
-  else if (isTokenDeployPayload(p))   applyTokenDeploy(substrate, token, p, signer, n)
-  else if (isTokenMintPayload(p))     applyTokenMint(token, p, signer)
-  else if (isTokenTransferPayload(p)) applyTokenTransfer(token, p, signer)
+  else if (isTokenDeploy(p))   applyTokenDeploy(substrate, token, p, signer, n)
+  else if (isTokenMint(p))     applyTokenMint(token, p, signer)
+  else if (isTokenTransfer(p)) applyTokenTransfer(token, p, signer)
 }
 ```
 

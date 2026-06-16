@@ -76,7 +76,7 @@ Schemas are the primary mechanism for type discrimination in XYO. Choose them ca
 | Tier | Namespace | Who authors it | Examples |
 |---|---|---|---|
 | 1. Protocol primitives | `network.xyo.*` | XYO Foundation, shipped in the SDK | `network.xyo.boundwitness`, `network.xyo.payload`, `network.xyo.node.manifest`, `network.xyo.transfer` |
-| 2. Canonical substrates | `network.xyo.*` | XYO Foundation, pending SDK migration | `network.xyo.ordinal.*` (inscription), `network.xyo.ordinal.token.*` (XRC-20), `network.xyo.exchange.*` |
+| 2. Canonical substrates | `network.xyo.*` | XYO Foundation, shipped in the SDK | `network.xyo.ordinal.*` (inscription), `network.xyo.ordinal.token.*` (XRC-20), `network.xyo.exchange.*` |
 | 3. Application schemas | `com.<your-org>.<app>.*` | The application author | `com.acme.auction.bid`, `com.partner.market.position` |
 | 4. Documentation examples | `com.example.*` | Tutorials, skill examples, scaffolds | `com.example.rps.move`, `com.example.market.commit` |
 
@@ -101,7 +101,7 @@ When you need a new schema:
 'network.xyo.payload.bundle'
 'network.xyo.node.manifest'
 
-// Tier 2 — canonical XYO Foundation substrates (will migrate into the SDK)
+// Tier 2 — canonical XYO Foundation substrates (shipped via @xyo-network/xl1-sdk)
 'network.xyo.ordinal.inscription'
 'network.xyo.ordinal.token.deploy'
 
