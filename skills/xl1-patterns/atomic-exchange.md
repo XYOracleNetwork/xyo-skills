@@ -58,71 +58,39 @@ A lean payload — just `{ outcome: 'fulfilled' | 'rejected', terms: <hash> }` �
 
 ## Schema Design
 
-The `network.xyo.exchange.*` namespace is a canonical XYO Foundation–blessed protocol, reserved in `network.xyo.*` pending migration into the SDK. Use these schema names verbatim when participating in the protocol; application schemas you author on top still belong under your own `com.<your-org>.<app>.*` namespace (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
+The `network.xyo.exchange.*` namespace is a canonical XYO Foundation–blessed protocol. Import the types from the SDK rather than redefining; these schema names are reserved to the XYO Foundation, while application schemas you author on top belong under your own `com.<your-org>.<app>.*` namespace (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
 
 ```ts
-import { asSchema, PayloadBuilder } from '@xyo-network/sdk-js'
-import { BlockDurationZod } from '@xyo-network/xl1-sdk'
-import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
-import { z } from 'zod'
-
-// --- Party-secret commitment (the hash recorded in terms) ---
-
-export const PartySecretRevealSchema = asSchema('network.xyo.exchange.party-secret', true)
-
-export const PartySecretRevealPayloadZod = z.object({
-  schema: z.literal('network.xyo.exchange.party-secret'),
-  /** Random opaque value — the bytes don't matter, only that the party signed them */
-  nonce: z.string(),
-})
-
-export type PartySecretRevealPayload = z.infer<typeof PartySecretRevealPayloadZod>
-export const isPartySecretRevealPayload = zodIsFactory(PartySecretRevealPayloadZod)
-
-// --- Exchange terms ---
-
-export const ExchangeTermsSchema = asSchema('network.xyo.exchange.terms', true)
-
-export const ExchangeTermsPayloadZod = z.object({
-  schema: z.literal('network.xyo.exchange.terms'),
-  /** Stable identifier for this exchange */
-  exchangeId: z.string(),
-  /**
-   * Each party is a *set* of addresses (most parties have one wallet, but a
-   * multi-sig org might have several). All addresses in the set must sign
-   * the party's secret reveal at settlement.
-   */
-  parties: z.array(z.array(z.string())).min(2),
-  /** One hash per party — `dataHash(PartySecretRevealPayload)` for that party's secret */
-  partySecrets: z.array(z.string()),
-  /** Hashes of the asset payload(s) being exchanged */
-  assets: z.array(z.string()),
-  /** Optional — addresses whose signature on appraisal/receipt payloads is accepted */
-  appraisalAuthorities: z.array(z.string()).optional(),
-  paymentAuthorities: z.array(z.string()).optional(),
-  /** Settlement validity window — same convention as TransactionBoundWitness */
-  ...BlockDurationZod.shape,
-})
-
-export type ExchangeTermsPayload = z.infer<typeof ExchangeTermsPayloadZod>
-export const isExchangeTermsPayload = zodIsFactory(ExchangeTermsPayloadZod)
-
-// --- Lean outcome ---
-
-export const ExchangeOutcomeSchema = asSchema('network.xyo.exchange.outcome', true)
-
-export const ExchangeOutcomePayloadZod = z.object({
-  schema: z.literal('network.xyo.exchange.outcome'),
-  /** Hash of the ExchangeTermsPayload this outcome settles */
-  terms: z.string(),
-  outcome: z.enum(['fulfilled', 'rejected']),
-})
-
-export type ExchangeOutcomePayload = z.infer<typeof ExchangeOutcomePayloadZod>
-export const isExchangeOutcomePayload = zodIsFactory(ExchangeOutcomePayloadZod)
+import {
+  ExchangeTerms, ExchangeTermsSchema, isExchangeTerms, asExchangeTerms,
+  PartySecretReveal, PartySecretRevealSchema, isPartySecretReveal, asPartySecretReveal,
+  ExchangeOutcome, ExchangeOutcomeSchema, isExchangeOutcome, asExchangeOutcome,
+} from '@xyo-network/xl1-sdk'
 ```
 
-The `ExchangeTermsPayload` deliberately spreads `BlockDurationZod.shape` — `nbf`/`exp` appear at the top level of the terms payload, just as they do on `TransactionBoundWitness`. Keep the convention identical so consumers can use the same window-state checks.
+### Party-secret commitment
+
+`network.xyo.exchange.party.secret`. The hash of this payload is recorded in `ExchangeTerms.partySecrets`; at settlement the party reveals it co-signed by every address in their party set. Fields:
+
+- `nonce` (string) — random opaque value. The bytes don't matter; what matters is that the party signed them.
+
+### Exchange terms
+
+`network.xyo.exchange.terms`. The entry-point declaration co-signed by every required party. Fields:
+
+- `exchangeId` (string) — stable identifier for this exchange
+- `parties` (`XyoAddress[][]`) — at least two parties, each a *set* of addresses (most parties have one wallet, but a multi-sig org might have several). All addresses in the set must co-sign the party's secret reveal at settlement.
+- `partySecrets` (`Hash[]`) — one entry per party; the data hash of that party's `PartySecretReveal`
+- `assets` (`Hash[]`) — hashes of the asset payload(s) being exchanged
+- `appraisalAuthorities`, `paymentAuthorities` (optional `XyoAddress[]`) — addresses whose signature on appraisal / receipt payloads is accepted
+- `nbf`, `exp` (`XL1BlockNumber`) — settlement validity window, spread from `BlockDurationZod.shape` so consumers can reuse the same window-state checks as `TransactionBoundWitness`
+
+### Lean outcome
+
+`network.xyo.exchange.outcome`. The settlement record co-signed by every required party, with reveals and authority attestations carried as co-payloads in the same BoundWitness. Fields:
+
+- `terms` (`Hash`) — hash of the `ExchangeTerms` payload this outcome settles
+- `outcome` (`'fulfilled' | 'rejected'`)
 
 ---
 
@@ -151,7 +119,7 @@ PROPOSE ──► COUNTERSIGN ──► AUTHORITY ATTEST (optional) ──► RE
 
 ### Phase 1: Propose
 
-Party A drafts `ExchangeTermsPayload` with their `partySecrets[A]` filled in (the hash of their generated nonce). The other parties' entries are placeholders the counterparty will fill. Party A signs the draft terms in a single-signer BW and shares it off-chain (link, QR, message).
+Party A drafts `ExchangeTerms` with their `partySecrets[A]` filled in (the hash of their generated nonce). The other parties' entries are placeholders the counterparty will fill. Party A signs the draft terms in a single-signer BW and shares it off-chain (link, QR, message).
 
 ### Phase 2: Counter-sign
 
@@ -189,13 +157,10 @@ const [revealBw, revealPayloads] = await new BoundWitnessBuilder()
 Once every party's reveal BW exists, any party (or an indexer) can emit the settlement:
 
 ```ts
-const outcome: ExchangeOutcomePayload = asExchangeOutcomePayload(
-  new PayloadBuilder({ schema: ExchangeOutcomeSchema })
-    .fields({ terms: termsHash, outcome: 'fulfilled' })
-    .meta({ $sources: [termsHash] })
-    .build(),
-  true,
-)
+const outcome = new PayloadBuilder<ExchangeOutcome>({ schema: ExchangeOutcomeSchema })
+  .fields({ terms: termsHash, outcome: 'fulfilled' })
+  .meta({ $sources: [termsHash] })
+  .build()
 
 const [settlementBw, settlementPayloads] = await new BoundWitnessBuilder()
   .signers([...allPartyAccounts])
@@ -224,9 +189,9 @@ A consumer (an indexer, a UI, a counter-party) walks the audit DAG:
 import { addressesContainsAll, addressesContainsAny } from '@xyo-network/boundwitness-validator'
 
 async function isExchangeFulfilled(
-  outcome: ExchangeOutcomePayload,
+  outcome: ExchangeOutcome,
   outcomeBw: BoundWitness,
-  terms: ExchangeTermsPayload,
+  terms: ExchangeTerms,
   attestations: { bw: BoundWitness; payload: Payload }[],
 ): Promise<boolean> {
   if (outcome.outcome !== 'fulfilled') return false
