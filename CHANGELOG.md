@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.23](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.22...v1.1.23) (2026-06-26)
+
+
+### Bug Fixes
+
+* point ordinal/XRC-20/exchange skills at SDK types ([a0c7511](https://github.com/XYOracleNetwork/xyo-skills/commit/a0c7511f559fb17fe16030501d2fc780b85c2f08))
+
 ## [1.1.22](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.21...v1.1.22) (2026-06-05)
 
 
