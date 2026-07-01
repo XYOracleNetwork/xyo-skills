@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.24](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.23...v1.1.24) (2026-07-01)
+
+
+### Bug Fixes
+
+* correct wallet permission API guidance and scope signer anti-pattern ([7b4f2bf](https://github.com/XYOracleNetwork/xyo-skills/commit/7b4f2bf42d084e3023814731f87c0783c7952cfe))
+
 ## [1.1.23](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.22...v1.1.23) (2026-06-26)
 
 
