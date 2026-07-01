@@ -62,16 +62,37 @@ When the connect-on-mount flow isn't enough — re-prompting for permissions lat
 | `RequestPermissionsButton` | Prompting for permissions outside the initial connect flow (e.g., a "Reconnect" or "Add account" action) |
 | `usePermissions()` | Reading the current permission grants (returns `{ permissions, isLoading, error, timedout }`) |
 | `useAccountPermissions()` | Reading the list of authorized addresses (parses `restrictReturnedAccounts` for you) |
-| `useClientFromWallet()` → `client.permissions.request(...)` | Direct access when the components don't fit — pass only the publicly supported methods |
+| `findCaveat(permissions, capability, caveatType)` | Reading a single caveat value off the current grants — e.g. the address from `restrictReturnedAccounts` after a `xyoWallet_getAccounts` request |
+| `usePermissions()` → `permissions.requestPermissions([...])` | Direct access when the components don't fit — pass only the publicly supported methods |
 
 All of these come from `@xyo-network/xl1-react-client-sdk`.
+
+### The low-level request shape
+
+`requestPermissions` takes an **array of method-scoped request objects** — `Record<method, Record<caveat, value>>` — not a single method string. To request account access and read the granted address back out:
+
+```ts
+import { usePermissions, findCaveat } from '@xyo-network/xl1-react-client-sdk'
+
+const { permissions } = usePermissions()
+
+// Request account access — an array of method-scoped request objects.
+// The wallet decides which accounts to expose via the restrictReturnedAccounts caveat.
+await permissions.requestPermissions([{ xyoWallet_getAccounts: {} }])
+
+// Read the granted address out of the restrictReturnedAccounts caveat.
+const grantedAccounts = await findCaveat(permissions, 'xyoWallet_getAccounts', 'restrictReturnedAccounts')
+```
+
+This is exactly what `useConnectAccount` / `ConnectAccountsStack` do internally — you rarely write it by hand. When the goal is to **connect to an account**, requesting the permission is what obtains the address; do **not** reach into the gateway signer (`gateway.signer.address()`) to drive the connect flow, as that bypasses the wallet's permission grant. Reading the signer address *after* permissions are established (e.g. to display the active signer, or via the `xyoSigner_address` permission) is fine — that's what it's for.
 
 ### Anti-patterns
 
 | Anti-pattern | Why it fails | Do this instead |
 |---|---|---|
 | Including `xyoDataLakes_get` / `xyoDataLakes_insert` in a permission request | Internal-only methods; not granted on standard wallet builds; surprises users and breaks across versions | Talk to the datalake HTTP endpoint directly via `createRestDataLakeViewer` / `createRestDataLakeRunner` — no wallet permission needed |
-| Passing arbitrary method strings to `client.permissions.request(...)` | The wallet only honors the four registered methods; unknown methods fail or are silently ignored depending on version | Use one of the two publicly supported methods, or use the SDK components that wrap them |
+| Passing arbitrary method strings to `permissions.requestPermissions(...)` | The wallet only honors the four registered methods; unknown methods fail or are silently ignored depending on version | Use one of the two publicly supported methods, or use the SDK components that wrap them |
+| Using the signer address to **establish a connection** (`gateway.signer.address()` as the connect flow) | Bypasses the wallet's permission grant — you get an address the user never authorized the dApp to see, and it drifts from what `useAccountPermissions()` reports | To connect, request `xyoWallet_getAccounts` and read the address from the `restrictReturnedAccounts` caveat (via `findCaveat`), or just render `ConnectAccountsStack`. Reading the signer *after* permissions exist is fine. |
 | Reimplementing the connect-accounts flow by calling the permission RPC directly | Duplicates `ConnectAccountsStack`'s lifecycle handling (detection, timeout, error, post-connection display) and tends to drift | Render `<ConnectAccountsStack />` and lift the address via `onAccountConnected` |
 | Treating "I need datalake data in the dApp" as "I need a wallet permission" | Conflates two independent things — the wallet's permission system is for account access; datalake access is plain HTTP | Use the dApp's own `RestDataLakeRunner` / `RestDataLakeViewer` against the public datalake endpoint |
 
