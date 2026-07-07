@@ -2,7 +2,7 @@
 name: xl1-build
 description: Interactive planning wizard for new XL1 dApps. Refines a vague or exploratory build request into a concrete spec (archetype, patterns, network, multi-party roles, headless verification) before any scaffolding runs. Activates when the user wants to build, design, or plan something on XL1 but hasn't fully specified what — phrases like "I want to build something on XL1", "help me design a dApp", "what could I build", or any "build me X on XL1" prompt where X is under-specified. Do NOT activate when the user has already given a concrete, complete spec (e.g., names the archetype, the patterns, the network) — defer directly to [xl1-scaffold](../xl1-scaffold/SKILL.md) in that case.
 metadata:
-  version: 1.1.23 # x-release-please-version
+  version: 1.1.24 # x-release-please-version
 ---
 
 # XL1 Build Wizard
