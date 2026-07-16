@@ -1,115 +1,132 @@
 # ESLint Configuration
 
-## @xylabs/eslint-config-flat
+## Contents
 
-The standard ESLint configuration for XYO Foundation projects. Uses the modern [flat config format](https://eslint.org/docs/latest/use/configure/configuration-files) (ESLint 9.x).
+- [Use the active flat config](#use-the-active-flat-config)
+- [Manual configuration](#manual-configuration)
+- [Rule tiers](#rule-tiers)
+- [Included concerns](#included-concerns)
+- [Commands](#commands)
+- [Overrides and troubleshooting](#overrides-and-troubleshooting)
 
-- **Package:** `@xylabs/eslint-config-flat` (non-React) or `@xylabs/eslint-config-react-flat` (React projects)
-- **Install:** `pnpm add -D @xylabs/eslint-config-flat eslint` (or `@xylabs/eslint-config-react-flat` for React)
-- **Format:** Flat config (`eslint.config.ts`, `eslint.config.mjs`, or `eslint.config.js`)
+## Use the active flat config
 
-Do **not** use `@xylabs/eslint-config` (legacy format) for new projects.
+Use `@ariestools/eslint-config-flat` for non-React repositories and `@ariestools/eslint-config-react-flat` when React packages are present. The current packages target ESLint 10 and use flat config.
 
-### What It Includes
+Prefer the generator:
 
-The config bundles and configures these concerns:
-- **TypeScript** — `@typescript-eslint` rules for type-safe linting
-- **Import management** — import ordering, no unused imports, no circular dependencies
-- **Unicorn** — modern JavaScript best practices
-- **SonarJS** — code quality and bug detection
-- **Deprecation** — flags usage of deprecated APIs
-- **Security** — `eslint-plugin-no-secrets` to prevent accidental secret commits
-- **Formatting** — consistent code style via Prettier integration
-- **Monorepo support** — workspace-aware rules
+```sh
+pnpm xy lint init
+```
 
-## Setup
+It detects React, installs the applicable config package and ESLint, generates `eslint.config.ts`, includes repository `.gitignore` behavior when the file exists, and derives root-barrel import restrictions from installed SDK barrels. Review the generated diff before accepting an overwrite.
 
-### New Project (Non-React)
+Do not install retired `@xylabs/*` config packages. Do not use the deprecated static `config` or named tier exports in new configurations; use `recommendedConfig`.
 
-Create `eslint.config.ts` in your project root:
+## Manual configuration
+
+Use the generator's output as canonical. A minimal non-React configuration without a root `.gitignore` is:
 
 ```ts
-import { config as xylabsConfig } from '@xylabs/eslint-config-flat'
+import { recommendedConfig } from '@ariestools/eslint-config-flat'
 import type { Linter } from 'eslint'
 
 const config: Linter.Config[] = [
-  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
-  ...xylabsConfig,
+  { ignores: ['build', '**/build/**', 'dist', '**/dist/**', 'node_modules/**'] },
+  ...recommendedConfig({ tier: 3, isTypeChecked: true }),
 ]
 
 export default config
 ```
 
-### New Project (React)
+When a root `.gitignore` exists, include it with editor/CLI-compatible semantics:
 
 ```ts
-import { recommendedConfig as xylabsConfig } from '@xylabs/eslint-config-react-flat'
+import { fileURLToPath } from 'node:url'
+
+import { recommendedConfig } from '@ariestools/eslint-config-flat'
 import type { Linter } from 'eslint'
+import { includeIgnoreFile } from 'eslint/config'
 
 const config: Linter.Config[] = [
-  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
-  ...xylabsConfig,
+  globalThis.process.env.XY_LINT_GITIGNORE === 'false'
+    ? { ignores: [] }
+    : includeIgnoreFile(fileURLToPath(new URL('.gitignore', import.meta.url)), {
+        gitignoreResolution: true,
+        name: 'XY repository .gitignore',
+      }),
+  ...recommendedConfig({ tier: 3, isTypeChecked: true }),
 ]
 
 export default config
 ```
 
-### Available Exports
+Do not hand-repair this pattern when the toolchain can normalize it:
 
-| Package | Export | Description |
-|---------|--------|-------------|
-| `@xylabs/eslint-config-flat` | `config` | Standard config for TS libraries |
-| `@xylabs/eslint-config-flat` | `recommendedConfig` | Recommended config with type-checked rules |
-| `@xylabs/eslint-config-react-flat` | `recommendedConfig` | React-aware config |
-
-### Extending or Overriding Rules
-
-Add overrides after the base config:
-
-```ts
-import { config as xylabsConfig } from '@xylabs/eslint-config-flat'
-import type { Linter } from 'eslint'
-
-const config: Linter.Config[] = [
-  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
-  ...xylabsConfig,
-  {
-    rules: {
-      // Override specific rules with justification
-      '@typescript-eslint/no-floating-promises': 'warn',
-    },
-  },
-]
-
-export default config
+```sh
+pnpm xy lint lint --fix
 ```
 
-## Running the Linter
+For React, import `recommendedConfig` from `@ariestools/eslint-config-react-flat`. Add `configReactStorybook` explicitly only when Storybook files need that layer:
 
-Always use the toolchain commands rather than running ESLint directly:
+```ts
+import {
+  configReactStorybook,
+  recommendedConfig,
+} from '@ariestools/eslint-config-react-flat'
 
-- `package-lint` — standard lint run
-- `package-lint-verbose` — lint with detailed output for debugging
-- `package-fix` — auto-fix all fixable issues
-- `package-relint` — clear lint cache and re-run (useful when config changes aren't being picked up)
+export default [
+  ...recommendedConfig({ tier: 3, isTypeChecked: true }),
+  ...configReactStorybook,
+]
+```
 
-## Troubleshooting
+## Rule tiers
 
-### Lint errors you don't understand
-- Read the rule name in the error output and look it up in the relevant plugin's docs
-- Don't suppress rules just to make the build pass — understand what the rule is protecting against first
-- If the rule is genuinely wrong for your case, override it in eslint config with a comment explaining why
+Each tier includes the tiers below it:
 
-### Import ordering issues
-- The config enforces a specific import order. Let `package-fix` auto-fix these rather than sorting manually
-- If auto-fix doesn't resolve it, check for circular imports which can confuse the ordering plugin
+| Tier | Purpose |
+|---|---|
+| 0 | Correctness: type safety, bug prevention, import restrictions, Markdown |
+| 1 | Consistency: formatting, ordering, complexity |
+| 2 | Best practices: Unicorn, import validation, workspace rules; React begins here |
+| 3 | Opinionated default: optional rules and stricter promotions |
+| 4 | Experimental/canary rules for migration testing |
 
-### Type-aware lint rules are slow
-- Type-aware rules (`@typescript-eslint` rules that need type information) require a full TypeScript compilation pass
-- Make sure your tsconfig includes all the files being linted
-- For monorepos, each package needs its own tsconfig referenced by the ESLint config
+Tier 3 and 4 additions commonly begin as warnings. Use `pnpm xy lint --strict` or `XY_STRICT=1` when warnings must fail CI. Use tier 4 for evaluation, not as an automatic default for every repository.
 
-### Config not being picked up
-- Ensure the file is named `eslint.config.mjs` (or `eslint.config.js` with `"type": "module"` in package.json)
-- The flat config format is not backwards-compatible with `.eslintrc.*` — don't mix formats
-- Run `package-relint` to clear any cached config
+Set `isTypeChecked: false` when the repository intentionally avoids parser type information. Change the persisted setting safely with:
+
+```sh
+pnpm xy lint config get type-checked
+pnpm xy lint config set type-checked false
+```
+
+Use `pnpm xy lint --type-checked false` for a one-run override.
+
+## Included concerns
+
+The non-React config composes TypeScript ESLint, core JavaScript/JSON/Markdown rules, Import X, simple import sorting, Unicorn, workspace rules, and stylistic rules. It does not currently bundle SonarJS, Prettier, or `eslint-plugin-no-secrets`.
+
+The React config adds React X, React DOM, React Hooks, naming-convention, React Refresh, Web API, and optional Storybook layers.
+
+## Commands
+
+| Command | Use |
+|---|---|
+| `xy lint [package]` | Run ESLint using the content cache |
+| `xy lint --fix` | Apply ESLint fixes |
+| `xy lint --fresh` | Clear lint caches and run from a fresh snapshot |
+| `xy lint --analyze` | Project current findings across tiers using a tier-4 run |
+| `xy lint --no-gitignore` | Temporarily disable repository `.gitignore` filtering |
+| `xy lint lint` | Check the local config against toolchain conventions |
+| `xy lint lint --fix` | Normalize supported config-package, rule, and `.gitignore` issues |
+| `xy lint --rules` | List effective ESLint rules for the project |
+
+The content cache lives under `.xy/cache/eslint` at the repository root. Use `--fresh` when config changes or stale snapshots make results suspect; do not routinely delete all dependencies.
+
+## Overrides and troubleshooting
+
+Place justified local overrides after the recommended config. Run `xy lint lint` to distinguish intentional additions from redundant shared rules and overrides requiring review.
+
+If no files are linted, verify workspace discovery, source globs, meta-package handling, and `--skip-empty`. If type-aware lint is slow or fails on config files, verify the applicable tsconfig before disabling type checking. If ignored files differ between the editor and CLI, run `xy lint lint --fix` and verify both the default run and `--no-gitignore` behavior.

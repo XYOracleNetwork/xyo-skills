@@ -1,32 +1,44 @@
 ---
 name: xy-toolchain
-description: XYO Foundation development toolchain (@xylabs packages). Covers @xylabs/toolchain CLI, ESLint flat config, TypeScript config variants, and Vitest. Activates when setting up projects, running builds, configuring linting, or writing tests in XY/XYO/XL1 projects.
+description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, running or debugging build/lint/test commands, configuring package output, fixing dependency placement, validating publish surfaces, or interpreting xy command failures.
 metadata:
   version: 1.1.24 # x-release-please-version
 ---
 
 # XY Toolchain
 
-XYO Foundation publishes a coordinated set of development packages from the [xylabs/config](https://github.com/xylabs/config) monorepo. This skill covers how to use them.
+Use the active [`@ariestools/toolchain`](https://github.com/ariestools/toolchain) packages. Do not install the retired `@xylabs/*` compatibility names in new work.
 
-This builds on the [Development Skill](../xy-development/SKILL.md) which covers universal principles. This skill covers the **specific tools**.
+Inspect the repository's `package.json`, lockfile, `xy.config.ts`, ESLint config, TypeScript configs, and test config before choosing commands. Prefer existing repository scripts; use the `xy` CLI directly when the repository exposes no narrower wrapper.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xy-toolchain v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+This skill builds on the [Development Skill](../xy-development/SKILL.md), which covers language and workflow principles. Load only the reference needed for the task:
 
-## Table of Contents
+## References
 
-### [Toolchain & Project Setup](toolchain.md)
-Read when setting up a new project, running build/lint/compile commands, or troubleshooting build failures. Covers `@xylabs/toolchain` CLI, package manager conventions, and project structure.
+### [Toolchain and project setup](toolchain.md)
 
-### [ESLint Configuration](eslint.md)
-Read when configuring ESLint, troubleshooting lint errors, or extending lint rules. Covers `@xylabs/eslint-config-flat` setup and usage.
+Read when installing the toolchain, selecting a package manager, wiring scripts, distinguishing `xy` commands from `package-*` hooks, migrating from `@xylabs/*`, or troubleshooting project setup.
 
-### [TypeScript Configuration](typescript.md)
-Read when configuring the TypeScript compiler, choosing a tsconfig base, or troubleshooting compilation. Covers `@xylabs/tsconfig`, `@xylabs/tsconfig-dom`, and `@xylabs/tsconfig-react`.
+### [Compilation and package output](compilation.md)
+
+Read when editing `xy.config.ts`, selecting neutral/node/browser targets, choosing library/bundle/transpile/monolith/vendor mode, configuring validation, or debugging emitted files and export layouts.
+
+### [Command and policy catalog](commands.md)
+
+Read when choosing among `build`, `check`, `fix`, `deplint`, `api-exposure`, `publint`, `dead`, repository-policy commands, `skills`, or `work`; also read for `--rules`, `--json`, `--strict`, and automation behavior.
+
+### [ESLint configuration](eslint.md)
+
+Read when creating or repairing an ESLint flat config, selecting a rule tier, enabling type-aware linting, honoring `.gitignore`, diagnosing lint performance, or using `xy lint init`, `lint lint`, and `lint config`.
+
+### [TypeScript configuration](typescript.md)
+
+Read when selecting `@ariestools/tsconfig`, `-dom`, or `-react`, configuring Node types, interpreting `noEmit`, or separating type validation from toolchain emission.
 
 ### [Testing with Vitest](testing.md)
-Read when setting up tests, configuring Vitest, or integrating tests with the build pipeline. Covers Vitest setup and XY-specific testing conventions.
 
-## Scaffolding a new XL1 app
+Read when configuring Vitest, choosing spec locations, running a workspace or path, clearing the test cache, or distinguishing test failures from build failures.
 
-To create a new XL1 project from scratch — including the `package.json`, `tsconfig.json`, ESLint and Vite configs, entry point, and dependency graph — use the [xl1-scaffold](../xl1-scaffold/SKILL.md) skill. 
+## Scaffolding an XL1 app
+
+Use the [xl1-scaffold](../xl1-scaffold/SKILL.md) skill for an XL1 application scaffold, then verify the generated dependencies and configs use the active `@ariestools/*` packages described here before installing.
