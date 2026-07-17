@@ -88,7 +88,7 @@ export default config
 
 Put this override in the terminal package's `xy.config.ts`. Do not set it at a mixed-monorepo root, because root command configuration cascades and would incorrectly classify library workspaces as terminal.
 
-Terminal packages keep runtime requirements in `dependencies`; consumers cannot satisfy a peer contract for an application they never import. Libraries require a deliberate dependency-versus-peer decision. Use `xy api-exposure` as evidence and configure exceptional dependencies rather than forcing the whole package into the wrong profile.
+Terminal packages keep runtime requirements in `dependencies`; consumers cannot satisfy a peer contract for an application they never import. Libraries require a deliberate dependency-versus-peer decision. Use `xy api-exposure` as evidence, then configure exceptional dependencies with `commands.deplint.packages` placement and presence as described in [commands.md](commands.md) rather than forcing the whole package into the wrong profile.
 
 ## Handle repository topology
 
