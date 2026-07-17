@@ -1,6 +1,6 @@
 ---
 name: xy-toolchain
-description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, running or debugging build/lint/test commands, configuring package output, fixing dependency placement, validating publish surfaces, or interpreting xy command failures.
+description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement, validating publish surfaces, or interpreting xy command failures.
 metadata:
   version: 1.1.24 # x-release-please-version
 ---
@@ -14,6 +14,10 @@ Inspect the repository's `package.json`, lockfile, `xy.config.ts`, ESLint config
 This skill builds on the [Development Skill](../xy-development/SKILL.md), which covers language and workflow principles. Load only the reference needed for the task:
 
 ## References
+
+### [Project profiles](project-profiles.md)
+
+Read first when classifying a repository or package as a library or final application, choosing neutral/node/browser/React guidance, deciding how monorepo and single-package setup differ, or determining whether framework tooling or `xy compile` owns production output.
 
 ### [Toolchain and project setup](toolchain.md)
 
