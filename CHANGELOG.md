@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.25](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.24...v1.1.25) (2026-07-17)
+
+
+### Features
+
+* update xy-toolchain skill with deplint policy, project profiles, and AGENTS.md ([2b9d09b](https://github.com/XYOracleNetwork/xyo-skills/commit/2b9d09b312d5dd052f67660504d2a43765f51b18))
+
 ## [1.1.24](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.23...v1.1.24) (2026-07-01)
 
 
