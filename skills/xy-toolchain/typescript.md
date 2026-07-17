@@ -1,110 +1,95 @@
 # TypeScript Configuration
 
-## @xylabs/tsconfig Variants
+## Select the environment config
 
-XYO Foundation publishes three TypeScript config packages. Choose the right one based on your project's target environment:
+| Package | Extends | Use when |
+|---|---|---|
+| `@ariestools/tsconfig` | Base | Environment-neutral code, Node code with explicit Node types, libraries, services, and CLIs |
+| `@ariestools/tsconfig-dom` | Base | Browser-targeted code that uses DOM APIs |
+| `@ariestools/tsconfig-react` | DOM | React applications and component libraries |
 
-| Package | Extends | Use When |
-|---------|---------|----------|
-| `@xylabs/tsconfig` | — (base) | Node.js libraries, backend services, CLI tools |
-| `@xylabs/tsconfig-dom` | `@xylabs/tsconfig` | Browser-targeting code that uses DOM APIs |
-| `@xylabs/tsconfig-react` | `@xylabs/tsconfig-dom` | React applications and component libraries |
+The DOM and React packages declare their parent configs as peers. Install the complete chain explicitly:
 
-Each config extends the one above it via `"extends"` in its `tsconfig.json`, but **does not declare the parent as a package dependency**. TypeScript resolves the `"extends"` target from `node_modules` at compile time, so all configs in the chain must be explicitly installed. Install the full inheritance chain for your target:
-
-```bash
-# Node.js / backend
-pnpm add -D @xylabs/tsconfig
+```sh
+# Base / environment-neutral
+pnpm add -D @ariestools/tsconfig typescript
 
 # Browser / DOM
-pnpm add -D @xylabs/tsconfig @xylabs/tsconfig-dom
+pnpm add -D @ariestools/tsconfig @ariestools/tsconfig-dom typescript
 
 # React
-pnpm add -D @xylabs/tsconfig @xylabs/tsconfig-dom @xylabs/tsconfig-react
+pnpm add -D @ariestools/tsconfig @ariestools/tsconfig-dom @ariestools/tsconfig-react typescript
 ```
 
-All require TypeScript ~5.x as a peer dependency.
+Use TypeScript 5.9 or 6 with the current toolchain. Follow the consuming repository's exact range policy.
 
-## Usage
+## Understand the base config
 
-### Basic Setup
+The base currently supplies strict, ESM-oriented settings including:
 
-Create `tsconfig.json` in your project root:
+- `target`, `lib`: ESNext
+- `module`, `moduleResolution`: NodeNext
+- `strict`, `noImplicitAny`, `noImplicitOverride`
+- `allowImportingTsExtensions`, `allowJs`, `resolveJsonModule`
+- `isolatedModules`, `erasableSyntaxOnly`
+- declarations, declaration maps, and source maps
+- `outDir: "dist"`
+- `noEmit: true`
+
+`noEmit: true` is intentional: TypeScript validates the full package while the toolchain's selected compile mode emits publishable JavaScript and declarations. Do not remove it merely because raw `tsc` produces no files.
+
+## Basic configuration
+
+Use the smallest applicable config:
 
 ```json
 {
-  "extends": "@xylabs/tsconfig",
+  "extends": "@ariestools/tsconfig",
+  "include": ["src"]
+}
+```
+
+For React:
+
+```json
+{
+  "extends": "@ariestools/tsconfig-react",
+  "include": ["src"]
+}
+```
+
+The React config adds `jsx: "react-jsx"`; the DOM config adds DOM and DOM iterable libraries.
+
+## Node types
+
+The base is not a license to expose Node globals everywhere. For a Node package, install Node types and declare them explicitly:
+
+```sh
+pnpm add -D @types/node
+```
+
+```json
+{
+  "extends": "@ariestools/tsconfig",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "types": ["node"]
   },
   "include": ["src"]
 }
 ```
 
-For React projects:
+Keep browser and neutral packages free of Node types unless the source genuinely requires them. The compiler resolves platform-specific types when producing browser, neutral, and node targets.
 
-```json
-{
-  "extends": "@xylabs/tsconfig-react",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
-  },
-  "include": ["src"]
-}
-```
+## Overrides and multiple configs
 
-### Overriding Compiler Options
+Override only the option the package needs. Do not reset strictness, module resolution, or emit behavior by copying a large standalone compiler-options block from an older repository.
 
-The base configs set opinionated defaults. Override specific options when your project needs it:
+Use separate configs when tooling and production emission need different file sets. For example, a package may keep `tsconfig.json` broad for validation and let the toolchain derive its emission inputs rather than excluding specs from validation.
 
-```json
-{
-  "extends": "@xylabs/tsconfig",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "target": "ES2022"
-  }
-}
-```
-
-Only override what you need. The base config is designed to be correct for most XY projects.
-
-### Multiple tsconfig Files
-
-Some projects need different configs for different concerns:
-
-- `tsconfig.json` — main config for IDE and compilation
-- `tsconfig.build.json` — stricter config for production builds (excludes test files)
-
-```json
-// tsconfig.build.json
-{
-  "extends": "./tsconfig.json",
-  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]
-}
-```
-
-## Relationship to Layer 1
-
-- **Layer 1** (Development Skill) covers TypeScript *coding conventions*: the `any` policy, return type inference, interfaces vs types, readonly usage
-- **This file** covers TypeScript *compiler configuration*: which base config to extend, build targets, project structure
-
-These are complementary — Layer 1 tells you how to write the code, this tells you how to compile it.
+Configure output platforms and compiler modes in `xy.config.ts`, not by creating ad hoc CommonJS and ESM tsconfigs. See [compilation.md](compilation.md).
 
 ## Troubleshooting
 
-### "Cannot find module" errors
-- Check that `paths` or `baseUrl` in tsconfig aren't conflicting with the base config
-- In monorepos, ensure each package has its own tsconfig with correct `references`
-- Run `package-clean` to clear stale declaration files
+For module-resolution errors, inspect the complete `extends` chain, installed peer configs, package export maps, path aliases, and source import extensions. For missing Node globals, add explicit Node types only to the Node package. For errors in specs or configs during `xy compile`, remember that full-package validation includes non-emitted TypeScript files by design.
 
-### Type errors from dependencies
-- Make sure `@types/*` packages match the version of the library you're using
-- Check that `skipLibCheck` isn't masking real issues (the base config sets this intentionally)
-
-### Build output in wrong location
-- Verify `outDir` and `rootDir` are set correctly in your tsconfig
-- The base config doesn't set these — you must set them per project
+Use `xy clean` or `xy recompile` when stale declarations are the credible cause. Do not delete lockfiles or reinstall dependencies as the first response to a TypeScript diagnostic.
