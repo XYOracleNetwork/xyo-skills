@@ -1,6 +1,6 @@
 ---
 name: xy-toolchain
-description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement, validating publish surfaces, or interpreting xy command failures.
+description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement or required presence, validating publish surfaces, or interpreting xy command failures.
 metadata:
   version: 1.1.24 # x-release-please-version
 ---
@@ -29,7 +29,7 @@ Read when editing `xy.config.ts`, selecting neutral/node/browser targets, choosi
 
 ### [Command and policy catalog](commands.md)
 
-Read when choosing among `build`, `check`, `fix`, `deplint`, `api-exposure`, `publint`, `dead`, repository-policy commands, `skills`, or `work`; also read for `--rules`, `--json`, `--strict`, and automation behavior.
+Read when choosing among `build`, `check`, `fix`, `deplint`, `api-exposure`, `publint`, `dead`, repository-policy commands, `skills`, or `work`; also read when configuring dependency placement/presence or using `--rules`, `--json`, `--strict`, and automation behavior.
 
 ### [ESLint configuration](eslint.md)
 

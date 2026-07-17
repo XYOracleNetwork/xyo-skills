@@ -52,7 +52,50 @@ Choose the dependency/peer classifier deliberately:
 - `aei` uses API Exposure Index evidence and leaves borderline cases for review.
 - `aei-next` also supports `peer-with-default` when the install-strategy heuristics match.
 
-Override exceptional packages through `commands.deplint.packages`; do not distort source imports to satisfy an inappropriate classifier default.
+#### Package placement and presence
+
+Configure exceptional packages through `commands.deplint.packages`. Separate where a package belongs from whether its declaration must exist:
+
+```ts
+import type { XyConfig } from '@ariestools/toolchain'
+
+const config: XyConfig = {
+  commands: {
+    deplint: {
+      packages: {
+        typescript: { placement: 'dev' },
+        'eslint-plugin-example': {
+          placement: 'dev',
+          presence: 'allowed',
+        },
+        react: {
+          placement: 'peer',
+          presence: 'required',
+        },
+      },
+    },
+  },
+}
+
+export default config
+```
+
+Use `placement` to control the manifest section whenever a dependency is declared or discovered:
+
+- `dep` selects `dependencies`.
+- `dev` selects `devDependencies`.
+- `peer` selects `peerDependencies`; when deplint adds a required or promoted peer, it also adds the development companion.
+- `peer-with-default` intentionally selects both `dependencies` and `peerDependencies`.
+
+Use `presence` independently:
+
+- `inferred` is the default. Source and peer-chain evidence decide whether the declaration exists; `placement` alone does not retain an unused declaration.
+- `allowed` retains a declaration that static analysis cannot justify but does not add it when absent. Use it for dynamically or convention-loaded plugins and similar dependencies invisible to source scanning.
+- `required` adds and retains a missing declaration. Always pair it with `placement`; `dep.package.required` reports and can fix the missing manifest entry.
+
+Treat `refType` as deprecated. Its historical behavior combines placement with allowed presence: `refType: 'dev'` is equivalent to `{ placement: 'dev', presence: 'allowed' }`. Do not migrate mechanically to `{ placement: 'dev' }` unless unused-removal behavior is intended.
+
+Placement overrides also inform `xy api-exposure`. Root and package `commands.deplint.packages` entries deep-merge, so a root placement can combine with a package-level presence override. Keep terminal/library classification separate from these per-dependency policies, and do not distort source imports to satisfy an inappropriate classifier default.
 
 ### `xy api-exposure [package]`
 
