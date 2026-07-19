@@ -154,3 +154,34 @@ XL1 uses a novel consensus mechanism:
 - **Step hashes**: sequential data processing checkpoints that reduce bloat
 
 **Hex encoding:** all hex values are lowercase, no `0x` prefix. Hashes are 64 chars, addresses/chain IDs 40, signatures 128.
+
+---
+
+## Chain Forks
+
+An XL1 chain can **fork**: it halts and relaunches under a new chain-contract
+identity (a new `ChainId`) while continuing the *same* hash-linked ledger — each
+post-fork block's `previous` links unbroken to the pre-fork head, block
+numbering stays continuous, and history *below* the fork point is never
+re-attributed. A fork assigns a new chain id only to blocks *above* its fork
+point. This is a native protocol feature, not an operational anomaly, and it is
+distinct from validator **repairs** (rollback/replacement within the slashing
+window): a repair corrects a bad block on the *same* chain identity, while a
+fork changes the identity itself.
+
+Consequently **`ChainId` is a function of block height.** Every
+`BlockBoundWitness` records the `chain` in force at its height, so the chain id
+at block `n` is the `chain` field of block `n`.
+
+The chain-contract viewer exposes the fork lineage:
+- `chainId()` — the current (tip) chain id.
+- `chainIdAtBlockNumber(n | 'latest')` — the id authoritative at height `n`, walking the fork lineage. The canonical height→id lookup.
+- `forkedAtBlockNumber()` / `forkedAtHash()` — where this chain forked from its parent (null on the genesis chain).
+- `forkedChainId()` — the parent chain's id (null on the genesis chain).
+- `forkedChainContractViewer()` — the parent chain's contract viewer, for walking lineage across multiple forks.
+
+Because a given height's id is fixed forever, any commitment bound to a
+finalized block height — an anchored transaction, a checkpoint, an application
+state hash — stays stable and independently verifiable across all future forks.
+When you stamp a height-bound artifact with a chain id, resolve it *at that
+height* (`chainIdAtBlockNumber(height)`), never with a bare "current chain id".

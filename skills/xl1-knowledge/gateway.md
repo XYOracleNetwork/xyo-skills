@@ -164,15 +164,23 @@ For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
 | Get the latest block hash | `.block.currentBlockHash()` |
 | Look up a specific block you already have a hash for | `.block.blockByHash(hash)` |
 | Look up a specific block by its number | `.block.blockByNumber(n)` |
-| Scan a range of blocks starting from a hash or number | `.block.blocksByHash(hash, limit?)` / `.block.blocksByNumber(n, limit?)` |
+| Scan a window of blocks ending at a hash or number (descending, newest-first) | `.block.blocksByHash(hash, limit?)` / `.block.blocksByNumber(n, limit?)` |
 | Fetch a published step-summary batch of blocks | `.block.blocksByStep(stepLevel, stepIndex)` |
 | Resolve off-chain payloads referenced in a transaction | `.block.payloadsByHash(hashes)` |
-| Get the chain ID at a given block height | `.block.chainId(blockNumber?)` |
+| Get the chain id in force at a block height (varies across forks — see [Chain Forks](chain.md#chain-forks)) | `.block.chainId(blockNumber?)` |
 
 `blocksByStep` returns a whole step-aligned batch as a single index/summary
 fetch. Large `blocksByNumber` / `blocksByHash` walks delegate to it internally
 (via `deepCalculateFramesFromRange`) so most of a window loads from
 `blocksByStep` index files instead of N per-block requests.
+
+**Direction gotcha.** `blocksByNumber(n, limit)` and `blocksByHash(hash, limit)`
+walk **descending** from the given block — they return up to `limit` blocks
+*ending at* `n` (i.e. `[n - limit + 1 … n]`), newest-first, **not** ascending
+from `n`. (Fewer than `limit` near genesis; the walk stops at block 0.) To sweep
+a range `[lo, hi]` ascending, request successive windows *by their high end* —
+`blocksByNumber(hi, hi - lo + 1)` for the window, advancing `hi` upward — rather
+than passing `lo` as the start.
 
 ```ts
 const viewer = gateway?.connection.viewer
@@ -243,6 +251,21 @@ const balance = await gateway?.connection.viewer?.account.balance.accountBalance
 | Get the chain ID from the finalized state | `.finalization.chainId()` |
 
 Use finalization viewers when you need confirmed state. Use block viewers when you need the latest state including unfinalized blocks.
+
+### Chain Contract — `connection.viewer.chainContractViewer`
+
+XL1 chains fork, so chain id is a function of block height — see [Chain Forks](chain.md#chain-forks).
+
+| When you need to... | Use |
+|---------------------|-----|
+| Current (tip) chain id | `.chainContractViewer.chainId()` |
+| Chain id authoritative at a height (walks the fork lineage) | `.chainContractViewer.chainIdAtBlockNumber(n \| 'latest')` |
+| Where this chain forked from its parent | `.chainContractViewer.forkedAtBlockNumber()` / `.forkedAtHash()` |
+| The parent chain's id / contract viewer | `.chainContractViewer.forkedChainId()` / `.forkedChainContractViewer()` |
+
+`viewer.block.chainId(n)` is an equivalent height lookup that reads the block's
+own `chain` field directly; both return the id in force at block `n`. Prefer
+`chainIdAtBlockNumber` for the semantic, lineage-aware call.
 
 ### Mempool — `connection.viewer.mempool`
 
