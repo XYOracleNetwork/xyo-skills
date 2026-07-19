@@ -1,27 +1,12 @@
----
-name: xl1-sequence-testing
-description: >
-  Run unattended on-chain tests against the XL1 Sequence testnet using the
-  @xyo-network/wallet-xl1-cli (`xl1-wallet`) CLI wallet, with the wallet password
-  stored in the OS keychain (macOS Keychain) so commands run without prompting.
-  Covers creating a disposable test wallet, funding its root address with Sequence
-  test tokens (the user must transfer them), and driving non-interactive
-  balance / send / transaction flows. TESTNET ONLY — never use this keychain-backed
-  auto-unlock approach with real XL1 on mainnet. Activates when an agent needs to
-  run automated or unattended tests against Sequence, fund a test account, or use
-  the xl1-wallet CLI.
-metadata:
-  version: 1.1.25 # x-release-please-version
----
+# Unattended Sequence Testing (CLI wallet + keychain)
 
-# XL1 Sequence Testing (unattended, keychain-backed)
+> Sub-doc of [xl1-testing](SKILL.md). Approach: an external, funded actor on the
+> Sequence testnet driven through the standalone `xl1-wallet` CLI, unattended.
 
-This skill sets up an agent to run **unattended** tests against the XL1 **Sequence
-testnet** using the standalone `xl1-wallet` CLI (`@xyo-network/wallet-xl1-cli`),
-with the wallet password held in the OS keychain so no interactive prompt blocks
+Set up an agent to run **unattended** tests against the XL1 **Sequence testnet**
+using the standalone `xl1-wallet` CLI (`@xyo-network/wallet-xl1-cli`), with the
+wallet password held in the OS keychain so no interactive prompt blocks
 automation.
-
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-sequence-testing v1.1.25`). When multiple skills from this plugin are active, each may be listed.
 
 ## ⛔ TESTNET ONLY — read first
 
@@ -40,20 +25,20 @@ prompt. That is acceptable **only** because the wallet holds nothing but valuele
   [Guardrail](#guardrail-verify-the-network-before-every-send)) before any `send`.
 
 If the user asks to run this against mainnet or with real XL1, refuse and explain
-that this skill is testnet-only by design.
+that this approach is testnet-only by design.
 
-## When to use this vs. headless-verification
+## When to use this vs. headless testnet verification
 
-- **This skill** — you need an external, funded **actor** on Sequence driven
+- **This approach** — you need an external, funded **actor** on Sequence driven
   through the `xl1-wallet` CLI (fund an address, send real testnet transactions,
   broadcast signed tx files), running unattended over many invocations with the
   password in the keychain.
-- **[headless-verification](../xl1-patterns/headless-verification.md)** — you need
+- **[Headless testnet verification](headless-testnet-verification.md)** — you need
   to verify a dApp's chain interactions **in-process** from a Node script using a
   seed phrase in `.env` and `GatewayBuilder.build(signer)`. Lighter weight, no CLI.
 
-They compose: use this skill to fund/operate a Sequence actor, and
-headless-verification to assert program behavior.
+They compose: use this approach to fund/operate a Sequence actor, and headless
+testnet verification to assert program behavior.
 
 ## Prerequisites
 
@@ -225,6 +210,7 @@ nothing — recreate it and re-fund.
 
 ## Cross-References
 
-- [headless-verification](../xl1-patterns/headless-verification.md) — in-process, seed-phrase dApp verification (the lighter alternative).
+- [Headless testnet verification](headless-testnet-verification.md) — in-process, seed-phrase dApp verification (the lighter alternative).
+- [xl1-testing](SKILL.md) — the testing barrel this approach belongs to.
 - [xl1-knowledge / Node Gateway](../xl1-knowledge/gateway-node.md) — programmatic gateway construction. Note the SDK's `DefaultNetworks` id for the same testnet is `sequence` (the standalone CLI names it `xl1-sequence`); the RPC URL is identical.
 - [xl1-knowledge / Gateway](../xl1-knowledge/gateway.md) — networks table, transaction methods, units (AttoXL1).

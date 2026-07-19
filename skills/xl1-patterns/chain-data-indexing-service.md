@@ -189,7 +189,7 @@ Field guarantees:
 
 For multi-indexer services, namespace per indexer: `/api/games/status`, `/api/leaderboard/status`, etc. Each indexer maintains its own `lastProcessedBlock` and reports its own watermark.
 
-This endpoint closes the loop with [Headless Verification — Verifying Derived State Through the Service](headless-verification.md#verifying-derived-state-through-the-service). The verify script polls `/api/indexer/status` until `lastIndexedBlock >= blockContaining(txHash)` *and* `viewer.finalization.headNumber() >= blockContaining(txHash)`, then asserts the application surface reflects the expected state. Without this endpoint, the verify script cannot make that assertion programmatically — and the agent falls back to rationalizing empty indexer results as "Sequence is slow." See [Debugging an Empty Indexer](#debugging-an-empty-indexer) for the diagnostic that replaces that rationalization.
+This endpoint closes the loop with [Headless Verification — Verifying Derived State Through the Service](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service). The verify script polls `/api/indexer/status` until `lastIndexedBlock >= blockContaining(txHash)` *and* `viewer.finalization.headNumber() >= blockContaining(txHash)`, then asserts the application surface reflects the expected state. Without this endpoint, the verify script cannot make that assertion programmatically — and the agent falls back to rationalizing empty indexer results as "Sequence is slow." See [Debugging an Empty Indexer](#debugging-an-empty-indexer) for the diagnostic that replaces that rationalization.
 
 ---
 
@@ -287,7 +287,7 @@ This is also the canonical way to validate a fresh indexer deployment: submit on
 - [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md) — conceptual rules (scan strategies, schema design, anchoring choices)
 - [Chain Data Indexing — Protocol § Floor Block](chain-data-indexing-protocol.md#floor-block) — bounded vs. unbounded postures and the agentic capture step
 - [Chain Data Indexing — Client](chain-data-indexing-client.md) — browser-side consumption of indexer output
-- [Headless dApp Verification — Verifying Derived State Through the Service](headless-verification.md#verifying-derived-state-through-the-service) — the verify-script side of the progress endpoint contract
+- [Headless dApp Verification — Verifying Derived State Through the Service](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service) — the verify-script side of the progress endpoint contract
 - [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) — block hydration is shallow; this is what the indexer's two-step walk has to compensate for
 - [Inscription Substrate — Replay loop](inscription-substrate.md#replay-loop) — worked example of a global-walk indexer
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `buildSimpleXyoSignerV2`)

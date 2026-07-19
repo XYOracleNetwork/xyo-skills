@@ -174,7 +174,7 @@ const id = process.env.XL1_NETWORK ?? 'sequence'
 
 ## Headless dApp Verification
 
-The runner path above is the foundation for verifying any XL1 dApp without a browser — even dApps whose primary UX runs through the Chrome wallet extension. Because the wallet is just a particular `XyoSigner` implementation, swapping it for a seed-phrase signer in a Node script reproduces the dApp's chain interactions end-to-end. See [Headless dApp Verification](../xl1-patterns/headless-verification.md) for the full pattern (when to use it, how to structure the script, common pitfalls).
+The runner path above is the foundation for verifying any XL1 dApp without a browser — even dApps whose primary UX runs through the Chrome wallet extension. Because the wallet is just a particular `XyoSigner` implementation, swapping it for a seed-phrase signer in a Node script reproduces the dApp's chain interactions end-to-end. See [Headless dApp Verification](../xl1-testing/headless-testnet-verification.md) for the full pattern (when to use it, how to structure the script, common pitfalls).
 
 ---
 
@@ -204,4 +204,4 @@ This is an escape hatch — prefer `GatewayBuilder` unless you have a concrete r
 - [Datalakes](datalakes.md) — `createRestDataLakeRunner` / `createRestDataLakeViewer` are the same in Node as in the browser
 - [XL1 Identity & Wallets](identity.md) — canonical backend wallet pattern (`generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`) and cross-environment compatibility
 - [Identity & Signing (XYO)](../xyo-knowledge/identity.md) — lower-level `Account` / `HDWallet` primitives
-- [Headless dApp Verification](../xl1-patterns/headless-verification.md) — verifying browser dApps end-to-end without a browser
+- [Headless dApp Verification](../xl1-testing/headless-testnet-verification.md) — verifying browser dApps end-to-end without a browser

@@ -1,6 +1,8 @@
-# Headless dApp Verification
+# Headless Testnet Verification
 
-Read this pattern when you need to prove that a dApp's chain interactions work end-to-end without launching a browser or driving the wallet extension. This is the verification mode of choice for agentic development, CI smoke tests, regression scripts, and any context where browser automation is overkill.
+Read this when you need to prove that a dApp's chain interactions work end-to-end against a live (test)network — without launching a browser or driving the wallet extension. It signs with a seed-phrase-derived signer **in-process** (Node + `GatewayBuilder.build(signer)`) and asserts on-chain outcomes. The verification mode of choice for agentic development, CI smoke tests, and regression scripts.
+
+This is one of several headless verification approaches under [xl1-testing](SKILL.md); it is the **network / testnet** variant (in-process signer against `sequence` or `local`). For an external, unattended CLI-wallet actor on Sequence, see [Unattended Sequence via CLI wallet](sequence-cli-wallet.md).
 
 **Builds on:**
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — `GatewayBuilder` and the seed-phrase signer
@@ -233,5 +235,6 @@ If addresses do not line up, the script bypassed the canonical helpers — the f
 - [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical seed-phrase derivation and the cross-environment guarantee
 - [Gateway — Submitting Transactions](../xl1-knowledge/gateway.md#submitting-transactions) — `addPayloadsToChain`, `send`, `confirmSubmittedTransaction`
 - [Gateway — Reading Chain State](../xl1-knowledge/gateway.md#reading-chain-state) — viewer sub-viewers used for read-back assertions
-- [dApp Definition of Done](dapp-checklist.md) — broader completion checklist this verification step plugs into
-- [XL1 Sequence Testing](../xl1-sequence-testing/SKILL.md) — the alternative: an external, keychain-backed `xl1-wallet` CLI actor for unattended Sequence-testnet runs (vs. this in-process seed-phrase signer)
+- [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) — broader completion checklist this verification step plugs into
+- [Unattended Sequence via CLI wallet](sequence-cli-wallet.md) — the alternative: an external, keychain-backed `xl1-wallet` CLI actor for unattended Sequence-testnet runs (vs. this in-process seed-phrase signer)
+- [xl1-testing](SKILL.md) — the testing barrel this approach belongs to

@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, and headless dApp verification. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, headless verification of browser dApps, or dApp UI conventions.
+description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill.)
 metadata:
   version: 1.1.25 # x-release-please-version
 ---
@@ -62,8 +62,8 @@ Read when your application needs persistent, transferable, owned objects on XL1 
 ### [Fungible Tokens (XRC-20)](fungible-tokens.md)
 Read when building a fungible token on XL1 in the style of Bitcoin's BRC-20 — open ticker registration, capped mints, address-to-address transfers, off-chain ledger from on-chain events. Layered directly on the inscription substrate. Covers deploy/mint/transfer schemas, the dual-pass indexer, canonical ordering rules, and the deliberate divergence from BRC-20's two-step transfer.
 
-### [Headless dApp Verification](headless-verification.md)
-Read when you need to prove a dApp's chain interactions work end-to-end without a browser — agentic development, CI smoke tests, regression scripts. Wires `GatewayBuilder.build(signer)` to a seed-phrase wallet so a Node script becomes the same identity a browser user would have on the same seed. Covers the `.env`-driven prompt shape, multi-account derivation for multi-party flows, and the requirement that scripts call the dApp's own domain functions rather than re-implementing them.
+### Headless verification → moved to [xl1-testing](../xl1-testing/SKILL.md)
+Headless dApp verification now lives in the **[xl1-testing](../xl1-testing/SKILL.md)** skill as [Headless testnet verification](../xl1-testing/headless-testnet-verification.md) — proving a dApp's chain interactions end-to-end via an in-process seed-phrase signer (`GatewayBuilder.build(signer)`), for agentic development, CI smoke tests, and regression scripts. It remains a required part of the [dApp Definition of Done](dapp-checklist.md) below.
 
 ### [dApp Definition of Done](dapp-checklist.md)
 **REQUIRED before reporting any XL1 dApp work as complete.** Not optional, not "if you have time" — walk it explicitly and call out pass/fail per relevant section in your completion summary. The checklist enumerates the rules and anti-patterns documented across the skill stack (gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, indexer floor block, provider architecture, display conventions, commit-reveal correctness, settlement authorities, multi-party co-signing, headless verification). Sections marked "(if applicable)" can be skipped only when truly out of scope — state which and why.
