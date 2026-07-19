@@ -1,11 +1,20 @@
 # XL1 Chain
 
-**Key npm packages:**
-- `@xyo-network/xl1-protocol-model` — Zod schemas and TypeScript types for all chain data structures
-- `@xyo-network/xl1-protocol-lib` — Viewer/Runner interface definitions
-- `@xyo-network/xl1-validation` — Composable validation functions
+**Key npm package:** `@xyo-network/xl1-protocol` — the protocol monolith. It
+exposes the former standalone packages as export subpaths (import from the
+subpath, not the old package name):
+- `@xyo-network/xl1-protocol/protocol-model` — Zod schemas and TypeScript types for all chain data structures
+- `@xyo-network/xl1-protocol/protocol-lib` — Viewer/Runner interface definitions (also re-exports `protocol-model`)
+- `@xyo-network/xl1-protocol/validation` — Composable validation functions
 
-For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
+The `@xyo-network/xl1-protocol` root barrel re-exports `protocol-lib`,
+`network-model`, `schema`, and `validation` (and, transitively via
+`protocol-lib`, `protocol-model`). In SDK/dApp code, everything here is also
+re-exported from the `@xyo-network/xl1-sdk` root barrel, so a single import from
+`@xyo-network/xl1-sdk` covers protocol types and SDK runtime alike.
+
+For full type details, read the `.d.ts` files under `dist/neutral/` for the
+relevant subpath.
 
 ---
 
@@ -109,6 +118,11 @@ XL1 uses **AttoXL1** as the base unit (like wei in Ethereum). All on-chain amoun
 Formula: `reward(step) = max(startingReward × (95/100)^step, minReward)` where `step = floor(blockNumber / 1,000,000)`
 
 Integer arithmetic only — numerator 95, denominator 100, no floating point.
+
+**Producer share:** `defaultRewardRatio = 0.1` (`@xyo-network/xl1-protocol/protocol-model`) —
+the block producer receives 10% of the block reward; the remainder funds the
+Step Rewards Pool that validators draw from. This is a config default and can be
+overridden per chain.
 
 ---
 

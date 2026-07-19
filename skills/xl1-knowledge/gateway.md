@@ -7,9 +7,10 @@ Environment-specific construction lives in sibling files:
 - [Browser Gateway](gateway-browser.md) — React providers, the wallet extension, `useProvidedGateway`
 - [Node Gateway](gateway-node.md) — server-side construction via `GatewayBuilder` (`.build()` for read-only, `.build(signer)` for write-capable)
 
-**Key npm packages:**
-- `@xyo-network/xl1-providers` — Browser, Node, and Neutral provider implementations
-- `@xyo-network/xl1-sdk` — `createRestDataLakeRunner`, `createRestDataLakeViewer`, network constants
+**Key npm packages** (subpaths of the `@xyo-network/xl1-sdk` monolith; all
+re-exported from its root barrel):
+- `@xyo-network/xl1-sdk/providers` — Browser, Node, and Neutral provider implementations (browser/node/neutral conditional exports)
+- `@xyo-network/xl1-sdk` — `createRestDataLakeRunner`, `createRestDataLakeViewer`, network constants, and the composed RPC engine helpers
 
 Note: The gateway API server itself is part of the `xyo-chain` runtime repo (not published as a standalone npm package). The packages above cover the client-side provider interfaces needed for dApp development.
 
@@ -164,8 +165,14 @@ For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
 | Look up a specific block you already have a hash for | `.block.blockByHash(hash)` |
 | Look up a specific block by its number | `.block.blockByNumber(n)` |
 | Scan a range of blocks starting from a hash or number | `.block.blocksByHash(hash, limit?)` / `.block.blocksByNumber(n, limit?)` |
+| Fetch a published step-summary batch of blocks | `.block.blocksByStep(stepLevel, stepIndex)` |
 | Resolve off-chain payloads referenced in a transaction | `.block.payloadsByHash(hashes)` |
 | Get the chain ID at a given block height | `.block.chainId(blockNumber?)` |
+
+`blocksByStep` returns a whole step-aligned batch as a single index/summary
+fetch. Large `blocksByNumber` / `blocksByHash` walks delegate to it internally
+(via `deepCalculateFramesFromRange`) so most of a window loads from
+`blocksByStep` index files instead of N per-block requests.
 
 ```ts
 const viewer = gateway?.connection.viewer
@@ -258,8 +265,14 @@ Use finalization viewers when you need confirmed state. Use block viewers when y
 | Sub-viewer | When to use |
 |------------|-------------|
 | `.networkStake` | Querying network-level staking aggregates |
+| `.stakeTotals` | Querying aggregate stake totals (optional — check presence before use) |
 | `.step` | Querying step/epoch boundaries and progression |
 | `.time` | Time synchronization between client and chain |
+
+`.mempool` and `.stakeTotals` are optional on the connection; guard with an
+`if (viewer.stakeTotals)` check before calling. Other viewer types in the
+protocol (IndexViewer, ChainStateViewer, Sync, EvmChain) back the gateway's REST
+and EVM data paths and are not exposed as `connection.viewer.*` accessors.
 
 ---
 
@@ -362,11 +375,30 @@ The wallet and dApp are independent datalake clients — they may point to diffe
 
 Most consumers never instantiate transports directly. In the browser, the React providers select the transport based on whether a wallet is present. In Node, `GatewayBuilder` selects between HTTP and PostMessage based on whether you call `.rpcUrl()` or `.postMessage()`.
 
+### Serving a gateway over JSON-RPC (composed RPC engine)
+
+This is for building a gateway **server** (e.g. an HTTP adapter like
+`@xyo-network/xl1-rpc-server`), not for dApp reads/writes. From
+`@xyo-network/xl1-sdk/rpc/server` (also on the root barrel):
+
+- `composedRpcEngineFromConnection(connection, logger?)` — builds a composed
+  engine of per-viewer/runner typed sub-engines from a gateway connection.
+- `composedRpcEngineFromGateway(gateway, logger?)` — same, from a full gateway;
+  when the gateway is a runner with a signer it also mounts the signer methods
+  (`XyoSignerRpcSchemas` / `rpcMethodHandlersFromSigner`), then delegates to
+  `composedRpcEngineFromConnection`.
+- `composedRpcServerFromGateway(gateway, logger?)` — returns a `JsonRpcServer`.
+
+The composed (V2) engine replaces the original `rpcEngineFromConnection` /
+`rpcServerFromConnection`, which are now `@deprecated`. Prefer the composed
+variants for any new server code.
+
 ---
 
 ## Providers
 
-`@xyo-network/xl1-providers` offers environment-specific provider bundles:
+`@xyo-network/xl1-sdk/providers` (subpath of the SDK monolith; also on the root
+barrel) offers environment-specific provider bundles via conditional exports:
 
 - **Browser provider** — for web dApps, uses PostMessage transport. See [Browser Gateway](gateway-browser.md).
 - **Node provider** — for backend services, uses HTTP transport. See [Node Gateway](gateway-node.md).

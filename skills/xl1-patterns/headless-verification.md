@@ -70,8 +70,8 @@ import 'dotenv/config'
 import {
   buildSimpleXyoSignerV2, DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
 } from '@xyo-network/xl1-sdk'
-import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-protocol-sdk'
-import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol-lib'
+import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
+import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = process.env.XL1_NETWORK ?? 'sequence'
 const network = DefaultNetworks.find((n) => n.id === id)

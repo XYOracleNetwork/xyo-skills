@@ -269,7 +269,7 @@ Mixed dApps (some bounded schemas, some pre-existing) still set `INDEXER_FLOOR_B
 
 | Flag | Values | Default | Notes |
 |---|---|---|---|
-| `--template`, `-t` | `react`, `node`, `xl1-service`, `xl1-monorepo`, `xl1-shared` | `react` | `xl1-service` extends `node` with an Express HTTP server bound to `process.env.PORT \|\| 3000` and a `Hello world` route. `xl1-monorepo` and `xl1-shared` are used together with the other templates in the monorepo flow — see "Choosing template(s)" above. |
+| `--template`, `-t` | `react`, `node`, `xl1-service`, `xl1-monorepo`, `xl1-shared` | `react` | `xl1-service` extends `node` with an Express HTTP server bound to `process.env.PORT \|\| 3001` (matching the app-on-3000 / service-on-3001 wiring convention) and a `Hello world` route. `xl1-monorepo` and `xl1-shared` are used together with the other templates in the monorepo flow — see "Choosing template(s)" above. |
 | `--target` | path | positional[0] or `src` | Can also pass as first positional arg |
 | `--force` | — | off | Overwrite files in a non-empty target dir |
 | `--no-install` | — | off | Write files only; skip `pnpm install` and verification |

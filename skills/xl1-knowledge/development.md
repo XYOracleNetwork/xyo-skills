@@ -24,10 +24,17 @@ import { ... } from '@xyo-network/chain-sdk'
 // React dApp — gateway providers, wallet connection, and gateway access
 import { GatewayProvider, WalletGatewayProvider, ConnectAccountsStack, useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
 
-// Avoid — sub-package imports
-import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol-model'
+// Avoid — sub-package / subpath imports when the root barrel suffices
+import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol/protocol-model'
 import { Payload } from '@xyo-network/payload-model'
 ```
+
+> The `@xyo-network/xl1-protocol` and `@xyo-network/xl1-sdk` packages are
+> toolchain monoliths. The old standalone names (`@xyo-network/xl1-protocol-model`,
+> `-protocol-lib`, `-validation`, `-providers`, `-protocol-sdk`, `-rpc`) no longer
+> exist — they are now export subpaths of the two monoliths (e.g.
+> `@xyo-network/xl1-sdk/protocol-sdk`). The `@xyo-network/xl1-sdk` root barrel
+> re-exports all of them, so prefer it.
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each root barrel package.
 
@@ -57,7 +64,7 @@ export const asFoo = zodAsFactory(FooZod, 'asFoo')
 export const toFoo = zodToFactory(FooZod, 'toFoo')
 ```
 
-This pattern is **mandatory** for all new types. Define the Zod schema first, derive everything else from it. See `@xyo-network/xl1-protocol-model` for canonical examples.
+This pattern is **mandatory** for all new types. Define the Zod schema first, derive everything else from it. See `@xyo-network/xl1-protocol/protocol-model` for canonical examples.
 
 ---
 
@@ -68,13 +75,17 @@ The protocol separates read and write operations:
 - **Viewers** — read-only interfaces that query chain state
 - **Runners** — write/mutation operations that change chain state
 
-### 26 Viewers (organized by domain)
+### Viewers (organized by domain)
 
-**Block:** BlockViewer, BlockValidation, BlockInvalidation, BlockReward, WindowedBlock
+The interface files live under `protocol-lib/viewers/` (~28 files, including the
+`XyoViewer` aggregate). Read that directory for the authoritative list rather
+than relying on a fixed count.
+
+**Block:** BlockViewer, BlockValidation, BlockInvalidation, BlockReward, WindowedBlock, IndexViewer (block-index / `blocksByStep` summaries)
 **Transaction:** TransactionViewer, TransactionValidation, TransactionInvalidation
 **Account:** AccountBalanceViewer, TransferBalance
-**Chain State:** ChainContract, Fork, Finalization, TimeSync
-**Stake:** Stake, StakeTotals, StakeIntent, StakeEvents, ChainStakeViewer, StepStake, NetworkStake, NetworkStakeStepReward (5 sub-variants), StepViewer
+**Chain State:** ChainContract, ChainStateViewer, Fork, Finalization, TimeSync, Sync, EvmChain (canonical EVM source)
+**Stake:** Stake, StakeTotals, StakeIntent, StakeEvents, ChainStakeViewer, StepStake, NetworkStakeStepReward, StepViewer
 **Data:** DataLake, Mempool, DeadLetterQueue
 
 ### 4 Runners
@@ -128,7 +139,7 @@ type HydratedBlock = [BlockBoundWitness, Payload[]]
 type HydratedTransaction = [TransactionBoundWitness, Payload[]]
 ```
 
-Blocks and transactions each have 9 type variants combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, `UnsignedHydratedTransactionWithStorageMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta` and `SignedHydratedTransactionWithHashMeta`.
+Blocks and transactions each have several type variants combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / `ToJson` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, `UnsignedHydratedTransactionWithStorageMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta` and `SignedHydratedTransactionWithHashMeta`.
 
 ---
 
