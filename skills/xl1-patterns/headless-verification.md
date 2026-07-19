@@ -234,3 +234,4 @@ If addresses do not line up, the script bypassed the canonical helpers — the f
 - [Gateway — Submitting Transactions](../xl1-knowledge/gateway.md#submitting-transactions) — `addPayloadsToChain`, `send`, `confirmSubmittedTransaction`
 - [Gateway — Reading Chain State](../xl1-knowledge/gateway.md#reading-chain-state) — viewer sub-viewers used for read-back assertions
 - [dApp Definition of Done](dapp-checklist.md) — broader completion checklist this verification step plugs into
+- [XL1 Sequence Testing](../xl1-sequence-testing/SKILL.md) — the alternative: an external, keychain-backed `xl1-wallet` CLI actor for unattended Sequence-testnet runs (vs. this in-process seed-phrase signer)
