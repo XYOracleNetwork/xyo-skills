@@ -2,7 +2,7 @@
 name: xy-toolchain
 description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement or required presence, validating publish surfaces, or interpreting xy command failures.
 metadata:
-  version: 1.1.25 # x-release-please-version
+  version: 1.1.26 # x-release-please-version
 ---
 
 # XY Toolchain
