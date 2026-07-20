@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.26](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.25...v1.1.26) (2026-07-20)
+
+
+### Features
+
+* add xl1-sequence-testing skill and expand xl1 testing docs ([4280e6d](https://github.com/XYOracleNetwork/xyo-skills/commit/4280e6dc3388d2f73aa80a6d2a4af1bea839dd4f))
+* **xl1:** add xl1-sequence-testing skill for unattended testnet runs ([c26d64b](https://github.com/XYOracleNetwork/xyo-skills/commit/c26d64bdd95be6d2dda30692a38d9322805db2ef))
+
 ## [1.1.25](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.24...v1.1.25) (2026-07-17)
 
 
