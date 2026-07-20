@@ -130,7 +130,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
 - [ ] Script defaults to a non-mainnet network (e.g., `XL1_NETWORK=sequence`) — explicit override required to point at mainnet
 
-**Source:** [Headless dApp Verification](headless-verification.md)
+**Source:** [Headless Testnet Verification](../xl1-testing/headless-testnet-verification.md) (in the `xl1-testing` skill)
 
 ---
 

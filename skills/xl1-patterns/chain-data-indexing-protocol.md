@@ -120,15 +120,15 @@ The chain already uses deterministic no-private-key addresses for its own machin
 
 **Block-reward step escrow.** Rewards accumulate at a deterministic address mid-block, then transfer to recipients at block close.
 
-- Helper: `completedStepRewardAddress({ block, step })`
-- File: `/packages/protocol/packages/protocol/src/step/completedStepRewardAddress.ts`
-- Construction: `keccak256(utf8(`${block}|${stepSize}`)).slice(-40)`
+- Helper: `rewardAddressFromStepIdentity({ block, step })` (`completedStepRewardAddress` remains as a `@deprecated` alias)
+- File: `packages/protocol/src/modules/protocol-lib/address/rewardAddressFromStepIdentity.ts`
+- Construction: `keccak256(utf8(`${block}|${stepSize}`)).slice(-40)` (`step` is resolved to a `StepSizes` entry first)
 - Release validation: `CompletedStepRewardAddressValidatorFactory`
 
 **Generic derived-receive escrow.** A general-purpose helper for any scoped derived address.
 
 - Helper: `derivedReceiveAddress(address, scope?)`
-- File: `/packages/protocol/packages/protocol/src/step/derivedReceiveAddress.ts`
+- File: `packages/protocol/src/modules/protocol-lib/address/derivedReceiveAddress.ts`
 - Construction: `keccak256(utf8(scope ? `${scope}|${address}` : address)).slice(-40)`
 - Release validation: `DerivedReceiveAddressValidatorFactory`
 

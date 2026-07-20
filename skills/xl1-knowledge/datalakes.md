@@ -1,9 +1,13 @@
 # Datalakes
 
 **Key npm packages:**
-- `@xyo-network/xl1-protocol-lib` — DataLakeViewer and DataLakeRunner interfaces
+- `@xyo-network/xl1-protocol/protocol-lib` — DataLakeViewer and DataLakeRunner interfaces (subpath of the `@xyo-network/xl1-protocol` monolith)
 
-Note: Storage drivers (LMDB, MongoDB) are part of the `xyo-chain` runtime repo and not published as standalone npm packages. The interface above is what dApp developers interact with.
+Note: Storage drivers are published as standalone packages from the
+`xl1-protocol` repo — `@xyo-network/xl1-driver-lmdb`, `@xyo-network/xl1-driver-mongodb`,
+and `@xyo-network/xl1-driver-s3` (S3/R2/MinIO; supersedes the deprecated
+`xl1-driver-cloudflare-r2`). The interfaces above are what dApp developers
+interact with; drivers back the datalake on the operator side.
 
 ---
 

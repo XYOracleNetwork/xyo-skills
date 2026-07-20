@@ -4,11 +4,12 @@ How to construct an XL1 gateway in a non-browser environment — backend service
 
 **Scope:** environment-specific *construction*. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and cross-environment recipes.
 
-**Key npm packages:**
-- `@xyo-network/xl1-sdk` — root barrel; re-exports `GatewayBuilder`, `buildSimpleXyoSignerV2`, `DefaultNetworks`, `NetworkDataLakeUrls`
-- `@xyo-network/xl1-protocol-sdk` — `ConfigZod`, `generateXyoBaseWalletFromPhrase` (also surfaced through the root barrel; the deeper path is the verified-working import)
-- `@xyo-network/xl1-protocol-lib` — `XyoGatewayMoniker`, gateway types (only needed if you drop down to the locator)
-- `@xyo-network/xl1-providers` — `basicRemoteViewerLocator` (escape hatch only)
+**Key npm packages** (all subpaths below are exports of the two monoliths, and
+all are re-exported from the `@xyo-network/xl1-sdk` root barrel):
+- `@xyo-network/xl1-sdk` — root barrel; re-exports `GatewayBuilder`, `buildSimpleXyoSignerV2`, `DefaultNetworks`, `NetworkDataLakeUrls`, and everything below
+- `@xyo-network/xl1-sdk/protocol-sdk` — `ConfigZod`, `generateXyoBaseWalletFromPhrase` (the subpath is the most precise import; the root barrel also surfaces these)
+- `@xyo-network/xl1-protocol/protocol-lib` — `XyoGatewayMoniker`, gateway types (only needed if you drop down to the locator)
+- `@xyo-network/xl1-sdk/providers` — `basicRemoteViewerLocator` (escape hatch only)
 
 ---
 
@@ -27,7 +28,7 @@ The same builder works for both — the only difference is whether you pass a si
 import {
   DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
 } from '@xyo-network/xl1-sdk'
-import { type XyoGateway } from '@xyo-network/xl1-protocol-lib'
+import { type XyoGateway } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = 'sequence' // or 'mainnet' / 'local'
 const network = DefaultNetworks.find((n) => n.id === id)
@@ -50,8 +51,8 @@ This is the right path for: chain walks, indexers, archival jobs, dashboards, ET
 import {
   buildSimpleXyoSignerV2, DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
 } from '@xyo-network/xl1-sdk'
-import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-protocol-sdk'
-import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol-lib'
+import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
+import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = 'sequence'
 const network = DefaultNetworks.find((n) => n.id === id)
@@ -93,6 +94,38 @@ The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendM
 | `.build(signer)` | Resolve a write-capable `XyoGatewayRunner` |
 
 `build()` throws if neither `.rpcUrl()` nor `.postMessage()` was set.
+
+---
+
+## REST/S3 gateway — reading from the static layout
+
+When the chain data is published to a static REST/S3 layout (finalized blocks,
+index, chain state — see [Datalakes](datalakes.md) and the `xl1-s3-providers`
+package), you can build a gateway that reads directly from those buckets instead
+of talking to a live RPC gateway. Use `getRestGateway` / `getRestGatewayRunner`
+from `@xyo-network/xl1-sdk/gateway` (also on the root barrel):
+
+```ts
+import { getRestGateway, getRestGatewayRunner } from '@xyo-network/xl1-sdk'
+
+// Read-only: pass an endpoint string (read buckets derived as
+// blocks.<domain>, state.<domain>, indexes.<domain>), or an explicit
+// RestGatewayConfig with per-bucket readUrls.
+const gateway = await getRestGateway('https://cdn.xl1.example')
+
+// Write-capable: reads over REST/S3, submits over RPC. Same consumer-facing
+// write surface as GatewayBuilder.build(signer).
+const runner = await getRestGatewayRunner({
+  endpoint: 'https://cdn.xl1.example',
+  rpcUrl: `${network.url}/rpc`,
+  signer,
+})
+```
+
+Prefer this over `GatewayBuilder` when reads should come from published static
+index/step-summary files (fewer, cacheable GETs) rather than per-request RPC
+calls. `getRestGatewayRunner` also accepts `signerFactory` or `signerTransport`
+instead of an owned `signer` for injected/remote-signer setups.
 
 ---
 
@@ -141,7 +174,7 @@ const id = process.env.XL1_NETWORK ?? 'sequence'
 
 ## Headless dApp Verification
 
-The runner path above is the foundation for verifying any XL1 dApp without a browser — even dApps whose primary UX runs through the Chrome wallet extension. Because the wallet is just a particular `XyoSigner` implementation, swapping it for a seed-phrase signer in a Node script reproduces the dApp's chain interactions end-to-end. See [Headless dApp Verification](../xl1-patterns/headless-verification.md) for the full pattern (when to use it, how to structure the script, common pitfalls).
+The runner path above is the foundation for verifying any XL1 dApp without a browser — even dApps whose primary UX runs through the Chrome wallet extension. Because the wallet is just a particular `XyoSigner` implementation, swapping it for a seed-phrase signer in a Node script reproduces the dApp's chain interactions end-to-end. See [Headless dApp Verification](../xl1-testing/headless-testnet-verification.md) for the full pattern (when to use it, how to structure the script, common pitfalls).
 
 ---
 
@@ -150,8 +183,8 @@ The runner path above is the foundation for verifying any XL1 dApp without a bro
 If you need control beyond what the builder exposes (custom locator graphs, manual provider wiring, instrumented transports), you can call `basicRemoteViewerLocator` directly:
 
 ```ts
-import { XyoGatewayMoniker, type XyoGateway } from '@xyo-network/xl1-protocol-lib'
-import { basicRemoteViewerLocator } from '@xyo-network/xl1-providers'
+import { XyoGatewayMoniker, type XyoGateway } from '@xyo-network/xl1-protocol/protocol-lib'
+import { basicRemoteViewerLocator } from '@xyo-network/xl1-sdk/providers'
 
 const locator = await basicRemoteViewerLocator(
   id,
@@ -171,4 +204,4 @@ This is an escape hatch — prefer `GatewayBuilder` unless you have a concrete r
 - [Datalakes](datalakes.md) — `createRestDataLakeRunner` / `createRestDataLakeViewer` are the same in Node as in the browser
 - [XL1 Identity & Wallets](identity.md) — canonical backend wallet pattern (`generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`) and cross-environment compatibility
 - [Identity & Signing (XYO)](../xyo-knowledge/identity.md) — lower-level `Account` / `HDWallet` primitives
-- [Headless dApp Verification](../xl1-patterns/headless-verification.md) — verifying browser dApps end-to-end without a browser
+- [Headless dApp Verification](../xl1-testing/headless-testnet-verification.md) — verifying browser dApps end-to-end without a browser

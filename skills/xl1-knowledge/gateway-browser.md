@@ -38,7 +38,7 @@ Two providers from `@xyo-network/xl1-react-client-sdk` publish a gateway to Reac
 | Provider | Wallet required? | Read-only fallback | Use when |
 |----------|-----------------|-------------------|----------|
 | `WalletGatewayProvider` | Yes | No | App strictly requires a wallet for all functionality |
-| `GatewayProvider` + `InPageGatewaysProvider` | No | Yes (in-page HTTP gateway) | App should work read-only without a wallet |
+| `GatewayProvider` + `InPageGatewaysProvider` | No | Yes (in-page RPC or REST gateway) | App should work read-only without a wallet |
 
 ### Wallet-only setup
 
@@ -73,6 +73,19 @@ function App() {
 ```
 
 `GatewayProvider` requires `InPageGatewaysProvider` as an ancestor. It merges the in-page gateway and wallet gateway into a single `defaultGateway` — wallet wins when connected, in-page is the fallback.
+
+**In-page read transport.** `InPageGatewaysProvider` accepts a
+`transport?: 'rpc' | 'rest'` prop (default `'rpc'`) that selects how the in-page
+gateway reads chain data:
+
+- `'rpc'` — reads (and mempool submission) go over the network's RPC endpoint.
+- `'rest'` — reads come from the static REST/S3 layout (path-based for the local
+  network via the `localEndpoint` prop; the `<gatewayName>.xyo.space` subdomain
+  layout otherwise), while mempool submission still uses the RPC URL.
+
+Use `'rest'` when you want reads served from cacheable static index/step-summary
+files rather than live RPC. Related props: `localEndpoint`, `signerFactory`,
+`signerTransport` (for in-page or remote signing).
 
 ### gatewayName is required
 
