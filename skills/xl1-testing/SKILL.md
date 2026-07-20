@@ -7,10 +7,11 @@ description: >
   dev-chain verification (the same signer against a free, deterministic local chain
   launched with the public xl1 CLI), plus unattended Sequence testing via the
   @xyo-network/wallet-xl1-cli (`xl1-wallet`) CLI with an OS-keychain-stored password
-  and a pointer to browser e2e. Includes shared testnet-only safety rules. Activates
-  when an agent needs to test, verify, or smoke-test an XL1 dApp or protocol change,
-  run on-chain tests against a local chain or the Sequence testnet, or set up
-  unattended / CI testing.
+  and headless browser-mode testing (vitest + Playwright, headless Chromium) for
+  browser-environment code, plus a pointer to full-app browser e2e. Includes shared
+  testnet-only safety rules. Activates when an agent needs to test, verify, or
+  smoke-test an XL1 dApp or protocol change, run on-chain tests against a local chain
+  or the Sequence testnet, run headless browser tests, or set up unattended / CI testing.
 metadata:
   version: 1.1.25 # x-release-please-version
 ---
@@ -50,7 +51,8 @@ explicitly and deliberately opts into mainnet for a specific run.
 | Prove a dApp's chain interactions work against a **live testnet**, in-process (agentic build, CI smoke test, regression) | **[Headless testnet verification](headless-testnet-verification.md)** | In-process seed-phrase signer via `GatewayBuilder.build(signer)` |
 | Prove them against a **free, deterministic local chain** — offline, no funding step, fast (CI, TDD loops, multi-account flows) | **[Local dev-chain verification](local-chain.md)** | Local `xl1 start` chain + in-process signer (genesis-funded dev account) |
 | Drive an external, funded actor on Sequence **unattended** (fund an address, send test transactions, broadcast signed tx files) across many runs | **[Unattended Sequence via CLI wallet](sequence-cli-wallet.md)** | Standalone `xl1-wallet` CLI, password in the OS keychain |
-| Test the **browser UI** across Chromium / Firefox / WebKit | the `xylabs-e2e-setup` skill (separate skill, if installed) | Playwright driving the real UI |
+| Test **browser-environment code** (in-page gateway, IndexedDB datalake, PostMessage transport, browser SDK build) in headless Chromium | **[Headless browser-mode testing](browser-mode.md)** | vitest browser mode + Playwright provider, MSW-mocked |
+| Drive the **fully rendered app UI** across Chromium / Firefox / WebKit | the `xylabs-e2e-setup` skill (separate skill, if installed) | Playwright e2e against the real UI |
 
 Local vs testnet: iterate on **[local dev-chain](local-chain.md)** (free, instant, resets clean each run), then confirm against **[Sequence](headless-testnet-verification.md)** before shipping — local uses simplified dev consensus and no EVM staking layer, so it proves your interactions, not full-network behavior.
 
