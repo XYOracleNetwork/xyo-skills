@@ -7,6 +7,7 @@
 - [Dependency and publish analysis](#dependency-and-publish-analysis)
 - [Repository policy](#repository-policy)
 - [Skills and work tracking](#skills-and-work-tracking)
+- [Clean](#clean)
 - [Configuration and automation](#configuration-and-automation)
 
 ## Global behavior
@@ -132,19 +133,103 @@ Use the focused command when diagnosing one policy family:
 
 `xy skills` wraps the bundled Skills.sh CLI and adds XY-aware defaults, linting, and updates. Use `xy skills lint --fix` to install missing profile-required skills; use `--offline` when upstream version checks are intentionally unavailable.
 
-`xy work` stores AI-friendly work items in the repository. Use the lifecycle rather than free-form TODO notes when the repository adopts it:
+### `xy work`
+
+`xy work` stores AI-friendly work items under `.xy/work/` (canonical local storage: `.xy/work/items/*.json`). Prefer it over free-form TODO notes when the repository adopts work tracking.
 
 ```sh
 pnpm xy work init
 pnpm xy work add bug "Describe the problem"
+pnpm xy work list
+pnpm xy work list --all
+pnpm xy work sync
 pnpm xy work triage
 pnpm xy work queue
-pnpm xy work next
+pnpm xy work next --claim
 pnpm xy work claim <id>
-pnpm xy work done <id>
+pnpm xy work done <id> --evidence "pnpm xy build passed"
+pnpm xy work update <id> --status blocked --blocked-reason "…"
 ```
 
+| Command | Purpose |
+|---|---|
+| `work init` | Create the repo-local work store and config |
+| `work add <type> <title>` | Capture a bug, todo, feature, idea, debt, research, question, or risk |
+| `work list` | List local items (table output) |
+| `work list --all` | Also list open GitHub issues **not** created by `xy work`, normalized as `GH-<number>` |
+| `work sync` | Bidirectional reconcile of local items and GitHub Issues when available |
+| `work triage` / `update` / `queue` / `next` / `claim` / `done` / `show` | Lifecycle operations |
+
 Record verification evidence when completing an item. Do not initialize work tracking merely because the command exists; follow repository policy.
+
+#### GitHub Issues integration
+
+When `stores.github.enabled` is true (the default for new stores) and the GitHub CLI (`gh`) is installed, authenticated, and the repo has a GitHub remote:
+
+- **`work add`** dual-writes a GitHub issue marked as created by `xy work`:
+  - label: `xy-work`
+  - body marker: `<!-- xy-work: <id> -->`
+  - footer noting creation by the `xy work` tool
+  - link stored on the local item under `stores.github` (`number`, `url`, `createdByXyWork: true`)
+- If GitHub is unavailable or create fails, the local item is still written.
+- **`work list --all`** includes open external GitHub issues (no `xy-work` label/marker, not already linked) as normalized `GH-<number>` rows for display; type is inferred from labels when possible.
+- **`work sync`** reconciles when available:
+  - Local active items without a GitHub link → create a marked issue
+  - GitHub issues not present locally → import (`XYW-…` id when marked, else `GH-<number>`)
+  - Linked pairs: newer title wins; local `done`/`wontfix` closes the issue; closed GitHub issues mark local done
+
+Disable dual-write and sync in `.xy/work/config.json`:
+
+```json
+{
+  "stores": {
+    "github": { "enabled": false }
+  }
+}
+```
+
+Use inline source markers only as anchors (`// xy-work: <id>`); keep priority, acceptance, and verification on the work item.
+
+## Clean
+
+### `xy clean [package]`
+
+Remove build artifacts (`dist`, `build`, and configured patterns). Array fields in config cascade (union) from root to package.
+
+| Flag | Behavior |
+|---|---|
+| *(default)* | Clean built-in and configured patterns, subject to safety rules and excludes |
+| `--full` | Also remove all gitignored files under each package (fresh-clone hygiene); still honors `commands.clean.exclude` and default excludes such as `node_modules` |
+| `--full-all` | Like `--full`, but also ignores `exclude` / default excludes; only `.git` remains protected |
+
+Configure under `commands.clean` in `xy.config.ts`:
+
+```ts
+import type { XyConfig } from '@ariestools/toolchain'
+
+const config: XyConfig = {
+  commands: {
+    clean: {
+      patterns: ['coverage', '.turbo'],
+      include: ['tmp/**'],
+      exclude: ['.cache'],
+      rules: {
+        'clean.gitignored-only': 'error', // default: only delete gitignored matches for configured patterns
+        'clean.gitignored-all': 'off', // default: off; enable to wipe every gitignored path under the package
+      },
+    },
+  },
+}
+
+export default config
+```
+
+- `patterns` — extra package-relative globs beyond builtins.
+- `include` — always cleaned; bypasses `clean.gitignored-only`, still subject to hard safety and `exclude`.
+- `exclude` — never cleaned (plus immutable `.git` and default `node_modules` excludes).
+- Hard rules `clean.inside-root` and `clean.relative-pattern` always apply and cannot be turned off.
+
+Prefer `xy clean` over ad-hoc `rm -rf dist`. Use `--full` only when you intend fresh-clone hygiene; use `--full-all` only when you intentionally want to delete excluded trees such as `node_modules` under packages.
 
 ## Configuration and automation
 

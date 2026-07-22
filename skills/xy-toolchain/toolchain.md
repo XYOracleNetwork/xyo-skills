@@ -56,10 +56,11 @@ Use `xy` at repository/workspace scope. The CLI discovers workspaces, orders com
 | `xy recompile [package]` | Clean, then compile |
 | `xy build [package]` | Compile, then run publint, deplint, and ESLint |
 | `xy rebuild [package]` | Clean, then run a non-incremental build |
-| `xy clean [package]` | Remove build artifacts |
+| `xy clean [package]` | Remove build artifacts; optional `--full` / `--full-all` for gitignored hygiene (see [commands.md](commands.md#clean)) |
 | `xy test [target]` | Run Vitest for a workspace or path |
 | `xy check` | Run repository/configuration policy checks; see [commands.md](commands.md) |
 | `xy fix [package]` | Run the standard fixable policy and source checks |
+| `xy work …` | Repo-local work tracking with optional GitHub Issues dual-write/sync; see [commands.md](commands.md#skills-and-work-tracking) |
 
 `xy build` does not run tests, license checks, security metadata checks, or every check in `xy check`. Run the required gates explicitly.
 
