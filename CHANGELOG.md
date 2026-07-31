@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.27](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.26...v1.1.27) (2026-07-31)
+
+
+### Features
+
+* update xy-toolchain and expand xl1-testing docs ([09944a9](https://github.com/XYOracleNetwork/xyo-skills/commit/09944a950bd3c001db3eb592add5450905ca2378))
+
 ## [1.1.26](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.25...v1.1.26) (2026-07-20)
 
 
