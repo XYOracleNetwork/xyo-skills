@@ -22,8 +22,9 @@ rendered application UI end-to-end, use full-app Playwright e2e instead (the
 ## Accessibility
 
 Fully accessible — everything is public third-party tooling
-(`@vitest/browser-playwright`, `playwright`, `vitest`, `msw`) exercising your own
-code plus the public `@xyo-network/xl1-sdk`. No restricted packages.
+(`@vitest/browser-playwright`, `playwright`, `vitest`, `msw`, and optionally
+`@ariestools/vitest-config`) exercising your own code plus the public
+`@xyo-network/xl1-sdk`. No restricted packages.
 
 ## Setup
 
@@ -31,11 +32,49 @@ Install the browser-mode toolchain and the Chromium binary Playwright drives:
 
 ```sh
 pnpm add -D vitest @vitest/browser-playwright playwright msw
+# monorepos: prefer the shared preset
+pnpm add -D @ariestools/vitest-config
 npx playwright install chromium
 ```
 
-Add a `browser` project to `vitest.config.ts`. This is the setup this repo uses
-(recently switched to `headless: true` so it runs unattended in CI):
+### Preferred: `@ariestools/vitest-config`
+
+For monorepos that follow org-standard `spec/` layout, use the shared preset from
+[xy-toolchain testing](../xy-toolchain/testing.md). The consumer injects the
+Playwright provider so Playwright stays optional for node-only repos:
+
+```ts
+import { defineXyVitestConfig } from '@ariestools/vitest-config'
+import { playwright } from '@vitest/browser-playwright'
+
+export default defineXyVitestConfig({
+  browser: { provider: playwright() },
+  // Optional: monorepo-wide setup for MSW, etc.
+  // projects can also be extended for serialized e2e suites
+})
+```
+
+Spec-directory routing under the preset:
+
+| Path | Runs in |
+|---|---|
+| `…/spec/…` (not under `node` or `browser`) | Node **and** browser projects |
+| `…/spec/node/…` | Node only |
+| `…/spec/browser/…` | Browser (headless Chromium) only |
+
+Put browser-only suites under `spec/browser/`. Keep shared logic under plain
+`spec/` when both realms should run it.
+
+If the preset's default browser options need a force-headless override for a
+particular repo, pass the matching options through `browser` (or compose with
+`defineXyVitestProjects` + a custom top-level config). Prefer inspecting the
+installed `@ariestools/vitest-config` defaults over re-copying a full projects
+array.
+
+### Hand-rolled browser project
+
+Use this only when the repo is not on the shared preset, or when you must keep
+an existing multi-project layout that the preset does not yet express:
 
 ```ts
 import { playwright } from '@vitest/browser-playwright'
@@ -65,8 +104,9 @@ export default defineConfig({
 ```
 
 Keep cross-environment specs in `spec/` (they run in both node and browser
-projects), browser-only specs where the browser project picks them up, and
-node-only specs under `spec/node/` (excluded above).
+projects when both exist), browser-only specs under `spec/browser/` (or where
+the browser project includes them), and node-only specs under `spec/node/`
+(excluded above).
 
 ### Network mocking (MSW)
 
@@ -90,6 +130,9 @@ afterAll(() => {
 })
 ```
 
+Wire `setupFiles` through the preset (`test.setupFiles` / project options) or the
+hand-rolled `setupFiles` field above.
+
 For flows that need a live chain instead of mocks, don't use browser mode — point
 a [local dev-chain](local-chain.md) or [Sequence](headless-testnet-verification.md)
 run at the code under test.
@@ -101,9 +144,10 @@ pnpm vitest run --project browser          # just the browser project, headless
 pnpm xy test                               # all projects, browser included
 ```
 
-With `headless: true` this needs no display, so it runs in CI and unattended
-agent sessions without a virtual framebuffer. (Drop `headless` — or set it
-`false` — locally when you want to watch the browser to debug.)
+With headless Chromium this needs no display, so it runs in CI and unattended
+agent sessions without a virtual framebuffer. For hand-rolled configs, keep
+`headless: true` (or set it `false` locally when you want to watch the browser to
+debug).
 
 ## When to use this vs. full-app e2e
 
@@ -120,5 +164,6 @@ to validate the assembled UI.
 ## Cross-References
 
 - [xl1-testing](SKILL.md) — the testing barrel this approach belongs to.
+- [xy-toolchain testing](../xy-toolchain/testing.md) — `@ariestools/vitest-config`, `spec/` layout, `xy test` / `xy retest`.
 - `xylabs-e2e-setup` skill — scaffolds a full-app Playwright e2e package (Chromium/Firefox/WebKit).
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — the in-page gateway / `InPageGatewaysProvider` code this mode is well-suited to test.

@@ -138,6 +138,8 @@ clean chain.
 ## Cross-References
 
 - [Headless testnet verification](headless-testnet-verification.md) — the same signer/verify pattern against the live Sequence testnet; validate there before production.
+- [Local chain + Aries data-lake fixture](local-chain-datalake.md) — add an independently hosted data/object lake to the local chain.
+- [Full local XL1 dApp stack](local-dapp-stack.md) — add a real reducer, coherent state/index publication, and public consumer verification.
 - [Unattended Sequence via CLI wallet](sequence-cli-wallet.md) — external CLI actor on Sequence.
 - [xl1-testing](SKILL.md) — the testing barrel this approach belongs to.
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — `GatewayBuilder` API and the `local` network entry.

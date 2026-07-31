@@ -5,7 +5,9 @@ description: >
   approach. Groups the headless verification methods: headless testnet verification
   (an in-process seed-phrase signer against the live Sequence testnet) and local
   dev-chain verification (the same signer against a free, deterministic local chain
-  launched with the public xl1 CLI), plus unattended Sequence testing via the
+  launched with the public xl1 CLI), composed local chain + Aries data-store
+  verification, and full local dApp backend verification with
+  @ariestools/aries-dapp-core, plus unattended Sequence testing via the
   @xyo-network/wallet-xl1-cli (`xl1-wallet`) CLI with an OS-keychain-stored password
   and headless browser-mode testing (vitest + Playwright, headless Chromium) for
   browser-environment code, plus a pointer to full-app browser e2e. Includes shared
@@ -30,6 +32,7 @@ Testing builds on the rest of the stack. Also consult:
 
 - **[xl1-knowledge](../xl1-knowledge/SKILL.md)** — chain, gateway, SDK, and the network endpoints under test.
 - **[xl1-patterns](../xl1-patterns/SKILL.md)** — dApp patterns and the [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) that verification plugs into.
+- **[xy-toolchain](../xy-toolchain/SKILL.md)** — Vitest layout, `@ariestools/vitest-config`, `xy test` / `xy retest`, and other shared toolchain commands.
 - **[xyo-knowledge](../xyo-knowledge/SKILL.md)** / **[xy-development](../xy-development/SKILL.md)** — protocol primitives and testing/workflow conventions.
 
 ## ⛔ Testnet-only by default
@@ -50,11 +53,19 @@ explicitly and deliberately opts into mainnet for a specific run.
 |---|---|---|
 | Prove a dApp's chain interactions work against a **live testnet**, in-process (agentic build, CI smoke test, regression) | **[Headless testnet verification](headless-testnet-verification.md)** | In-process seed-phrase signer via `GatewayBuilder.build(signer)` |
 | Prove them against a **free, deterministic local chain** — offline, no funding step, fast (CI, TDD loops, multi-account flows) | **[Local dev-chain verification](local-chain.md)** | Local `xl1 start` chain + in-process signer (genesis-funded dev account) |
+| Test a local XL1 chain and an independently hosted **Aries data/object lake** together, without yet running a real reducer | **[Local chain + Aries data-lake fixture](local-chain-datalake.md)** | Direct `xl1` CLI + `aries dapp` CLI with the noop actor |
+| Test a complete local XL1 dApp backend: finalized-chain source, real reducer, coherent state/index publication, and anonymous verification | **[Full local XL1 dApp stack](local-dapp-stack.md)** | Direct `xl1` CLI + project-owned `aries-dapp-core` composition |
 | Drive an external, funded actor on Sequence **unattended** (fund an address, send test transactions, broadcast signed tx files) across many runs | **[Unattended Sequence via CLI wallet](sequence-cli-wallet.md)** | Standalone `xl1-wallet` CLI, password in the OS keychain |
 | Test **browser-environment code** (in-page gateway, IndexedDB datalake, PostMessage transport, browser SDK build) in headless Chromium | **[Headless browser-mode testing](browser-mode.md)** | vitest browser mode + Playwright provider, MSW-mocked |
 | Drive the **fully rendered app UI** across Chromium / Firefox / WebKit | the `xylabs-e2e-setup` skill (separate skill, if installed) | Playwright e2e against the real UI |
 
 Local vs testnet: iterate on **[local dev-chain](local-chain.md)** (free, instant, resets clean each run), then confirm against **[Sequence](headless-testnet-verification.md)** before shipping — local uses simplified dev consensus and no EVM staking layer, so it proves your interactions, not full-network behavior.
+
+For backend work, progress through the two composition layers: first prove the
+chain and data store independently with the
+**[local chain + Aries fixture](local-chain-datalake.md)**, then use the
+**[full local dApp stack](local-dapp-stack.md)** to prove the real reducer and
+published consumer view. The second is a superset of the first.
 
 They compose: use the CLI-wallet actor to fund/operate a Sequence account, headless
 testnet verification to assert a dApp's chain interactions programmatically, and
@@ -72,6 +83,12 @@ wallet extension. This barrel groups the variants:
 - **[Local dev-chain verification](local-chain.md)** — the same in-process signer
   against a free, deterministic local chain launched with the public `xl1` CLI
   (`xl1 start`). Offline, instant, genesis-funded — the fast inner loop for CI/TDD.
+- **[Local chain + Aries data-lake fixture](local-chain-datalake.md)** — a direct
+  `xl1` actor topology plus the local Aries `data/state/index` object-store
+  fixture, with explicit lifecycle and authority boundaries.
+- **[Full local XL1 dApp stack](local-dapp-stack.md)** — adds a project-owned
+  finalized-chain source, real `DappReducer`, head-last publication, durable
+  progress, and browser-neutral consumer verification.
 
 Additional headless verification methods will be documented alongside these here
 as they are added.

@@ -7,6 +7,7 @@
 - [Dependency and publish analysis](#dependency-and-publish-analysis)
 - [Repository policy](#repository-policy)
 - [Skills and work tracking](#skills-and-work-tracking)
+- [Clean](#clean)
 - [Configuration and automation](#configuration-and-automation)
 
 ## Global behavior
@@ -52,6 +53,19 @@ Choose the dependency/peer classifier deliberately:
 - `aei` uses API Exposure Index evidence and leaves borderline cases for review.
 - `aei-next` also supports `peer-with-default` when the install-strategy heuristics match.
 
+#### Package roles
+
+Deplint auto-detects a package **role** (`library`, `library/cli`, `cli`, `service`, `app`, `workspace-root`, `tooling`) and applies policy facets. Agents must not treat every private package as free to demote runtime deps to `devDependencies`.
+
+Critical cases:
+
+- **`service` / `cli` with a trusted runtime graph:** keep real runtime deps in `dependencies`. Demoting them breaks `pnpm install --prod` and Docker slim images.
+- **`private: true` is not a service signal.** A private package with a real `main` / `exports` surface remains a **library**.
+- Progress labels use role ids (`service`, `cli`, …), not legacy `terminal[private]` / `terminal[cli]`.
+- Prefer `commands.deplint.role` (and optional `runtimeRoots` / facets) over deprecated `terminal: true`.
+
+Full role table, facets (`prodInstallMatters`, trusted graphs, `runtimeEntry`), and override examples: [project-profiles.md](project-profiles.md#package-roles-and-dependency-policy).
+
 #### Package placement and presence
 
 Configure exceptional packages through `commands.deplint.packages`. Separate where a package belongs from whether its declaration must exist:
@@ -95,7 +109,18 @@ Use `presence` independently:
 
 Treat `refType` as deprecated. Its historical behavior combines placement with allowed presence: `refType: 'dev'` is equivalent to `{ placement: 'dev', presence: 'allowed' }`. Do not migrate mechanically to `{ placement: 'dev' }` unless unused-removal behavior is intended.
 
-Placement overrides also inform `xy api-exposure`. Root and package `commands.deplint.packages` entries deep-merge, so a root placement can combine with a package-level presence override. Keep terminal/library classification separate from these per-dependency policies, and do not distort source imports to satisfy an inappropriate classifier default.
+Placement overrides also inform `xy api-exposure`. Root and package `commands.deplint.packages` entries deep-merge, so a root placement can combine with a package-level presence override. Keep package-role classification separate from these per-dependency policies, and do not distort source imports to satisfy an inappropriate classifier default.
+
+#### Interactive pick
+
+Use `xy deplint pick` for an interactive table of borderline AEI packages (`dep.dependencies.aei-review`) plus every package already listed under `commands.deplint.packages` in the monorepo's `xy.config` files:
+
+```sh
+pnpm xy deplint pick
+pnpm xy deplint pick @scope/package
+```
+
+Space cycles each row through `none` / `dep` / `dev` / `peer`; Enter writes the chosen placements (or removes the entry for `none`) into the appropriate `xy.config`. After picking, run `xy deplint --fix` to apply placements to `package.json` manifests. Redundant placement overrides that match the active classifier can be cleaned with `--fix` via `dep.package.redundant-placement`.
 
 ### `xy api-exposure [package]`
 
@@ -132,19 +157,124 @@ Use the focused command when diagnosing one policy family:
 
 `xy skills` wraps the bundled Skills.sh CLI and adds XY-aware defaults, linting, and updates. Use `xy skills lint --fix` to install missing profile-required skills; use `--offline` when upstream version checks are intentionally unavailable.
 
-`xy work` stores AI-friendly work items in the repository. Use the lifecycle rather than free-form TODO notes when the repository adopts it:
+### `xy work`
+
+`xy work` stores AI-friendly work items under `.xy/work/` (canonical local storage: `.xy/work/items/*.json`). Prefer it over free-form TODO notes when the repository adopts work tracking.
 
 ```sh
 pnpm xy work init
 pnpm xy work add bug "Describe the problem"
+pnpm xy work list
+pnpm xy work list --all
+pnpm xy work sync
 pnpm xy work triage
 pnpm xy work queue
-pnpm xy work next
+pnpm xy work next --claim
 pnpm xy work claim <id>
-pnpm xy work done <id>
+pnpm xy work done <id> --evidence "pnpm xy build passed"
+pnpm xy work update <id> --status blocked --blocked-reason "…"
+pnpm xy work lint
 ```
 
+| Command | Purpose |
+|---|---|
+| `work init` | Create the repo-local work store and config |
+| `work add <type> <title>` | Capture a bug, todo, feature, idea, debt, research, question, or risk |
+| `work list` | List local items (table output) |
+| `work list --all` | Also list open GitHub issues **not** created by `xy work`, normalized as `GH-<number>` |
+| `work sync` | Bidirectional reconcile of local items and GitHub Issues when available |
+| `work triage` / `update` / `queue` / `next` / `claim` / `done` / `show` | Lifecycle operations |
+| `work move <id> --to <folder>` | Move an item between multi-root workspace folder repos |
+| `work lint` | Store health (gitignore, GitHub availability, sync drift) |
+
 Record verification evidence when completing an item. Do not initialize work tracking merely because the command exists; follow repository policy.
+
+#### GitHub Issues integration
+
+When `stores.github.enabled` is true (the default for new stores) and the GitHub CLI (`gh`) is installed, authenticated, and the repo has a GitHub remote:
+
+- **`work add`** dual-writes a GitHub issue marked as created by `xy work`:
+  - label: `xy-work`
+  - body marker: `<!-- xy-work: <id> -->`
+  - footer noting creation by the `xy work` tool
+  - link stored on the local item under `stores.github` (`number`, `url`, `createdByXyWork: true`)
+- If GitHub is unavailable or create fails, the local item is still written.
+- **`work list --all`** includes open external GitHub issues (no `xy-work` label/marker, not already linked) as normalized `GH-<number>` rows for display; type is inferred from labels when possible.
+- **`work sync`** reconciles when available:
+  - Local active items without a GitHub link → create a marked issue
+  - GitHub issues not present locally → import (`XYW-…` id when marked, else `GH-<number>`)
+  - Linked pairs: newer title wins; local `done`/`wontfix` closes the issue; closed GitHub issues mark local done
+
+Disable dual-write and sync in `.xy/work/config.json`:
+
+```json
+{
+  "stores": {
+    "github": { "enabled": false }
+  }
+}
+```
+
+Use inline source markers only as anchors (`// xy-work: <id>`); keep priority, acceptance, and verification on the work item.
+
+#### Multi-folder editor workspaces
+
+When several git repos are open together (for example `GitHub.code-workspace`), work subcommands accept scope flags:
+
+| Flag | Behavior |
+|---|---|
+| `--workspace` | Operate across folders in the active/local `*.code-workspace` |
+| `--workspace-file <path>` | Explicit workspace file (implies `--workspace`) |
+| `--repo <name>` | Limit or target a single workspace folder by name |
+
+```sh
+pnpm xy work list --workspace
+pnpm xy work list --workspace --repo toolchain
+pnpm xy work move XYW-20260724-A145D1 --to sdk-js --from toolchain
+```
+
+`work move` relocates a work item between workspace folder repos. Use `--from` when the id is ambiguous across folders. Do not invent cross-repo moves without an actual multi-root workspace layout.
+
+## Clean
+
+### `xy clean [package]`
+
+Remove build artifacts (`dist`, `build`, and configured patterns). Array fields in config cascade (union) from root to package.
+
+| Flag | Behavior |
+|---|---|
+| *(default)* | Clean built-in and configured patterns, subject to safety rules and excludes |
+| `--full` | Also remove all gitignored files under each package (fresh-clone hygiene); still honors `commands.clean.exclude` and default excludes such as `node_modules` |
+| `--full-all` | Like `--full`, but also ignores `exclude` / default excludes; only `.git` remains protected |
+
+Configure under `commands.clean` in `xy.config.ts`:
+
+```ts
+import type { XyConfig } from '@ariestools/toolchain'
+
+const config: XyConfig = {
+  commands: {
+    clean: {
+      patterns: ['coverage', '.turbo'],
+      include: ['tmp/**'],
+      exclude: ['.cache'],
+      rules: {
+        'clean.gitignored-only': 'error', // default: only delete gitignored matches for configured patterns
+        'clean.gitignored-all': 'off', // default: off; enable to wipe every gitignored path under the package
+      },
+    },
+  },
+}
+
+export default config
+```
+
+- `patterns` — extra package-relative globs beyond builtins.
+- `include` — always cleaned; bypasses `clean.gitignored-only`, still subject to hard safety and `exclude`.
+- `exclude` — never cleaned (plus immutable `.git` and default `node_modules` excludes).
+- Hard rules `clean.inside-root` and `clean.relative-pattern` always apply and cannot be turned off.
+
+Prefer `xy clean` over ad-hoc `rm -rf dist`. Use `--full` only when you intend fresh-clone hygiene; use `--full-all` only when you intentionally want to delete excluded trees such as `node_modules` under packages.
 
 ## Configuration and automation
 
