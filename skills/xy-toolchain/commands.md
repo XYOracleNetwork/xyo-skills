@@ -53,6 +53,19 @@ Choose the dependency/peer classifier deliberately:
 - `aei` uses API Exposure Index evidence and leaves borderline cases for review.
 - `aei-next` also supports `peer-with-default` when the install-strategy heuristics match.
 
+#### Package roles
+
+Deplint auto-detects a package **role** (`library`, `library/cli`, `cli`, `service`, `app`, `workspace-root`, `tooling`) and applies policy facets. Agents must not treat every private package as free to demote runtime deps to `devDependencies`.
+
+Critical cases:
+
+- **`service` / `cli` with a trusted runtime graph:** keep real runtime deps in `dependencies`. Demoting them breaks `pnpm install --prod` and Docker slim images.
+- **`private: true` is not a service signal.** A private package with a real `main` / `exports` surface remains a **library**.
+- Progress labels use role ids (`service`, `cli`, …), not legacy `terminal[private]` / `terminal[cli]`.
+- Prefer `commands.deplint.role` (and optional `runtimeRoots` / facets) over deprecated `terminal: true`.
+
+Full role table, facets (`prodInstallMatters`, trusted graphs, `runtimeEntry`), and override examples: [project-profiles.md](project-profiles.md#package-roles-and-dependency-policy).
+
 #### Package placement and presence
 
 Configure exceptional packages through `commands.deplint.packages`. Separate where a package belongs from whether its declaration must exist:
@@ -96,7 +109,18 @@ Use `presence` independently:
 
 Treat `refType` as deprecated. Its historical behavior combines placement with allowed presence: `refType: 'dev'` is equivalent to `{ placement: 'dev', presence: 'allowed' }`. Do not migrate mechanically to `{ placement: 'dev' }` unless unused-removal behavior is intended.
 
-Placement overrides also inform `xy api-exposure`. Root and package `commands.deplint.packages` entries deep-merge, so a root placement can combine with a package-level presence override. Keep terminal/library classification separate from these per-dependency policies, and do not distort source imports to satisfy an inappropriate classifier default.
+Placement overrides also inform `xy api-exposure`. Root and package `commands.deplint.packages` entries deep-merge, so a root placement can combine with a package-level presence override. Keep package-role classification separate from these per-dependency policies, and do not distort source imports to satisfy an inappropriate classifier default.
+
+#### Interactive pick
+
+Use `xy deplint pick` for an interactive table of borderline AEI packages (`dep.dependencies.aei-review`) plus every package already listed under `commands.deplint.packages` in the monorepo's `xy.config` files:
+
+```sh
+pnpm xy deplint pick
+pnpm xy deplint pick @scope/package
+```
+
+Space cycles each row through `none` / `dep` / `dev` / `peer`; Enter writes the chosen placements (or removes the entry for `none`) into the appropriate `xy.config`. After picking, run `xy deplint --fix` to apply placements to `package.json` manifests. Redundant placement overrides that match the active classifier can be cleaned with `--fix` via `dep.package.redundant-placement`.
 
 ### `xy api-exposure [package]`
 
@@ -149,6 +173,7 @@ pnpm xy work next --claim
 pnpm xy work claim <id>
 pnpm xy work done <id> --evidence "pnpm xy build passed"
 pnpm xy work update <id> --status blocked --blocked-reason "…"
+pnpm xy work lint
 ```
 
 | Command | Purpose |
@@ -159,6 +184,8 @@ pnpm xy work update <id> --status blocked --blocked-reason "…"
 | `work list --all` | Also list open GitHub issues **not** created by `xy work`, normalized as `GH-<number>` |
 | `work sync` | Bidirectional reconcile of local items and GitHub Issues when available |
 | `work triage` / `update` / `queue` / `next` / `claim` / `done` / `show` | Lifecycle operations |
+| `work move <id> --to <folder>` | Move an item between multi-root workspace folder repos |
+| `work lint` | Store health (gitignore, GitHub availability, sync drift) |
 
 Record verification evidence when completing an item. Do not initialize work tracking merely because the command exists; follow repository policy.
 
@@ -189,6 +216,24 @@ Disable dual-write and sync in `.xy/work/config.json`:
 ```
 
 Use inline source markers only as anchors (`// xy-work: <id>`); keep priority, acceptance, and verification on the work item.
+
+#### Multi-folder editor workspaces
+
+When several git repos are open together (for example `GitHub.code-workspace`), work subcommands accept scope flags:
+
+| Flag | Behavior |
+|---|---|
+| `--workspace` | Operate across folders in the active/local `*.code-workspace` |
+| `--workspace-file <path>` | Explicit workspace file (implies `--workspace`) |
+| `--repo <name>` | Limit or target a single workspace folder by name |
+
+```sh
+pnpm xy work list --workspace
+pnpm xy work list --workspace --repo toolchain
+pnpm xy work move XYW-20260724-A145D1 --to sdk-js --from toolchain
+```
+
+`work move` relocates a work item between workspace folder repos. Use `--from` when the id is ambiguous across folders. Do not invent cross-repo moves without an actual multi-root workspace layout.
 
 ## Clean
 

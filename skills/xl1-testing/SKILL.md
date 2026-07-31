@@ -32,6 +32,7 @@ Testing builds on the rest of the stack. Also consult:
 
 - **[xl1-knowledge](../xl1-knowledge/SKILL.md)** — chain, gateway, SDK, and the network endpoints under test.
 - **[xl1-patterns](../xl1-patterns/SKILL.md)** — dApp patterns and the [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) that verification plugs into.
+- **[xy-toolchain](../xy-toolchain/SKILL.md)** — Vitest layout, `@ariestools/vitest-config`, `xy test` / `xy retest`, and other shared toolchain commands.
 - **[xyo-knowledge](../xyo-knowledge/SKILL.md)** / **[xy-development](../xy-development/SKILL.md)** — protocol primitives and testing/workflow conventions.
 
 ## ⛔ Testnet-only by default
