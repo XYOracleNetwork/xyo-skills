@@ -1,6 +1,6 @@
 ---
 name: xy-toolchain
-description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs, Vitest, dependency and API-exposure analysis, publishing checks, dead-code analysis, repository policy, skills, and work tracking. Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement or required presence, validating publish surfaces, or interpreting xy command failures.
+description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs (including lib-neutral ambient globals), @ariestools/vitest-config, Vitest, dependency and API-exposure analysis (deplint roles, pick, placement/presence), publishing checks, dead-code analysis, repository policy, skills, xy work tracking with optional GitHub Issues dual-write/sync and multi-folder workspace scope, and configurable clean (including --full hygiene). Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement or required presence, validating publish surfaces, tracking work with xy work, or interpreting xy command failures.
 metadata:
   version: 1.1.26 # x-release-please-version
 ---
@@ -17,7 +17,7 @@ This skill builds on the [Development Skill](../xy-development/SKILL.md), which 
 
 ### [Project profiles](project-profiles.md)
 
-Read first when classifying a repository or package as a library or final application, choosing neutral/node/browser/React guidance, deciding how monorepo and single-package setup differ, or determining whether framework tooling or `xy compile` owns production output.
+Read first when classifying a repository or package as a library, service, app, CLI, or other role; choosing neutral/node/browser/React guidance; deciding how monorepo and single-package setup differ; or determining whether framework tooling or `xy compile` owns production output.
 
 ### [Toolchain and project setup](toolchain.md)
 
@@ -29,7 +29,7 @@ Read when editing `xy.config.ts`, selecting neutral/node/browser targets, choosi
 
 ### [Command and policy catalog](commands.md)
 
-Read when choosing among `build`, `check`, `fix`, `deplint`, `api-exposure`, `publint`, `dead`, repository-policy commands, `skills`, or `work`; also read when configuring dependency placement/presence or using `--rules`, `--json`, `--strict`, and automation behavior.
+Read when choosing among `build`, `check`, `fix`, `clean`, `deplint` (including `pick` and package roles), `api-exposure`, `publint`, `dead`, repository-policy commands, `skills`, or `work` (including GitHub Issues dual-write, `list --all`, `sync`, and multi-folder `--workspace` scope); also read when configuring dependency placement/presence, clean patterns, or using `--rules`, `--json`, `--strict`, and automation behavior.
 
 ### [ESLint configuration](eslint.md)
 
@@ -37,11 +37,11 @@ Read when creating or repairing an ESLint flat config, selecting a rule tier, en
 
 ### [TypeScript configuration](typescript.md)
 
-Read when selecting `@ariestools/tsconfig`, `-dom`, or `-react`, configuring Node types, interpreting `noEmit`, or separating type validation from toolchain emission.
+Read when selecting `@ariestools/tsconfig`, `-dom`, or `-react`, configuring Node types or `@ariestools/lib-neutral` ambient globals, interpreting `noEmit`, or separating type validation from toolchain emission.
 
 ### [Testing with Vitest](testing.md)
 
-Read when configuring Vitest, choosing spec locations, running a workspace or path, clearing the test cache, or distinguishing test failures from build failures.
+Read when configuring Vitest (including `@ariestools/vitest-config`), choosing spec locations and node/browser routing, running a workspace or path, clearing the test cache, or distinguishing test failures from build failures.
 
 ## Scaffolding an XL1 app
 

@@ -44,7 +44,7 @@ The published toolchain requires Node.js 22 or newer and TypeScript 5.9 or 6:
 pnpm add -D @ariestools/toolchain @ariestools/tsconfig typescript
 ```
 
-Add the appropriate ESLint and TypeScript variants from [eslint.md](eslint.md) and [typescript.md](typescript.md). Pin versions according to the repository's dependency policy; do not copy the toolchain repository's current patch versions blindly.
+Add the appropriate ESLint and TypeScript variants from [eslint.md](eslint.md) and [typescript.md](typescript.md). For monorepo Vitest presets use `@ariestools/vitest-config` ([testing.md](testing.md)); for environment-neutral ambient globals use `@ariestools/lib-neutral` ([typescript.md](typescript.md)). Pin versions according to the repository's dependency policy; do not copy the toolchain repository's current patch versions blindly.
 
 ## Root CLI versus package hooks
 
@@ -56,10 +56,12 @@ Use `xy` at repository/workspace scope. The CLI discovers workspaces, orders com
 | `xy recompile [package]` | Clean, then compile |
 | `xy build [package]` | Compile, then run publint, deplint, and ESLint |
 | `xy rebuild [package]` | Clean, then run a non-incremental build |
-| `xy clean [package]` | Remove build artifacts |
-| `xy test [target]` | Run Vitest for a workspace or path |
+| `xy clean [package]` | Remove build artifacts; optional `--full` / `--full-all` for gitignored hygiene (see [commands.md](commands.md#clean)) |
+| `xy test [target]` | Run Vitest for a workspace or path (prefer `@ariestools/vitest-config` in monorepos; see [testing.md](testing.md)) |
 | `xy check` | Run repository/configuration policy checks; see [commands.md](commands.md) |
 | `xy fix [package]` | Run the standard fixable policy and source checks |
+| `xy deplint …` | Dependency policy analysis; `xy deplint pick` for interactive placement (see [commands.md](commands.md)) |
+| `xy work …` | Repo-local work tracking with optional GitHub Issues dual-write/sync and multi-folder `--workspace` scope; see [commands.md](commands.md#skills-and-work-tracking) |
 
 `xy build` does not run tests, license checks, security metadata checks, or every check in `xy check`. Run the required gates explicitly.
 
@@ -112,11 +114,12 @@ For a new TypeScript package:
 1. Pin pnpm in `packageManager` and create the correct workspace file when needed.
 2. Require Node.js 22 or newer unless the consuming product imposes a newer version.
 3. Install `@ariestools/toolchain`, the correct config packages, ESLint, and TypeScript.
-4. Set `"type": "module"`.
-5. Put application or library source under `src/`.
-6. Create `xy.config.ts`, `tsconfig.json`, and `eslint.config.ts` at the appropriate root.
-7. Run `xy lint init` rather than copying an old ESLint configuration.
-8. Run the actual compile, lint, test, and publish-policy gates before handing off.
+4. For monorepos, prefer `@ariestools/vitest-config` at the root; for neutral packages that need common timers/abort globals, add `@ariestools/lib-neutral`.
+5. Set `"type": "module"`.
+6. Put application or library source under `src/`.
+7. Create `xy.config.ts`, `tsconfig.json`, and `eslint.config.ts` at the appropriate root.
+8. Run `xy lint init` rather than copying an old ESLint configuration.
+9. Run the actual compile, lint, test, and publish-policy gates before handing off.
 
 Use `xy repo init cli` only after inspecting its generated output and passing an explicit scope. Do not assume generator defaults match the target organization.
 
