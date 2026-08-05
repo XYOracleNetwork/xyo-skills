@@ -17,6 +17,20 @@ Datalakes are the structured data storage layer for the XL1 chain. They provide 
 
 Datalakes build on XYO's **Archivist** module abstraction (see [XYO Knowledge — Modules](../xyo-knowledge/modules.md)). The chain's finalized data is served through a module identified as `Chain:Finalized`, accessible via the gateway's `/chain` endpoint.
 
+### Tiered Data Storage: Database vs Datalake vs Archivist
+
+Three storage tiers, each adding a constraint to the one before it:
+
+| Tier | Stores | Keys |
+|------|--------|------|
+| **Database** | Data | Arbitrarily derived |
+| **Datalake** | Data | Cryptographically derivable from the values |
+| **Archivist** | Payloads | Cryptographically derivable from the values |
+
+A database imposes no relationship between a key and its value — retrieval means trusting the store. A datalake is content-addressed: keys are cryptographically derivable from the values (e.g., a hash), so any reader can verify that what came back is what was stored, without trusting the store. An archivist keeps that key guarantee and further constrains the *values* to payloads — structured, schema-bearing data.
+
+**When to use which:** a database when only the operator needs to trust the data; a datalake when untrusted parties must be able to verify what they retrieve; an archivist when that verifiable data must also be payloads the network can validate and reference on chain.
+
 ### Datalake HTTP Endpoints
 
 Each network exposes its datalake as a standalone HTTP archivist endpoint, separate from the gateway RPC:
