@@ -23,7 +23,7 @@ Modules communicate via **signed queries**: the caller creates a `QueryBoundWitn
 
 ### Archivist — Storage
 
-Archivists store and retrieve payloads.
+Archivists store and retrieve payloads. An archivist is the most constrained of three storage tiers — database (arbitrary keys), datalake (keys cryptographically derivable from values), archivist (same key guarantee, values constrained to payloads). See [Datalakes — Tiered Data Storage](../xl1-knowledge/datalakes.md#tiered-data-storage-database-vs-datalake-vs-archivist).
 
 ```ts
 interface ArchivistFunctions {
