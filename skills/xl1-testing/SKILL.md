@@ -15,7 +15,7 @@ description: >
   smoke-test an XL1 dApp or protocol change, run on-chain tests against a local chain
   or the Sequence testnet, run headless browser tests, or set up unattended / CI testing.
 metadata:
-  version: 1.1.27 # x-release-please-version
+  version: 1.1.28 # x-release-please-version
 ---
 
 # XL1 Testing

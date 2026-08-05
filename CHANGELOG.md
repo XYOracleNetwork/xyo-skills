@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.28](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.27...v1.1.28) (2026-08-05)
+
+
+### Features
+
+* describe tiered data storage in xl1-knowledge skill ([81c537e](https://github.com/XYOracleNetwork/xyo-skills/commit/81c537e0c3024e9e02e15a133955f6f71e183f25))
+
 ## [1.1.27](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.26...v1.1.27) (2026-07-31)
 
 
