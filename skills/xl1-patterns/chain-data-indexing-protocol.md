@@ -8,7 +8,7 @@ Conceptual rules for retrieving, filtering, and watching application-specific da
 This file is environment-agnostic. It documents schemas, anchoring choices, and scan strategies that both clients and services rely on. The two role files apply these rules to their respective deployment contexts.
 
 **Builds on:**
-- [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
+- [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, REST datalake endpoints
 - [Gateway](../xl1-knowledge/gateway.md) — RPC viewer methods, transports
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, schemas, hashing
 - [Gateway](../xl1-knowledge/gateway.md) — env-agnostic gateway reference + recipes (viewer API, transactions, datalake access)
@@ -48,7 +48,7 @@ tx recorded on chain ──────────► schema-filtered retrieval
 Follow the schema naming conventions from [XYO Best Practices](../xyo-knowledge/best-practices.md). Use a shared namespace for your app:
 
 ```ts
-import { asSchema } from '@xyo-network/sdk-js'
+import { asSchema } from '@xyo-network/sdk'
 
 // Application schema namespace: com.<your-org>.<app>.<entity>
 // (This doc uses com.example.rps.* as a placeholder — replace with your reverse-DNS namespace.)
@@ -60,7 +60,7 @@ const ResultSchema = asSchema('com.example.rps.result', true)
 Define payload types using the [Zod-first pattern](../xl1-knowledge/development.md):
 
 ```ts
-import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
+import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
 import { z } from 'zod'
 
 export const MovePayloadZod = z.object({
@@ -82,7 +82,7 @@ export const toMovePayload = zodToFactory(MovePayloadZod, 'toMovePayload')
 Application data goes in the `offChain` parameter of `addPayloadsToChain`, but **the wallet does not persist off-chain payloads to the dApp's datalake automatically** (see [Datalakes — Two Independent Datalake Clients](../xl1-knowledge/datalakes.md)). The dApp must insert payloads into its own datalake before submitting the transaction:
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
 
 // See Gateway — Accessing the Datalake for full setup details
@@ -152,8 +152,15 @@ The construction above is a **spec**, not a recipe to retype. Application code s
 import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
 const sentinel = sentinelAddressFromSchema('network.xyo.ordinal')
-const burn     = sentinelAddressFromSchema('network.xyo.ordinal', payload._hash)
+const burn     = sentinelAddressFromSchema('network.xyo.ordinal', await PayloadBuilder.dataHash(payload))
 ```
+
+> The second argument is **optional**. Pass `undefined` — which is what
+> `payload._hash` gives you on a payload straight out of the synchronous
+> `PayloadBuilder.build()` — and the helper silently returns the *static*
+> schema sentinel instead of a per-payload address, with no error. Always
+> derive the hash with `await PayloadBuilder.dataHash(payload)`, or read
+> `_hash` only from payloads returned by `payloadsByHash`.
 
 The helper centralizes encoding, prefix, and casing conventions so future tweaks propagate uniformly. Reaching for `keccak256` from ethers directly is an anti-pattern — the spec is published so independent implementations and out-of-band auditors can verify the helper's output, not so that callers re-implement it.
 
@@ -173,7 +180,7 @@ const ORDINAL_SENTINEL = sentinelAddressFromSchema('network.xyo.ordinal')
 **Per-payload derived sentinel** — derived from each payload's hash. The dust transferred there is verifiably burned (no key, address-bound to that specific payload). Strong "real cost" semantic — every inscription costs something irrecoverable.
 
 ```ts
-const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', payload._hash)
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', await PayloadBuilder.dataHash(payload))
 ```
 
 For protocols that want both — free chain-native indexing *and* per-payload burn — include both addresses as recipients in a single `Transfer` payload (the `transfers` field is a map; one extra payload, two recipients).
@@ -249,7 +256,7 @@ A commit-then-reveal-style anchor. Submit a `HashPayload` (already on `AllowedBl
 
 ```ts
 const hashCommit = new PayloadBuilder({ schema: 'network.xyo.hash' })
-  .fields({ hash: payload._hash, schema: payload.schema })
+  .fields({ hash: await PayloadBuilder.dataHash(payload), schema: payload.schema })
   .build()
 await datalakeRunner.insert([payload])
 const [txHash] = await gateway.addPayloadsToChain([hashCommit], [payload])
@@ -668,12 +675,12 @@ function applyOwnership(state: IndexerState, id: ArtifactId, owner: Address) {
 Inscribe a small `Transfer` alongside the application payload, with the destination set to a known sentinel address (see [Destination as Protocol](#destination-as-protocol--a-native-xl1-pattern)). This forces the transaction into `accountBalanceHistory` so Strategy 2 can scan for it — turning the chain's address-scoped APIs into a free indexer for the application protocol.
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
 // Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal')
 const ORDINAL_SENTINEL = '4b210503f8caa8e82d38617997f2eaf612c0ec04' as Address
-const burnAddress      = sentinelAddressFromSchema('network.xyo.ordinal', appPayload._hash)
+const burnAddress      = sentinelAddressFromSchema('network.xyo.ordinal', await PayloadBuilder.dataHash(appPayload))
 
 const transfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({

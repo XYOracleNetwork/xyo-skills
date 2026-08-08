@@ -1,6 +1,6 @@
 # Identity & Signing
 
-**Root barrel package:** `@xyo-network/sdk-js` — import everything from here. Tree shaking eliminates unused exports.
+**Root barrel package:** `@xyo-network/sdk` — start here for protocol primitives and generic modules; tree shaking eliminates unused exports. Specific diviner / witness / archivist *implementations* ship as their own packages and are imported by name.
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
 
@@ -31,16 +31,18 @@ An **Account** is a key pair (secp256k1 elliptic curve) used for signing and ide
 ### Creation
 
 ```ts
-import { Account } from '@xyo-network/sdk-js'
+import { Account } from '@xyo-network/sdk'
 
 // Random account (testing)
 const account = await Account.random()
 
-// From a phrase (deterministic)
-const account = await Account.create({ phrase: 'my secret phrase' })
-
-// From a mnemonic
+// From a mnemonic (deterministic)
 const account = await Account.create({ mnemonic: 'twelve word mnemonic phrase ...' })
+
+// `phrase` is an alias for the same path — it is ALSO parsed as a BIP-39
+// mnemonic (`Mnemonic.fromPhrase`), so arbitrary secret text throws
+// "invalid mnemonic length". Do not treat it as a passphrase-to-key helper.
+const account = await Account.create({ phrase: 'twelve word mnemonic phrase ...' })
 
 // From a raw private key
 const account = await Account.create({ privateKey: keyBuffer })
@@ -66,7 +68,7 @@ A **Wallet** extends Account with hierarchical deterministic (HD) key derivation
 ### Creation
 
 ```ts
-import { HDWallet } from '@xyo-network/sdk-js'
+import { HDWallet } from '@xyo-network/sdk'
 
 // Random mnemonic wallet
 const wallet = await HDWallet.random()
@@ -86,9 +88,20 @@ const wallet = await HDWallet.fromExtendedKey(xprv)
 Derive child keys for different purposes:
 
 ```ts
-// Derive a child wallet at a specific path
-const child = await wallet.derivePath("m/44'/60'/0'/0/1")
+// Derive relative to the wallet's current path — appends to it
+const child = await wallet.derivePath('1')
 ```
+
+`HDWallet.random()` and `HDWallet.fromPhrase()` return a wallet already rooted at
+`m/44'/60'/0'/0/0`, so an **absolute** path that is not a descendant of it throws:
+
+```ts
+// Throws: Invalid absolute path m/44'/60'/0'/0/1 for wallet with path m/44'/60'/0'/0/0
+await wallet.derivePath("m/44'/60'/0'/0/1")
+```
+
+For XL1 work, use `generateXyoBaseWalletFromPhrase` + a bare account index instead —
+see [XL1 Identity & Wallets](../xl1-knowledge/identity.md).
 
 ### Additional Properties
 
@@ -125,8 +138,8 @@ The `previousHash` on each account links bound witnesses into a per-identity cha
 ### Cryptographic Details
 
 - **Curve:** secp256k1 (same as Ethereum/Bitcoin)
-- **Hashing:** SHA-256 via `sha.js`
-- **Address:** derived from public key (16 bytes)
+- **Hashing:** SHA-256 via the WebCrypto `crypto.subtle` implementation in `@ariestools/sdk` (with `hash-wasm` as a dependency of `sdk-protocol-core`)
+- **Address:** derived from public key (20 bytes / 40 hex characters)
 - **Signatures:** hex-encoded elliptic curve signatures
 
 ### Peer Dependency

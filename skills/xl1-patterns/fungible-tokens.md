@@ -114,9 +114,14 @@ import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 // Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal.token')
 const XRC20_SENTINEL = 'c17df06bc481b090f7a0e03639fca786df6e8e65'
 
-// Per-payload burn — derived from the operation payload's hash
-const burnFor = (payloadHash: string) =>
-  sentinelAddressFromSchema('network.xyo.ordinal.token', payloadHash)
+// Per-payload burn — derived from the operation payload's data hash.
+// Takes the payload and computes the hash, because `PayloadBuilder.build()` is
+// synchronous and attaches no `_hash`: passing `payload._hash` straight after
+// `build()` would hand `sentinelAddressFromSchema` an `undefined` second
+// argument, which silently returns the STATIC sentinel instead of a per-payload
+// burn address — collapsing the dual-sentinel transfer to one recipient.
+const burnFor = async (payload: Payload) =>
+  sentinelAddressFromSchema('network.xyo.ordinal.token', await PayloadBuilder.dataHash(payload))
 ```
 
 The static `XRC20_SENTINEL` makes every XRC-20 operation discoverable via `accountBalanceHistory(XRC20_SENTINEL)` — anyone can list the entire protocol's activity chain-side. The per-payload burn binds dust to the specific operation, providing real-cost semantics.
@@ -128,7 +133,7 @@ The static `XRC20_SENTINEL` makes every XRC-20 operation discoverable via `accou
 Deploys are inscriptions claiming a ticker. The first finalized deploy for a given `tick` claims it; later deploys for the same ticker exist as artifacts but produce no token state.
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 
 const deploy = new PayloadBuilder<TokenDeploy>({ schema: TokenDeploySchema })
   .fields({ tick: 'XL1', max: '21000000', lim: '1000' })
@@ -139,8 +144,8 @@ const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
     from: walletAddress,
     epoch: Date.now(),
     transfers: {
-      [XRC20_SENTINEL]:        '1',
-      [burnFor(deploy._hash)]: '1',
+      [XRC20_SENTINEL]:          '1',
+      [await burnFor(deploy)]:   '1',
     },
   })
   .build()
@@ -167,8 +172,8 @@ const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
     from: walletAddress,
     epoch: Date.now(),
     transfers: {
-      [XRC20_SENTINEL]:      '1',
-      [burnFor(mint._hash)]: '1',
+      [XRC20_SENTINEL]:        '1',
+      [await burnFor(mint)]:   '1',
     },
   })
   .build()
@@ -195,8 +200,8 @@ const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
     from: walletAddress,
     epoch: Date.now(),
     transfers: {
-      [XRC20_SENTINEL]:          '1',
-      [burnFor(transfer._hash)]: '1',
+      [XRC20_SENTINEL]:            '1',
+      [await burnFor(transfer)]:   '1',
     },
   })
   .build()
@@ -237,7 +242,7 @@ type TokenState = {
 function applyTokenDeploy(
   substrate: IndexerState,
   state: TokenState,
-  payload: TokenDeploy,
+  payload: WithHashMeta<TokenDeploy>,  // from payloadsByHash — carries `_hash`
   signer: Address,
   blockHeight: XL1BlockNumber,
 ) {

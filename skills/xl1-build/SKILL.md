@@ -99,7 +99,7 @@ One final `AskUserQuestion` round, two questions:
 1. **Network target?** (Mainnet / Sequence / Local devnet)
 2. **Headless verification?** (Yes — I want a `.env` seed phrase and a Node verification script / No — browser-only)
 
-Headless verification is the cue that makes [xl1-scaffold](../xl1-scaffold/SKILL.md) wire up `GatewayBuilder.build(signer)` and run the script before reporting done — explained in [headless-verification](../xl1-testing/headless-testnet-verification.md). When the user says yes, also ask which accounts hold funds (e.g., "accounts 0 and 1") so multi-party roles can be assigned.
+Headless verification is the cue that makes [xl1-scaffold](../xl1-scaffold/SKILL.md) wire up `GatewayBuilder.buildRunner()` and run the script before reporting done — explained in [headless-verification](../xl1-testing/headless-testnet-verification.md). When the user says yes, also ask which accounts hold funds (e.g., "accounts 0 and 1") so multi-party roles can be assigned.
 
 ### Phase 4 — Synthesize the refined prompt and hand off
 

@@ -13,8 +13,8 @@ const TEMPLATES_DIR = path.resolve(__dirname, '../../templates')
 assertExtendsBase(reactTemplate)
 
 describe('react preset specifics', () => {
-  it('uses the @xylabs/tsconfig-react base', () => {
-    expect(reactTemplate.tsconfig.extends).toBe('@xylabs/tsconfig-react')
+  it('uses the @ariestools/tsconfig-react base', () => {
+    expect(reactTemplate.tsconfig.extends).toBe('@ariestools/tsconfig-react')
   })
 
   it('disables tsc emit (Vite handles bundling)', () => {

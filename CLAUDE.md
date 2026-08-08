@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo serves three roles:
 
-1. **Skill source of truth** — the canonical home of the 6-layer XL1/XYO skill stack (`skills/`). Installed directly by [Skills.sh](https://skills.sh) and mirrored to marketplace repos for Claude Code and Codex.
-2. **Scaffold tool** — `packages/xl1-scaffold/` scaffolds a new XL1 app (React dApp or Node service) with the correct dep graph, tsconfig, ESLint, and smoke test wired up.
+1. **Skill source of truth** — the canonical home of the 8-layer XL1/XYO skill stack (`skills/`). Installed directly by [Skills.sh](https://skills.sh) and mirrored to marketplace repos for Claude Code and Codex.
+2. **Scaffold tool** — `packages/xl1-scaffold/` scaffolds a new XL1 app (React dApp, `xl1-service` backend, plain Node service/CLI, or a full-stack pnpm monorepo) with the correct dep graph, tsconfig, ESLint, and smoke test wired up.
 3. **Evaluation test bed** — `src/` is where a rock-paper-scissors game gets built to test the skill stack's quality.
 
 The skills themselves are the primary artifact. When implementation reveals incorrect or misleading guidance in a skill, update the skill file — not just the application code.
@@ -24,7 +24,7 @@ The render pipeline lives at `scripts/marketplace-sync/`:
 
 - **`metadata.json`** — single canonical, marketplace-agnostic plugin metadata. Contains version, description, keywords, author, category, brand assets, capabilities. Edit this when changing what's advertised in any marketplace.
 - **`build-claude.mjs`** — reads `metadata.json` and emits the Claude marketplace tree (`.claude-plugin/{marketplace,plugin}.json` + `skills/` + `assets/` + `LICENSE`).
-- **`build-codex.mjs`** — same, for Codex (`.agents/plugins/marketplace.json` + `.codex-plugin/plugin.json` + `skills/` + `assets/` + `LICENSE`).
+- **`build-codex.mjs`** — same, for Codex. Codex nests the plugin payload under `plugins/xyo-skills/`, so the tree is `.agents/plugins/marketplace.json` + `plugins/xyo-skills/.codex-plugin/plugin.json` + `plugins/xyo-skills/{skills,assets}/` + `LICENSE`.
 - **`lib.mjs`** — shared CLI / output / copy plumbing.
 
 When a marketplace changes its required schema, edit the corresponding renderer — `metadata.json` stays marketplace-neutral. Render locally before pushing:
@@ -39,11 +39,13 @@ pnpm sync:codex  --out .preview/codex    # inspect the would-be Codex tree
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
 ```
-Layer 6: xl1-scaffold/     — Bootstrap new XL1 apps (React dApp or Node service)
-Layer 5: xl1-patterns/     — Prescriptive design patterns (commit-reveal, indexing, prediction markets)
+Layer 8: xl1-build/        — Planning wizard: vague build request → concrete dApp spec
+Layer 7: xl1-scaffold/     — Bootstrap new XL1 apps (React dApp, xl1-service, Node service, monorepo)
+Layer 6: xl1-testing/      — Local dev-chain, headless testnet verification, browser-mode tests
+Layer 5: xl1-patterns/     — Prescriptive design patterns (commit-reveal, indexing, atomic exchange)
 Layer 4: xl1-knowledge/    — XL1 chain, datalakes, gateway, wallet, dev patterns
 Layer 3: xyo-knowledge/    — XYO payloads, bound witnesses, modules, identity
-Layer 2: xy-toolchain/     — @xylabs/toolchain, ESLint, TypeScript config, Vitest
+Layer 2: xy-toolchain/     — @ariestools/toolchain, ESLint, TypeScript config, Vitest
 Layer 1: xy-development/   — TypeScript, Git, testing, workflow conventions
 ```
 
@@ -85,7 +87,7 @@ When building application features on XL1, start with Layer 5's SKILL.md — it 
 To validate manifest generation locally:
 ```shell
 pnpm sync:claude --out .preview/claude && jq empty .preview/claude/.claude-plugin/*.json
-pnpm sync:codex  --out .preview/codex  && jq empty .preview/codex/.agents/plugins/marketplace.json .preview/codex/.codex-plugin/plugin.json
+pnpm sync:codex  --out .preview/codex  && jq empty .preview/codex/.agents/plugins/marketplace.json .preview/codex/plugins/xyo-skills/.codex-plugin/plugin.json
 ```
 
 **Workspace layout** (pnpm workspaces):
@@ -134,7 +136,7 @@ Re-run `pnpm sync:claude` (or `/reload-plugins` if you're only editing files ins
 ## Key Conventions (from the skills)
 
 - **ESM only** — no CommonJS
-- **Root barrel imports** — `@xyo-network/sdk-js` (XYO), `@xyo-network/xl1-sdk` (XL1 protocol), `@xyo-network/chain-sdk` (XL1 runtime). Tree shaking handles the rest.
+- **Root barrel imports** — `@xyo-network/sdk` (XYO), `@xyo-network/xl1-sdk` (XL1 protocol), `@xyo-network/chain-sdk` (XL1 runtime). Tree shaking handles the rest. The pre-July-2026 `@xyo-network/sdk-js` and `@xylabs/sdk-js` names are deprecated compatibility shims (`@xylabs/sdk-js` → `@ariestools/sdk`) — never add them to new work.
 - **Zod-first types** (XL1) — Zod schema is the source of truth, derive TS types from it
 - **Never rewrite git history** — no amend, no rebase, no force push
 - **Conventional commits** — `feat:`, `fix:`, `chore:`, `refactor:`, etc.

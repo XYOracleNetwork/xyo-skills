@@ -5,7 +5,7 @@ The env-agnostic gateway file — what the gateway is, the JSON-RPC surface, net
 Environment-specific construction lives in sibling files:
 
 - [Browser Gateway](gateway-browser.md) — React providers, the wallet extension, `useProvidedGateway`
-- [Node Gateway](gateway-node.md) — server-side construction via `GatewayBuilder` (`.build()` for read-only, `.build(signer)` for write-capable)
+- [Node Gateway](gateway-node.md) — server-side construction via `GatewayBuilder` (`.build()` for read-only, `.account(account).buildRunner()` for write-capable)
 
 **Key npm packages** (subpaths of the `@xyo-network/xl1-sdk` monolith; all
 re-exported from its root barrel):
@@ -24,8 +24,17 @@ The gateway is a JSON-RPC 2.0 API server that exposes XL1 chain data and operati
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/rpc` | POST | JSON-RPC 2.0 — all viewer and runner methods |
-| `/chain` | Various | Archivist middleware for finalized chain data (datalake) |
+| `/rpc` | POST | JSON-RPC 2.0 — viewer and runner methods |
+| `/rpc/indexed` | POST | JSON-RPC 2.0 — indexed-surface methods (transaction-inclusion lookups and friends), mounted when the node has an indexed branch |
+
+Indexed methods are migrating off `/rpc` onto `/rpc/indexed`. The `api` actor's
+`legacyMixedRpc` setting defaults to **true**, so `/rpc` currently still serves
+the full connection; set `XL1_ACTORS__API__LEGACY_MIXED_RPC=false` to enforce
+node-surface-only there. Indexed methods are available at `/rpc/indexed`
+regardless. New indexed clients should target `/rpc/indexed`.
+
+The datalake is a **separate service** on its own host (see
+[Networks](#networks) below), not an endpoint on the gateway.
 
 ---
 
@@ -59,7 +68,7 @@ Calling them directly:
 | `eth_sendTransaction` / `eth_sendRawTransaction` | `gateway.addPayloadsToChain(...)` / `gateway.send(...)` |
 | `eth_call` | (no equivalent — XL1 has no contract execution model) |
 | `eth_chainId` | `gateway.connection.viewer.block.chainId()` |
-| `eth_accounts` / `personal_sign` | Use `XyoSigner` (browser: wallet extension; Node: `buildSimpleXyoSignerV2`) |
+| `eth_accounts` / `personal_sign` | Signing is a gateway concern (browser: wallet extension; Node: `GatewayBuilder.account(account).buildRunner()`) |
 
 XL1 shares Ethereum's secp256k1 keys and BIP44 derivation path (`m/44'/60'/0'/0/0`), so a single seed phrase produces the same address in MetaMask and the XYO wallet — but **the chain protocol is entirely different**. Address compatibility is the *only* thing the two chains share. Anything else borrowed from Ethereum tooling (`ethers`, `web3.js`, `viem`, hardhat helpers, EIP-1193 providers) will not work against XL1.
 
@@ -90,7 +99,13 @@ XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) 
 |---------|-------------|-------------|----------|----------|
 | **Mainnet** | `'mainnet'` | `https://api.chain.xyo.network/rpc` | `https://api.archivist.xyo.network/dataLake` | `https://explore.xyo.network` |
 | **Sequence** (beta) | `'sequence'` | `https://beta.api.chain.xyo.network/rpc` | `https://beta.api.archivist.xyo.network/dataLake` | `https://beta.explore.xyo.network` |
-| **Local** | `'local'` | `http://localhost:8080/rpc` | `http://localhost:8080/dataLake` | `http://localhost:3000` |
+| **Local** | `'local'` | `http://localhost:8080/rpc` | `http://localhost:8080/dataLake` † | `http://localhost:3000` |
+
+† The local datalake URL is what the SDK's `NetworkDataLakeUrls` constant
+carries, but a plain `xl1 start` **does not serve it** — the local `api` actor
+mounts only `/rpc`, `/rpc/indexed`, and probe routes. For local datalake-backed
+reads, run the composed stack in
+[xl1-testing — local chain + Aries data store](../xl1-testing/local-chain-datalake.md).
 
 The Explorer URL and `NetworkId` for each network are also exposed on `MainNetwork` / `SequenceNetwork` / `LocalNetwork` (and via `DefaultNetworks`) from `@xyo-network/xl1-sdk`. Pair them with `ExplorerLinks` from the same barrel to build canonical Explorer URLs for addresses, blocks, transactions, and payloads — never hand-concatenate explorer paths. UI conventions for *when* to render those links live in [Browser UX — Display Conventions](../xl1-patterns/browser-ux.md#display-conventions).
 
@@ -108,13 +123,13 @@ For dApp development, start with **Sequence** (beta) to test against a live chai
 The construction step is environment-specific. Pick the file that matches your runtime:
 
 - **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider`, then call `useProvidedGateway()` in components. See [Browser Gateway](gateway-browser.md).
-- **Node / server-side / headless** — use `GatewayBuilder` from `@xyo-network/xl1-sdk`. `.build()` for read-only, `.build(signer)` for write-capable. See [Node Gateway](gateway-node.md).
+- **Node / server-side / headless** — use `GatewayBuilder` from `@xyo-network/xl1-sdk`. `.build()` for read-only, `.account(account).buildRunner()` for write-capable. See [Node Gateway](gateway-node.md).
 - **Tests** — use `MemoryRpcTransport` (see [Transports](#transports) below).
 
-The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `new GatewayBuilder().rpcUrl(...).build()` (or `.build(signer)`). Both expose the same method surface.
+The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `new GatewayBuilder().rpcUrl(...).build()` (or `.account(account).buildRunner()`). Both expose the same method surface.
 
 The type is a union:
-- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, via `GatewayBuilder.build(signer)`).
+- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, via `GatewayBuilder.buildRunner()`).
 - **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway (browser) or `GatewayBuilder.build()` (Node).
 - **`undefined` / `null`** — loading or no gateway available (React context only).
 
@@ -451,10 +466,17 @@ pnpm run-api
 | Variable | Purpose |
 |----------|---------|
 | `XL1_CHAIN__ID` | Staking contract address on backing EVM |
-| `XL1_EVM__CHAIN_ID` | EVM chain (Sepolia, Mainnet, Ganache) |
-| `XL1_ACTORS__API_*` | API server configuration |
-| `XL1_STORAGE__ROOT` | LMDB data directory |
-| `XL1_STORAGE__MONGO__*` | MongoDB connection settings |
+| `XL1_ACTORS__API_*` | API server configuration (e.g. `XL1_ACTORS__API__LEGACY_MIXED_RPC`) |
+| `XL1_CONNECTIONS__<NAME>__TYPE` | Declares a named connection's driver (`lmdb`, `mongo`, `rpc`, `s3`, …) |
+| `XL1_CONNECTIONS__<NAME>__*` | That connection's settings — e.g. `__ROOT` for LMDB, `__CONNECTION_STRING` / `__DATABASE` for Mongo |
+
+Backing stores, RPC endpoints, EVM RPC, and S3 buckets are all declared as
+**named connections** under `connections`, then bound to roles via
+`providerBindings`. The pre-3.0 `storage`, `remote`, `transports`, and
+`evm.jsonRpc` / `evm.infura` fields — including `XL1_STORAGE__ROOT`,
+`XL1_STORAGE__MONGO__*`, and `XL1_EVM__CHAIN_ID` — are no longer supported. A
+remote API is reached with a `default-rpc` connection of `type: "rpc"`, not the
+old `remote.rpc`. Run `xl1 start --dump-config` to see the resolved shape.
 
 ---
 

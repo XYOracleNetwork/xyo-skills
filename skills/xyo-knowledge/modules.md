@@ -1,6 +1,6 @@
 # Module System
 
-**Root barrel package:** `@xyo-network/sdk-js` — import everything from here. Tree shaking eliminates unused exports.
+**Root barrel package:** `@xyo-network/sdk` — start here for protocol primitives and generic modules; tree shaking eliminates unused exports. Specific diviner / witness / archivist *implementations* ship as their own packages and are imported by name (noted per example below).
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
 
@@ -25,14 +25,19 @@ Modules communicate via **signed queries**: the caller creates a `QueryBoundWitn
 
 Archivists store and retrieve payloads. An archivist is the most constrained of three storage tiers — database (arbitrary keys), datalake (keys cryptographically derivable from values), archivist (same key guarantee, values constrained to payloads). See [Datalakes — Tiered Data Storage](../xl1-knowledge/datalakes.md#tiered-data-storage-database-vs-datalake-vs-archivist).
 
+The archivist surface is split by capability — there is no single
+`ArchivistFunctions` interface. `ReadArchivistFunctions`, `WriteArchivistFunctions`,
+and the combined `AllArchivistFunctions` live in `archivist-model`:
+
 ```ts
-interface ArchivistFunctions {
-  insert(payloads: Payload[]): Promise<Payload[]>
-  get(hashes: Hash[]): Promise<Payload[]>
-  next(options?: NextOptions): Promise<Payload[]>
-  delete(hashes: Hash[]): Promise<Payload[]>
-  clear(): Promise<void>
-}
+// ReadArchivistFunctions
+get(hashes: Hash[]): Promise<Payload[]>
+next(options?: NextOptions): Promise<Payload[]>
+
+// WriteArchivistFunctions
+insert(payloads: Payload[]): Promise<Payload[]>
+delete(hashes: Hash[]): Promise<Payload[]>
+clear(): void
 ```
 
 **Implementations:** MemoryArchivist, IndexedDbArchivist, StorageArchivist, LevelDB, LMDB, MongoDB, Cookie, Firebase
@@ -57,7 +62,7 @@ interface ArchivistFunctions {
 All browser archivists share the standard archivist interface (`insert`, `get`, `next`, `delete`, `clear`) with built-in deduplication by data hash.
 
 ```ts
-import { MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk-js'
+import { MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk'
 import { IndexedDbArchivist, IndexedDbArchivistConfigSchema } from '@xyo-network/archivist-indexeddb'
 import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
 
@@ -110,7 +115,7 @@ interface WitnessQueryFunctions<TIn, TOut> {
 }
 ```
 
-**Implementations:** AdhocWitness, TimestampWitness, BlockchainWitness, EvmWitness, EnvironmentWitness
+**Implementations:** `AdhocWitness` (on the root barrel), `TimestampWitness` (`@xyo-network/witness-timestamp`), `EnvironmentWitness` (`@xyo-network/witness-environment`). The blockchain/EVM witness packages ship an abstract base (`AbstractEvmWitness`) rather than a ready-to-use concrete class — check the package before assuming a `BlockchainWitness` / `EvmWitness` export exists.
 
 Use witnesses to create payloads that attest to some observed state — a timestamp, a blockchain value, a sensor reading, or custom application data.
 
@@ -118,10 +123,11 @@ Use witnesses to create payloads that attest to some observed state — a timest
 
 Sentinels coordinate multiple witnesses and aggregate their observations.
 
+`report` lives on the `Sentinel` type itself (`sentinel-model`) — there is no
+separate `SentinelFunctions` interface:
+
 ```ts
-interface SentinelFunctions<TIn, TOut> {
-  report(payloads?: TIn[]): Promise<TOut[]>
-}
+report(payloads?: TIn[]): Promise<TOut[]>
 ```
 
 A sentinel has a **job/task system** for parallel and sequential witness execution. It emits lifecycle events: `JobStart`, `JobEnd`, `TaskStart`, `TaskEnd`, `ReportStart`, `ReportEnd`.
@@ -138,21 +144,21 @@ interface DivinerQueryFunctions<TIn, TOut> {
 }
 ```
 
-Takes query payloads as input, returns result payloads. The SDK includes **30+ specialized diviner variants**: payload, boundwitness, address-chain, address-history, schema-list, schema-stats, forecasting, jsonpath, jsonpatch, hash, identity, range, transform, and more.
+Takes query payloads as input, returns result payloads. The ecosystem publishes **many specialized diviner packages** — payload, boundwitness, address-chain, address-history, schema-list, schema-stats, forecasting, jsonpath, jsonpatch, hash-lease, identity, range, transform, and more. Only a handful of generic ones are on the `@xyo-network/sdk` barrel; the rest are installed and imported individually as `@xyo-network/diviner-<name>`.
 
 ### Node — Container/Registry
 
 Nodes manage a tree of modules with parent-child relationships.
 
 ```ts
-interface NodeFunctions {
-  register(module: ModuleInstance): void
-  attach(address: Address, external?: boolean): Promise<Address>
-  detach(address: Address): Promise<Address>
-  registered(): Promise<Address[]>
-  attached(): Promise<Address[]>
-  resolve(filter, options?: ResolveOptions): Promise<ModuleInstance[]>
-}
+// Split across NodeRegistrationFunctions and NodeQueryFunctions
+// (node-model) — there is no single `NodeFunctions` interface.
+register(module: ModuleInstance): void
+attach(address: Address, external?: boolean): Promise<Address>
+detach(address: Address): Promise<Address>
+registered(): Promise<Address[]>
+attached(): Promise<Address[]>
+resolve(filter, options?: ResolveOptions): Promise<ModuleInstance[]>
 ```
 
 - `attach(address, true)` — public child (visible to parent nodes)
@@ -174,7 +180,7 @@ Use bridges when modules need to communicate across processes or machines.
 The standard pattern for wiring modules together:
 
 ```ts
-import { MemoryNode, MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk-js'
+import { MemoryNode, MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk'
 
 // 1. Create a node
 const node = await MemoryNode.create({ account: 'random' })
@@ -196,6 +202,9 @@ const found = await node.resolve(archivist.address)
 ### Composition with Multiple Modules
 
 ```ts
+// ArchivistPayloadDiviner is NOT on the root barrel — it ships separately:
+import { ArchivistPayloadDiviner, ArchivistPayloadDivinerConfigSchema } from '@xyo-network/diviner-archivist'
+
 // Create diviner that references the archivist
 const diviner = await ArchivistPayloadDiviner.create({
   account: 'random',

@@ -126,7 +126,7 @@ Party A drafts `ExchangeTerms` with their `partySecrets[A]` filled in (the hash 
 Party B verifies the terms, generates their own party secret, fills in `partySecrets[B]`, and emits a **co-signed** BW:
 
 ```ts
-import { BoundWitnessBuilder } from '@xyo-network/sdk-js'
+import { BoundWitnessBuilder } from '@xyo-network/sdk'
 
 const [termsBw, payloads] = await new BoundWitnessBuilder()
   .signers([accountA, accountB])
@@ -186,7 +186,7 @@ If `current >= exp` and not every party has revealed, the exchange is implicitly
 A consumer (an indexer, a UI, a counter-party) walks the audit DAG:
 
 ```ts
-import { addressesContainsAll, addressesContainsAny } from '@xyo-network/boundwitness-validator'
+import { addressesContainsAll, addressesContainsAny } from '@xyo-network/sdk'
 
 async function isExchangeFulfilled(
   outcome: ExchangeOutcome,

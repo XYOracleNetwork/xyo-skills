@@ -35,7 +35,7 @@ that this approach is testnet-only by design.
   password in the keychain.
 - **[Headless testnet verification](headless-testnet-verification.md)** — you need
   to verify a dApp's chain interactions **in-process** from a Node script using a
-  seed phrase in `.env` and `GatewayBuilder.build(signer)`. Lighter weight, no CLI.
+  seed phrase in `.env` and `GatewayBuilder.buildRunner()`. Lighter weight, no CLI.
 
 They compose: use this approach to fund/operate a Sequence actor, and headless
 testnet verification to assert program behavior.
@@ -44,7 +44,7 @@ testnet verification to assert program behavior.
 
 - macOS with the `security` CLI (present by default). For Linux, substitute
   `secret-tool` (libsecret) — the flow is identical, only the keychain commands differ.
-- Node.js `>=18.17.1`.
+- Node.js `>=22.19.0` (the `engines` floor declared by `@xyo-network/wallet-xl1-cli`).
 - The `xl1-wallet` CLI. Install globally:
 
   ```sh

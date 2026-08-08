@@ -112,8 +112,8 @@ XL1 uses **AttoXL1** as the base unit (like wei in Ethereum). All on-chain amoun
 | Starting reward | 500 XL1 (500 × 10^18 AttoXL1) |
 | Blocks per step | 1,000,000 |
 | Step decay | 5% reduction per step (multiply by 95/100) |
-| Minimum reward | 10 AttoXL1 |
-| Creator reward | 20,000,000,000 AttoXL1 per block (fixed) |
+| Minimum reward | 10 XL1 (10 × 10^18 AttoXL1) |
+| Creator reward | 20,000,000,000 XL1 (20,000,000,000 × 10^18 AttoXL1) per block (fixed) |
 
 Formula: `reward(step) = max(startingReward × (95/100)^step, minReward)` where `step = floor(blockNumber / 1,000,000)`
 

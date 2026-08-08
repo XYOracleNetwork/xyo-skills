@@ -15,7 +15,7 @@ interact with; drivers back the datalake on the operator side.
 
 Datalakes are the structured data storage layer for the XL1 chain. They provide archival and querying capabilities for finalized chain data — blocks, transactions, and their payloads.
 
-Datalakes build on XYO's **Archivist** module abstraction (see [XYO Knowledge — Modules](../xyo-knowledge/modules.md)). The chain's finalized data is served through a module identified as `Chain:Finalized`, accessible via the gateway's `/chain` endpoint.
+Datalakes build on XYO's **Archivist** module abstraction (see [XYO Knowledge — Modules](../xyo-knowledge/modules.md)). A datalake is a standalone REST service on its own host — it is not an endpoint on the gateway, and there is no `Chain:Finalized` module or `/chain` route on the current node.
 
 ### Tiered Data Storage: Database vs Datalake vs Archivist
 
@@ -39,7 +39,7 @@ Each network exposes its datalake as a standalone HTTP archivist endpoint, separ
 |---------|-------------|
 | **Mainnet** | `https://api.archivist.xyo.network/dataLake` |
 | **Sequence** (beta) | `https://beta.api.archivist.xyo.network/dataLake` |
-| **Local** | `http://localhost:8080/dataLake` |
+| **Local** | `http://localhost:8080/dataLake` — carried by `NetworkDataLakeUrls`, but a plain `xl1 start` does not serve this route; see [xl1-testing — local chain + Aries data store](../xl1-testing/local-chain-datalake.md) |
 
 **The datalake is not a direct property on the gateway JS object.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Do not use `defaultGateway.datalake` (which does not exist). Note: `gateway.connection.storage` exists as a read-only `DataLakeViewer` when the connection is configured with a datalake endpoint, but it is not the recommended path for dApp code — it is read-only, and it may not point to the endpoint the dApp intends to use. Always create standalone datalake clients. See [Gateway — Accessing the Datalake](gateway.md#accessing-the-datalake).
 
@@ -173,21 +173,30 @@ interface RouterDataLakeConfig {
 
 ## Storage Backends
 
+Backing stores are declared as **named connections**. Since XL1 3.0 the pre-3.0
+`storage`, `remote`, `transports`, and `evm.jsonRpc` / `evm.infura` config fields
+are gone — every backing store, RPC endpoint, EVM RPC, and S3 bucket lives under
+`connections`, addressed by name.
+
 ### LMDB (Local)
 - Fast, embedded key-value store
 - Best for single-node deployments and development
-- Part of the `xyo-chain` runtime repo (not a standalone npm package)
-- Config: `XL1_STORAGE__ROOT` env var sets the data directory
+- Standalone package: `@xyo-network/xl1-driver-lmdb`, published from `xl1-protocol`
+- Config: a named connection, e.g. `XL1_CONNECTIONS__LOCAL_STORE__TYPE=lmdb` plus `XL1_CONNECTIONS__LOCAL_STORE__ROOT=.store`
 
 ### MongoDB (Distributed)
 - Distributed document store for multi-node deployments
-- Part of the `xyo-chain` runtime repo (not a standalone npm package)
-- Config: `XL1_STORAGE__MONGO__*` env vars for connection settings
+- Standalone package: `@xyo-network/xl1-driver-mongodb`, published from `xl1-protocol`
+- Config: a named connection, e.g. `XL1_CONNECTIONS__CHAIN_MONGO__TYPE=mongo` plus `__CONNECTION_STRING` and `__DATABASE`
+
+### S3 / object store
+- Standalone package: `@xyo-network/xl1-driver-s3` (a Cloudflare R2 driver, `@xyo-network/xl1-driver-cloudflare-r2`, is also still published)
+- Config: a named connection of the corresponding type
 
 ---
 
 ## Querying Datalake Data via Gateway
 
-The gateway exposes datalake data at the `/chain` endpoint using XYO archivist middleware. For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data — and `viewer.block.payloadsByHash(hashes)` goes through `ViewerWithDataLake` to fetch off-chain payloads from the datalake, so once you have hashes from a chain walk you do not have to touch the datalake client directly. Chain-side block reads (`viewer.block.blockByNumber(n)` and friends) return on-chain payloads only — see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full hydration semantics.
+For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data — and `viewer.block.payloadsByHash(hashes)` goes through `ViewerWithDataLake` to fetch off-chain payloads from the datalake, so once you have hashes from a chain walk you do not have to touch the datalake client directly. Chain-side block reads (`viewer.block.blockByNumber(n)` and friends) return on-chain payloads only — see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full hydration semantics.
 
 When you do need to read the datalake directly, use `viewer.get(hashes)` with hashes you obtained from the chain. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the supported scan strategies.

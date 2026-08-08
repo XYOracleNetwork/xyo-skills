@@ -118,10 +118,10 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 
 ## Headless Verification
 
-- [ ] A Node verification script exercises the dApp's happy path end-to-end — `GatewayBuilder.build(signer)` against a seed phrase from `.env`, no browser involved
+- [ ] A Node verification script exercises the dApp's happy path end-to-end — `GatewayBuilder.buildRunner()` against a seed phrase from `.env`, no browser involved
 - [ ] The script imports the dApp's own domain functions (e.g., `submitMove`, `revealMove`) — does not re-implement payload construction or transaction logic
 - [ ] Domain functions accept a runner/gateway as a parameter so the same code runs in both browser and Node contexts
-- [ ] The signer is derived via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` + `buildSimpleXyoSignerV2` — addresses match what MetaMask / XYO extension show on the same seed
+- [ ] The signing account is derived via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` and passed to `.account(account)` — addresses match what MetaMask / XYO extension show on the same seed
 - [ ] Multi-party flows derive distinct signers (`derivePath('0')`, `derivePath('1')`, …) and build one runner per signer
 - [ ] The script reads back through `connection.viewer` after submission — confirming the chain accepted the tx and the data shape is correct. This proves the **chain edge**; if the UI also reads from a service surface, see the next two items
 - [ ] If the dApp exposes derived state through a service (REST API, GraphQL, WebSocket — anything the UI calls that is not directly `connection.viewer`), the verification script also reads back through that service surface. **Do not synthesize derived state via direct `viewer.block.payloadsByHash` lookups in the verify script** — that proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI exercises
@@ -176,7 +176,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Multi-Party Co-Signing (if applicable)
 
 - [ ] Joint commitments use a single multi-signer BoundWitness (`.signers([a, b, ...])`) — not parallel single-signer BWs that a verifier would have to correlate
-- [ ] "All parties must agree" checks use `addressesContainsAll(bw, parties)` from `@xyo-network/boundwitness-validator`
+- [ ] "All parties must agree" checks use `addressesContainsAll(bw, parties)` from `@xyo-network/sdk`
 - [ ] "Any authorized authority may sign" checks use `addressesContainsAny(bw, authorities)`
 - [ ] Multi-sig parties (a party with several addresses) require *all* of that party's addresses to co-sign their secret reveal — not any one of them
 
