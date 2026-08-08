@@ -16,7 +16,7 @@ This skill covers the XL1 blockchain (XYO Layer One) — a data-focused Layer 1 
 XL1 builds on the full skill stack. When working on XL1 projects, also consult:
 
 - **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — for protocol primitives (payloads, bound witnesses, modules, accounts, wallets)
-- **[XY Toolchain](../xy-toolchain/SKILL.md)** — for build tooling (@xylabs/toolchain, ESLint, TypeScript config, Vitest)
+- **[XY Toolchain](../xy-toolchain/SKILL.md)** — for build tooling (@ariestools/toolchain, ESLint, TypeScript config, Vitest)
 - **[Development](../xy-development/SKILL.md)** — for coding conventions (TypeScript, Git, testing, workflow)
 
 When you need to look up exact type definitions, install the relevant `@xyo-network/xl1-*` package and read the TypeScript declarations at `dist/neutral/index.d.ts`. The [XL1 Protocol Yellow Paper](https://docs.xyo.network) provides the full protocol specification.
@@ -39,7 +39,7 @@ Read when working with XL1 blockchain concepts — blocks, transactions, fees, r
 Read when building applications or services on XL1. Covers the Zod-first type pattern, Viewer/Runner architecture, providers, validation, and the SDK package structure.
 
 ### [Identity & Wallets](identity.md)
-Read when creating a wallet or signer in XL1 backend code (Node services, indexers, CLIs, tests). Covers the canonical `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` pattern, the cross-environment compatibility guarantee with MetaMask and the XYO browser extension, and the rule that the result is an `AccountInstance` to be wrapped via `buildSimpleXyoSignerV2` when an `XyoSigner` is needed.
+Read when creating a wallet or signer in XL1 backend code (Node services, indexers, CLIs, tests). Covers the canonical `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` pattern, the cross-environment compatibility guarantee with MetaMask and the XYO browser extension, and the rule that the result is an `AccountInstance`, which goes directly to `GatewayBuilder.account(...)` when a write-capable runner is needed.
 
 ### [Datalakes](datalakes.md)
 Read when working with XL1 chain data storage — archiving, querying, or configuring storage backends. Covers the DataLake abstraction and how it builds on XYO Archivists.

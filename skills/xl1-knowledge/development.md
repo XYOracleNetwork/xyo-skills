@@ -4,16 +4,16 @@
 
 | Repo | Root Barrel | Purpose |
 |------|------------|---------|
-| sdk-xyo-client-js | `@xyo-network/sdk-js` | XYO protocol (payloads, BW, modules, accounts) |
+| sdk-xyo-client-js | `@xyo-network/sdk` | XYO protocol (payloads, BW, modules, accounts) |
 | xl1-protocol | `@xyo-network/xl1-sdk` | XL1 protocol (blocks, transactions, viewers, RPC) |
 | xyo-chain | `@xyo-network/chain-sdk` | XL1 runtime (services, drivers, chain operations) |
-| react-chain | `@xyo-network/xl1-react-client-sdk` | React dApp integration (GatewayProvider, WalletGatewayProvider, wallet connection, hooks) |
+| xl1-protocol (`packages/react/`) | `@xyo-network/xl1-react-client-sdk` | React dApp integration (GatewayProvider, WalletGatewayProvider, wallet connection, hooks) |
 
 **Always import from the root barrel.** Tree shaking eliminates unused exports.
 
 ```ts
 // XYO primitives
-import { Payload, PayloadBuilder, Account, BoundWitnessBuilder } from '@xyo-network/sdk-js'
+import { Payload, PayloadBuilder, Account, BoundWitnessBuilder } from '@xyo-network/sdk'
 
 // XL1 protocol types and SDK
 import { BlockBoundWitnessZod, SimpleBlockViewer, BlockViewerMoniker } from '@xyo-network/xl1-sdk'
@@ -45,7 +45,7 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 **All XL1 protocol types follow a strict pattern where the Zod schema is the source of truth:**
 
 ```ts
-import { zodAsFactory, zodIsFactory, zodToFactory } from '@xylabs/sdk-js'
+import { zodAsFactory, zodIsFactory, zodToFactory } from '@ariestools/sdk'
 import { z } from 'zod'
 
 // 1. Zod schema (the single source of truth)
@@ -88,12 +88,18 @@ than relying on a fixed count.
 **Stake:** Stake, StakeTotals, StakeIntent, StakeEvents, ChainStakeViewer, StepStake, NetworkStakeStepReward, StepViewer
 **Data:** DataLake, Mempool, DeadLetterQueue
 
-### 4 Runners
+### Runners
+
+The four core write-path runners:
 
 - **BlockRunner** — `produceNextBlock()`, `next()`
 - **FinalizationRunner** — `finalizeBlocks()`, `finalizeBlock()`
 - **MempoolRunner** — `submitBlocks()`, `submitTransactions()`, prune operations
 - **DeadLetterQueueRunner** — `rejectBlock()`, `rejectTransaction()`, prune operations
+
+Plus the publish-side runners under the same `protocol-lib/runners/` directory:
+`BlockPublish`, `ChainStatePublish`, `DataLakePublish`, `EvmEventIndexPublish`,
+`IndexPublish`, and `NetworkStakeRewardsIndexPublish`.
 
 ### Implementation Prefixes
 
@@ -113,8 +119,10 @@ Viewers and runners are resolved via a service locator pattern:
 // Each viewer/runner has a moniker (service identifier)
 export const BlockViewerMoniker = 'BlockViewer' as const
 
-// Register factory with the locator
-locator.register(SimpleBlockViewer.factory(dependencies, params))
+// Register factory with the locator.
+// Note: `factory()` takes dependencies only — the second `params` argument was
+// removed in 5.0 (`X.factory(deps, params)` → `X.factory(deps)`).
+locator.register(SimpleBlockViewer.factory(dependencies))
 
 // Resolve an instance by moniker
 const viewer = await locator.getInstance<BlockViewer>(BlockViewerMoniker)

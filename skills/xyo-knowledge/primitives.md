@@ -1,6 +1,6 @@
 # Protocol Primitives
 
-**Root barrel package:** `@xyo-network/sdk-js` — import everything from here. Tree shaking eliminates unused exports.
+**Root barrel package:** `@xyo-network/sdk` — start here for protocol primitives and generic modules; tree shaking eliminates unused exports. Specific diviner / witness / archivist *implementations* ship as their own packages and are imported by name.
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
 
@@ -20,7 +20,7 @@ type MovePayload = Payload<{ move: 'rock' | 'paper' | 'scissors' }, 'com.example
 The `schema` field is a branded string created via `asSchema()`:
 
 ```ts
-import { asSchema } from '@xyo-network/sdk-js'
+import { asSchema } from '@xyo-network/sdk'
 
 const MoveSchema = asSchema('com.example.rps.move', true)
 ```
@@ -49,7 +49,7 @@ Type helpers for working with meta:
 Use `PayloadBuilder` to construct payloads — don't create raw object literals:
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 
 const payload = new PayloadBuilder({ schema: MoveSchema })
   .fields({ move: 'rock' })
@@ -95,7 +95,7 @@ Static meta manipulation:
 Schemas act as TypeScript discriminated union tags. The canonical guard is the **Zod-factory** generated alongside each payload type — it validates schema name *and* payload shape in one call, which is what you need for any chain or datalake read.
 
 ```ts
-import { zodIsFactory } from '@xylabs/sdk-js'
+import { zodIsFactory } from '@ariestools/sdk'
 
 const isMove = zodIsFactory(MovePayloadZod)
 
@@ -142,7 +142,7 @@ These arrays are always parallel:
 Always use the builder — never construct bound witness fields manually:
 
 ```ts
-import { Account, BoundWitnessBuilder } from '@xyo-network/sdk-js'
+import { Account, BoundWitnessBuilder } from '@xyo-network/sdk'
 
 const account = await Account.random()
 
@@ -179,10 +179,10 @@ This is the right shape for any "all parties agree to X" attestation — joint t
 
 #### Verifying multi-signer witnesses
 
-`@xyo-network/boundwitness-validator` exposes two predicates:
+`@xyo-network/sdk` exposes two predicates:
 
 ```ts
-import { addressesContainsAll, addressesContainsAny } from '@xyo-network/boundwitness-validator'
+import { addressesContainsAll, addressesContainsAny } from '@xyo-network/sdk'
 
 // All listed parties must have signed this BW
 addressesContainsAll(bw, [addrA, addrB, addrC])

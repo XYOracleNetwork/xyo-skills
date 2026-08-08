@@ -33,9 +33,9 @@ Each phase is represented by on-chain payloads. The chain becomes the single sou
 Define a schema for each phase of the lifecycle. Validity windows reuse `BlockDurationZod` from the protocol, matching the same `nbf`/`exp` convention used on `TransactionBoundWitness` itself — see [Commit-Reveal — Validity Windows](commit-reveal.md#validity-windows-nbf--exp).
 
 ```ts
-import { asSchema } from '@xyo-network/sdk-js'
+import { asSchema } from '@xyo-network/sdk'
 import { BlockDurationZod } from '@xyo-network/xl1-sdk'
-import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
+import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
 import { z } from 'zod'
 
 // --- Market Definition ---
@@ -178,7 +178,7 @@ const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo
 The market creator defines the question, valid options, validity windows, and the addresses authorized to settle. This is the first payload recorded on-chain:
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 import { asXL1BlockNumber } from '@xyo-network/xl1-sdk'
 
 async function createMarket(
@@ -301,7 +301,7 @@ async function revealPrediction(
 After `market.reveal.exp`, an address listed in `market.outcomeAuthorities` settles. Settlement is intentionally a **lean outcome payload + thick BoundWitness** — the authority signs only the *outcome value*; the verified-reveal evidence travels as co-payloads inside the same BW:
 
 ```ts
-import { BoundWitnessBuilder } from '@xyo-network/sdk-js'
+import { BoundWitnessBuilder } from '@xyo-network/sdk'
 
 async function settleMarket(
   gateway: XyoGatewayRunner,
@@ -564,7 +564,7 @@ The schema namespace, validity windows, and authority list change — the commit
 
 This recipe is dApp-shaped: every transition is signed by a participant or authority directly from the browser (or a Node script), and the chain is the integration point. There is no server-side module managing state.
 
-If your application instead needs a **neutral, always-on attesting party** — for example, a multi-tenant escrow service, a payment-mediated registrar, or a flow where the protocol must hold custody of an artifact between commit and release — that is the shape XYO's [Sentinel](../xyo-knowledge/modules.md) module covers. The XYO/XNS escrow flow is the canonical example: an `EscrowSentinel` runs server-side, signs every state transition with its own account, and gates settlement on multi-party signature evidence. If you build one, derive the operator identity through the canonical seed-phrase pattern in [XL1 Identity & Wallets](../xl1-knowledge/identity.md) and wrap it via `buildSimpleXyoSignerV2` (see [Node Gateway](../xl1-knowledge/gateway-node.md)) so the operator address is reproducible across restarts and inspectable in MetaMask.
+If your application instead needs a **neutral, always-on attesting party** — for example, a multi-tenant escrow service, a payment-mediated registrar, or a flow where the protocol must hold custody of an artifact between commit and release — that is the shape XYO's [Sentinel](../xyo-knowledge/modules.md) module covers. The XYO/XNS escrow flow is the canonical example: an `EscrowSentinel` runs server-side, signs every state transition with its own account, and gates settlement on multi-party signature evidence. If you build one, derive the operator identity through the canonical seed-phrase pattern in [XL1 Identity & Wallets](../xl1-knowledge/identity.md) and pass the account to `GatewayBuilder.account(...)` (see [Node Gateway](../xl1-knowledge/gateway-node.md)) so the operator address is reproducible across restarts and inspectable in MetaMask.
 
 For a dApp, the Sentinel pattern is overkill and conflicts with "the chain is the source of truth." Reach for it only when an off-chain notary is genuinely required.
 

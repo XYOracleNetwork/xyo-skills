@@ -6,7 +6,7 @@ How to run a chain data indexer as a long-lived service: process model, state pe
 
 **Builds on:**
 - [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md) — conceptual rules (finalized vs latest, scan strategies, schemas)
-- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `buildSimpleXyoSignerV2`)
+- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `.account(account).buildRunner()`)
 - [Datalakes](../xl1-knowledge/datalakes.md) — what the indexer actually reads through the gateway viewer
 - [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical backend identity for signer indexers (`generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`); the lower-level [Identity & Signing](../xyo-knowledge/identity.md) is for XYO primitives only
 
@@ -199,7 +199,7 @@ Some patterns require the indexer to **also act as an authoritative signer** —
 
 The indexer is then both a *reader* (deriving state from the chain) and a *writer* (submitting transactions back). This shifts requirements:
 
-- **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). Use the canonical backend pattern: `generateXyoBaseWalletFromPhrase(mnemonic)` then `derivePath('0')` to get an `AccountInstance`, then `buildSimpleXyoSignerV2` to wrap it as an `XyoSigner` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md) and [Node Gateway — Write-capable gateway](../xl1-knowledge/gateway-node.md#write-capable-gateway-runner). This produces the same default address that MetaMask and the XYO browser extension show for the seed, so an operator can inspect balances and signing identity in either place.
+- **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). Use the canonical backend pattern: `generateXyoBaseWalletFromPhrase(mnemonic)` then `derivePath('0')` to get an `AccountInstance`, which goes straight to `GatewayBuilder.account(...)` before `.buildRunner()` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md) and [Node Gateway — Write-capable gateway](../xl1-knowledge/gateway-node.md#write-capable-gateway-runner). This produces the same default address that MetaMask and the XYO browser extension show for the seed, so an operator can inspect balances and signing identity in either place.
 - **Idempotency on the write side.** A submitted transaction may be observed by the indexer's own sync loop; the application logic must not double-submit. Track submitted-transaction hashes in state.
 - **Restart safety.** A signer that crashes mid-decision must not re-submit on restart. Persist intent (decided to settle X) before submitting; on restart, check whether the chain already contains the result before retrying.
 
@@ -290,6 +290,6 @@ This is also the canonical way to validate a fresh indexer deployment: submit on
 - [Headless dApp Verification — Verifying Derived State Through the Service](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service) — the verify-script side of the progress endpoint contract
 - [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) — block hydration is shallow; this is what the indexer's two-step walk has to compensate for
 - [Inscription Substrate — Replay loop](inscription-substrate.md#replay-loop) — worked example of a global-walk indexer
-- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `buildSimpleXyoSignerV2`)
+- [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `.account(account).buildRunner()`)
 - [Datalakes](../xl1-knowledge/datalakes.md) — datalake reads through the gateway viewer
 - [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical backend identity if the indexer also signs; [Identity & Signing](../xyo-knowledge/identity.md) covers the lower-level XYO primitives

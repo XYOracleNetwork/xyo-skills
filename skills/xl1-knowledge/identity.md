@@ -21,7 +21,7 @@ This is the default and standard way to create an account in any non-browser XL1
 
 `generateXyoBaseWalletFromPhrase` produces a BIP44 base wallet from a BIP39 mnemonic, rooted at `DEFAULT_WALLET_PATH` (`m/44'/60'/0'/0`) — the standard Ethereum BIP44 prefix. `derivePath('0')` then appends the account index to reach `m/44'/60'/0'/0/0`, the first account on that seed. This matches the address MetaMask and the XYO Chrome extension show as account 1 on the same seed.
 
-**Note:** `account` is an `AccountInstance`, not an `XyoSigner`. To use it for signing transactions through a gateway runner, wrap it via `buildSimpleXyoSignerV2` — see [Node Gateway — Write-capable gateway](gateway-node.md).
+**Note:** `account` is an `AccountInstance`. To sign transactions with it, pass it to `GatewayBuilder.account(account)` and call `.buildRunner()` — no signer wrapper needed. See [Node Gateway — Write-capable gateway](gateway-node.md).
 
 ---
 
@@ -59,7 +59,7 @@ These addresses match what MetaMask shows for accounts 1, 2, 3 on the same seed.
 
 - **Don't** call `Account.create({ mnemonic })` for backend XL1 wallets. It produces an address that won't match MetaMask or the XYO browser extension for the same seed.
 - **Don't** pass `DEFAULT_WALLET_PATH` (or `"m/44'/60'/0'/0/0"`) as the argument to `derivePath()`. `generateXyoBaseWalletFromPhrase` already roots the base wallet at `DEFAULT_WALLET_PATH`, so passing it again double-derives. Use a bare account index like `'0'`, `'1'`, etc.
-- **Don't** treat the result of `derivePath('0')` as an `XyoSigner`. It is an `AccountInstance`. For transaction signing through a gateway runner, wrap it via `buildSimpleXyoSignerV2`.
+- **Don't** wrap the result of `derivePath('0')` in a signer before building a runner. It is an `AccountInstance`, which is exactly what `GatewayBuilder.account(...)` takes; the wrapping step is a leftover from the removed `build(signer)` API.
 - **Don't** generate a fresh random wallet at process start for production signers. Load the seed phrase from a secret store and derive deterministically — restarts must produce the same identity.
 
 ---
