@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.29](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.28...v1.1.29) (2026-08-08)
+
+
+### Bug Fixes
+
+* refresh skill guidance against current XL1 and XYO SDKs ([01f1a0f](https://github.com/XYOracleNetwork/xyo-skills/commit/01f1a0f0e1796498273981035653db0024ee98f1))
+* refresh skill guidance against current XL1 and XYO SDKs ([f49024a](https://github.com/XYOracleNetwork/xyo-skills/commit/f49024a962a6f83d5666c2dcd3c368fd236e78f3))
+* **xl1-scaffold:** repair react verification chain and migrate off deprecated shims ([e9b60f3](https://github.com/XYOracleNetwork/xyo-skills/commit/e9b60f3247ca184f7b03d578f50d7fdb5feae4b8))
+
 ## [1.1.28](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.27...v1.1.28) (2026-08-05)
 
 
