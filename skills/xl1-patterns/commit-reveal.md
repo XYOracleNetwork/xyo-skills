@@ -28,8 +28,8 @@ Neither party can change their choice after committing (the hash locks it in), a
 Define four schemas: the commit payload, the reveal payload, and their corresponding Zod types.
 
 ```ts
-import { asSchema } from '@xyo-network/sdk-js'
-import { zodIsFactory, zodAsFactory, zodToFactory } from '@xylabs/sdk-js'
+import { asSchema } from '@xyo-network/sdk'
+import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
 import { z } from 'zod'
 
 // --- Commit ---
@@ -82,7 +82,7 @@ The committing party generates a random salt, computes the commitment hash, and 
 ### Generating the Commitment
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 
 /**
  * Create a commitment hash from a choice and salt.
@@ -151,7 +151,7 @@ async function submitCommit(
 
 ```ts
 import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 
 const secretStore = await StorageArchivist.create({
   account: 'random',
@@ -268,11 +268,18 @@ export const SessionPayloadZod = z.object({
 })
 ```
 
-`BlockDurationZod` enforces three structural invariants (matching `TransactionDurationValidator`):
+Three structural invariants govern a validity window:
 
 1. `nbf >= 0` and `exp >= 0`
 2. `exp > nbf` (strictly — zero-length windows are invalid)
 3. `exp - nbf <= 10000` (max session lifetime, mirroring transaction lifetime cap)
+
+> **Where these are enforced.** `BlockDurationZod` is a plain
+> `z.object({ nbf: XL1BlockNumberZod, exp: XL1BlockNumberZod })` with **no
+> refinements** — parsing a window with `exp <= nbf` or an over-long span
+> succeeds. Invariants 2 and 3 are enforced by `TransactionDurationValidator`
+> at transaction-validation time, not by the schema. If your application
+> depends on them at construction time, check them yourself.
 
 The protocol deliberately does **not** compare `nbf`/`exp` against the current block at structural-validation time — *the consumer is responsible for the "is now within window" check at the point of use* (commit submission, reveal submission, settlement). This matches how `TransactionBoundWitness` handles its own validity window.
 

@@ -1,12 +1,12 @@
 # Headless Testnet Verification
 
-Read this when you need to prove that a dApp's chain interactions work end-to-end against a live (test)network — without launching a browser or driving the wallet extension. It signs with a seed-phrase-derived signer **in-process** (Node + `GatewayBuilder.build(signer)`) and asserts on-chain outcomes. The verification mode of choice for agentic development, CI smoke tests, and regression scripts.
+Read this when you need to prove that a dApp's chain interactions work end-to-end against a live (test)network — without launching a browser or driving the wallet extension. It signs with a seed-phrase-derived signer **in-process** (Node + `GatewayBuilder.buildRunner()`) and asserts on-chain outcomes. The verification mode of choice for agentic development, CI smoke tests, and regression scripts.
 
 This is one of several headless verification approaches under [xl1-testing](SKILL.md); it is the **network / testnet** variant (in-process signer against `sequence` or `local`). For an external, unattended CLI-wallet actor on Sequence, see [Unattended Sequence via CLI wallet](sequence-cli-wallet.md).
 
 **Builds on:**
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — `GatewayBuilder` and the seed-phrase signer
-- [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` derivation, then `buildSimpleXyoSignerV2` to produce a runner-compatible signer
+- [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` derivation, producing the `AccountInstance` the runner takes
 - [Gateway](../xl1-knowledge/gateway.md) — viewer API, transaction methods, capability detection
 
 ---
@@ -19,7 +19,7 @@ That symmetry is the verification surface:
 
 > Anything a connected browser user can do, a headless Node script holding the same seed can do too.
 
-Build the dApp the way users will use it (browser wallet, React, providers). Verify it the way agents and CI can drive it (Node + `GatewayBuilder.build(signer)` + a seed phrase from `.env`). When both paths produce the same on-chain outcome, you have high-confidence verification without the operational cost of a headless browser.
+Build the dApp the way users will use it (browser wallet, React, providers). Verify it the way agents and CI can drive it (Node + `GatewayBuilder.buildRunner()` + a seed phrase from `.env`). When both paths produce the same on-chain outcome, you have high-confidence verification without the operational cost of a headless browser.
 
 ---
 
@@ -46,7 +46,7 @@ The cues:
 - A note about which **accounts** (indices) hold funds tells the agent how to derive signers.
 - The network (mainnet / sequence / local) tells the agent which `DefaultNetworks` entry to point at.
 
-The agent should: (1) build the dApp normally, with browser wallet wiring intact; (2) write a Node verification script that exercises the full happy path through `GatewayBuilder.build(signer)`; (3) run that script to prove the dApp works before reporting completion.
+The agent should: (1) build the dApp normally, with browser wallet wiring intact; (2) write a Node verification script that exercises the full happy path through `GatewayBuilder.buildRunner()`; (3) run that script to prove the dApp works before reporting completion.
 
 ---
 
@@ -62,17 +62,17 @@ XL1_SEED_PHRASE="word1 word2 ... word12"
 
 Treat the seed phrase like any other secret — never commit, never log, never echo. Load with `dotenv/config` at the very top of the script.
 
-### 2. Derive accounts and wrap them as signers
+### 2. Derive one account per actor
 
-`GatewayBuilder.build(signer)` requires an `XyoSigner`. The seed-phrase derivation produces an `AccountInstance` per index — wrap each one with `buildSimpleXyoSignerV2` to get a signer the runner accepts.
+`.buildRunner()` takes an `AccountInstance` directly through `.account()`. The seed-phrase derivation produces one per index — no signer wrapping step.
 
 ```ts
 import 'dotenv/config'
 
 import {
-  buildSimpleXyoSignerV2, DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
+  DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
 } from '@xyo-network/xl1-sdk'
-import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
+import { generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
 import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = process.env.XL1_NETWORK ?? 'sequence'
@@ -80,38 +80,37 @@ const network = DefaultNetworks.find((n) => n.id === id)
 if (!network) throw new Error(`Unknown network "${id}"`)
 
 const baseWallet = await generateXyoBaseWalletFromPhrase(process.env.XL1_SEED_PHRASE!)
-const context = { config: ConfigZod.parse({}), caches: {}, singletons: {} }
 
 // Account 0 — primary actor (m/44'/60'/0'/0/0)
 const player1Account = await baseWallet.derivePath('0')
-const player1Signer = await buildSimpleXyoSignerV2(context, player1Account)
 
 // Account 1 — counterparty (m/44'/60'/0'/0/1)
 const player2Account = await baseWallet.derivePath('1')
-const player2Signer = await buildSimpleXyoSignerV2(context, player2Account)
 ```
 
 `derivePath` takes a *bare account index string* relative to the base wallet's path — `generateXyoBaseWalletFromPhrase` has already applied `DEFAULT_WALLET_PATH` (`m/44'/60'/0'/0`) internally. These addresses match what MetaMask and the XYO browser extension show for accounts 1 and 2 on the same seed. That alignment is the whole point — the headless run is provably the same identity a browser user would hold.
 
-### 3. Build a runner per signer
+### 3. Build a runner per actor
 
-Each signer needs its own `GatewayBuilder.build(signer)` call. Cache them with the lazy-promise pattern from [Node Gateway — Caching](../xl1-knowledge/gateway-node.md#caching) if the script reuses them across phases.
+Each account gets its own `.account(...).buildRunner()` call. Cache them with the lazy-promise pattern from [Node Gateway — Caching](../xl1-knowledge/gateway-node.md#caching) if the script reuses them across phases.
 
 ```ts
 const runner1: XyoGatewayRunner = await new GatewayBuilder()
   .name(`${id}-player1`)
   .rpcUrl(`${network.url}/rpc`)
   .dataLakeEndpoint(NetworkDataLakeUrls[id])
-  .build(player1Signer)
+  .account(player1Account)
+  .buildRunner()
 
 const runner2: XyoGatewayRunner = await new GatewayBuilder()
   .name(`${id}-player2`)
   .rpcUrl(`${network.url}/rpc`)
   .dataLakeEndpoint(NetworkDataLakeUrls[id])
-  .build(player2Signer)
+  .account(player2Account)
+  .buildRunner()
 ```
 
-Use distinct `.name()` values so logs and traces can tell the actors apart. The same `context` object can be reused across `buildSimpleXyoSignerV2` calls — it carries no per-account state.
+Use distinct `.name()` values so logs and traces can tell the actors apart. Never share one runner between actors — the signing origin is fixed at build time.
 
 ---
 
@@ -120,7 +119,7 @@ Use distinct `.name()` values so logs and traces can tell the actors apart. The 
 A headless verification script is a deterministic happy-path replay of one user flow. Keep it linear and explicit — assertions over abstractions.
 
 ```ts
-import type { BrandedHash } from '@xylabs/sdk-js'
+import type { BrandedHash } from '@ariestools/sdk'
 
 // 1. Pre-flight: confirm both accounts have balance
 const balance1 = await runner1.connection.viewer?.account.balance.accountBalance(player1Account.address)
@@ -141,9 +140,9 @@ if (!tx) throw new Error('transaction not found after confirmation')
 // 5. If the flow is multi-party, drive the counterparty through runner2 and assert outcome
 ```
 
-`runner.addPayloadsToChain` returns `[BrandedHash, SignedHydratedTransactionWithHashMeta]`. Use the `BrandedHash` type from `@xylabs/sdk-js` for the txHash variable so downstream `viewer.transaction.byHash` calls type-check.
+`runner.addPayloadsToChain` returns `[BrandedHash, SignedHydratedTransactionWithHashMeta]`. Use the `BrandedHash` type from `@ariestools/sdk` for the txHash variable so downstream `viewer.transaction.byHash` calls type-check.
 
-**Import the dApp's own functions.** A verification script that re-implements payload construction or transaction submission proves nothing — it only proves the script works. The script is valuable because it exercises *the same code* the UI calls. Domain functions (`submitMove`, `revealMove`, `settleGame`, etc.) should accept a runner as a parameter so they work in both contexts. Use `asSchema('your.app.schema', true)` from `@xyo-network/sdk-js` when constructing payload schemas — raw string literals bypass the schema validator.
+**Import the dApp's own functions.** A verification script that re-implements payload construction or transaction submission proves nothing — it only proves the script works. The script is valuable because it exercises *the same code* the UI calls. Domain functions (`submitMove`, `revealMove`, `settleGame`, etc.) should accept a runner as a parameter so they work in both contexts. Use `asSchema('your.app.schema', true)` from `@xyo-network/sdk` when constructing payload schemas — raw string literals bypass the schema validator.
 
 ---
 
@@ -200,7 +199,7 @@ The two-gate poll only works if the indexer service exposes `lastIndexedBlock` p
 
 ## Cross-Environment Identity Guarantee
 
-Because the script derives via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` (and wraps with `buildSimpleXyoSignerV2`), the signing identity is bit-for-bit the identity a browser user would have after importing the same seed into the XYO Chrome wallet or MetaMask. After construction, `await runner.signer.address()` will equal `account.address` — that equality is the contract being verified. Implications:
+Because the script derives via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`, the signing identity is bit-for-bit the identity a browser user would have after importing the same seed into the XYO Chrome wallet or MetaMask. After construction, `await runner.signer.address()` will equal `account.address` — that equality is the contract being verified. Implications:
 
 - A developer can fund the seed in MetaMask, then a CI script using the same seed can submit transactions from those funded accounts. No address mismatch, no separate funding step.
 - An agent can set up the seed once in `.env`, exercise the dApp headlessly, then hand the seed to a human reviewer who imports it into the browser wallet and continues from the same state.
@@ -215,12 +214,13 @@ If addresses do not line up, the script bypassed the canonical helpers — the f
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
 | Re-implementing transaction logic inside the verification script | Verifies the script, not the dApp — false confidence | Import the dApp's domain functions; pass the runner in |
-| `Account.create({ mnemonic })` for the headless signer | Produces an address that won't match MetaMask / XYO extension on the same seed | Use `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` + `buildSimpleXyoSignerV2` |
+| `Account.create({ mnemonic })` for the headless signer | Produces an address that won't match MetaMask / XYO extension on the same seed | Use `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` |
 | Passing `DEFAULT_WALLET_PATH` (or any full BIP44 path string) to `derivePath()` | `generateXyoBaseWalletFromPhrase` already roots the wallet at that path; passing it again double-derives | Pass a bare account index string: `'0'`, `'1'`, `'2'`, … |
-| Passing the `AccountInstance` from `derivePath()` directly to `.build(signer)` | `AccountInstance` is not an `XyoSigner` — the call will fail or produce a runner that can't sign | Wrap with `buildSimpleXyoSignerV2(context, account)` first |
+| Calling `.build()` and expecting to submit transactions | `build()` takes no arguments and returns a read-only `XyoGateway` — no `send` / `addPayloadsToChain` on it | Set a signing origin and call `.buildRunner()` |
+| Wrapping the account with `buildSimpleXyoSigner` before building a runner | Unnecessary since 5.0 — the builder takes the `AccountInstance` itself; the wrap is a leftover from the removed `build(signer)` API | Pass the account straight to `.account(account)` |
 | Generating a fresh random wallet at script start | Identity changes every run; impossible to fund or reproduce | Load seed from `.env` and derive deterministically |
 | Logging or committing the seed phrase | Catastrophic if the repo or CI logs are exposed | Treat the seed like any other secret; load via `dotenv/config`; never `console.log` |
-| Building one runner and pretending it represents both parties | Multi-party flows (commit-reveal, atomic exchange) need distinct signers to be meaningful | Derive each party from a different index; build a runner per signer |
+| Building one runner and pretending it represents both parties | Multi-party flows (commit-reveal, atomic exchange) need distinct signing identities to be meaningful | Derive each party from a different index; build a runner per account |
 | Skipping the read-back step after submission | Confirms the chain accepted the tx, not that the data is queryable as the UI expects | Always round-trip via `connection.viewer` to assert the shape the UI will read |
 | Reporting "verified" when only `connection.viewer` was exercised but the UI reads from a service | The chain edge passes; the user-facing flow is untested. Indexer bugs that drop or mis-derive payloads slip through | Round-trip through the service surface the UI uses — see [Verifying Derived State Through the Service](#verifying-derived-state-through-the-service). Do not skip the indexer step just because `viewer.transaction.byHash` returns the data |
 | Confirming "the indexer just hasn't caught up" by reaching into the chain to fetch the payload manually | Synthesizes derived state from primitives the indexer also has access to — proves the agent can do the indexer's job, not that the indexer is doing it. "Sequence is slow" becomes a free pass | Wait for the two-gate poll (`finalization.headNumber()` AND `indexer.lastIndexedBlock` both past the tx block), then assert the service surface. If both gates pass and the service is empty, fail loudly — that is an indexer bug |

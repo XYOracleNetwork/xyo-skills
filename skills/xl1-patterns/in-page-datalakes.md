@@ -4,7 +4,7 @@ Read this pattern when your React dApp needs to access chain data or the datalak
 
 **Builds on:**
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
-- [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, `/chain` endpoint
+- [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, REST datalake endpoints
 - [Gateway](../xl1-knowledge/gateway.md) — networks, viewer API, transports
 - [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based querying and polling patterns
 

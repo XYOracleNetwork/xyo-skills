@@ -2,7 +2,7 @@
 
 ## Root Barrel Import
 
-**Always import from `@xyo-network/sdk-js`** — the root barrel package for the XYO SDK. It re-exports everything from all ~200 sub-packages. Tree shaking eliminates what you don't use.
+**Start from `@xyo-network/sdk`** — the root barrel package for the XYO SDK. It re-exports all of `@xyo-network/sdk-protocol` (payloads, bound witnesses, accounts, schemas, the boundwitness validators) plus the generic module groups bundled with it. Tree shaking eliminates what you don't use.
 
 ```ts
 // Good — single root barrel import
@@ -11,13 +11,25 @@ import {
   BoundWitnessBuilder,
   Account, HDWallet,
   MemoryArchivist, MemoryNode,
-} from '@xyo-network/sdk-js'
+} from '@xyo-network/sdk'
 
-// Avoid — sub-package imports
-import { Payload } from '@xyo-network/payload-model'
-import { Account } from '@xyo-network/account'
-import { MemoryArchivist } from '@xyo-network/archivist-memory'
+// Avoid — the pre-July-2026 names. All are deprecated compatibility shims that
+// now resolve to subpaths of the two monoliths, and they pin an older SDK.
+import { Payload } from '@xyo-network/payload-model'      // → @xyo-network/sdk
+import { Account } from '@xyo-network/account'            // → @xyo-network/sdk
+import { MemoryArchivist } from '@xyo-network/archivist-memory' // → @xyo-network/sdk
 ```
+
+**The barrel is not exhaustive.** It does not carry every published `@xyo-network/*` package — specific diviner, witness, and archivist *implementations* ship on their own and are imported by name:
+
+```ts
+import { StorageArchivist } from '@xyo-network/archivist-storage'
+import { IndexedDbArchivist } from '@xyo-network/archivist-indexeddb'
+import { ArchivistPayloadDiviner } from '@xyo-network/diviner-archivist'
+import { TimestampWitness } from '@xyo-network/witness-timestamp'
+```
+
+Reach for the barrel first; add a named package only when the symbol genuinely is not on it.
 
 This applies to all XYO protocol development. See also the [XL1 root barrel](../xl1-knowledge/development.md) for XL1-specific imports.
 

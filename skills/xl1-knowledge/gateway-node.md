@@ -6,8 +6,8 @@ How to construct an XL1 gateway in a non-browser environment — backend service
 
 **Key npm packages** (all subpaths below are exports of the two monoliths, and
 all are re-exported from the `@xyo-network/xl1-sdk` root barrel):
-- `@xyo-network/xl1-sdk` — root barrel; re-exports `GatewayBuilder`, `buildSimpleXyoSignerV2`, `DefaultNetworks`, `NetworkDataLakeUrls`, and everything below
-- `@xyo-network/xl1-sdk/protocol-sdk` — `ConfigZod`, `generateXyoBaseWalletFromPhrase` (the subpath is the most precise import; the root barrel also surfaces these)
+- `@xyo-network/xl1-sdk` — root barrel; re-exports `GatewayBuilder`, `buildSimpleXyoSigner`, `DefaultNetworks`, `NetworkDataLakeUrls`, and everything below
+- `@xyo-network/xl1-sdk/protocol-sdk` — `generateXyoBaseWalletFromPhrase` (the subpath is the most precise import; the root barrel also surfaces it)
 - `@xyo-network/xl1-protocol/protocol-lib` — `XyoGatewayMoniker`, gateway types (only needed if you drop down to the locator)
 - `@xyo-network/xl1-sdk/providers` — `basicRemoteViewerLocator` (escape hatch only)
 
@@ -17,10 +17,12 @@ all are re-exported from the `@xyo-network/xl1-sdk` root barrel):
 
 `GatewayBuilder` is a fluent builder that hides the locator, provider-factory, and transport plumbing. It is the recommended way to construct a gateway in any non-browser context. Two terminal calls:
 
-- `.build()` returns an `XyoGateway` (read-only).
-- `.build(signer)` returns an `XyoGatewayRunner` (write-capable).
+- `.build()` — takes **no arguments** and returns an `XyoGateway` (read-only).
+- `.buildRunner()` — returns an `XyoGatewayRunner` (write-capable). Requires a signing origin to have been set first.
 
-The same builder works for both — the only difference is whether you pass a signer.
+The same builder works for both — the difference is which terminal call you make, and whether a signing origin was configured.
+
+> **Changed in 5.0.** `build(signer)` no longer exists. A pre-built signer is never injected; instead you declare a *signing origin* with one of `.signerFactory()` › `.account()` › `.signerTransport()` (that is also the precedence order if more than one is set) and then call `.buildRunner()`. Passing an `AccountInstance` straight to `.account()` is now the canonical path — no `buildSimpleXyoSigner` wrap required.
 
 ### Read-only gateway
 
@@ -45,13 +47,13 @@ This is the right path for: chain walks, indexers, archival jobs, dashboards, ET
 
 ### Write-capable gateway (runner)
 
-`GatewayBuilder.build(signer)` requires an `XyoSigner`. The seed-phrase derivation from [Identity & Wallets](identity.md) returns an `AccountInstance` — wrap it via `buildSimpleXyoSignerV2` to produce the signer the runner needs.
+`.buildRunner()` needs a signing origin. The seed-phrase derivation from [Identity & Wallets](identity.md) returns an `AccountInstance` — hand it straight to `.account()`.
 
 ```ts
 import {
-  buildSimpleXyoSignerV2, DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
+  DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
 } from '@xyo-network/xl1-sdk'
-import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
+import { generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
 import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = 'sequence'
@@ -61,23 +63,21 @@ if (!network) throw new Error(`Unknown network "${id}"`)
 const baseWallet = await generateXyoBaseWalletFromPhrase(process.env.SEED_PHRASE!)
 const account = await baseWallet.derivePath('0')
 
-const signer = await buildSimpleXyoSignerV2(
-  { config: ConfigZod.parse({}), caches: {}, singletons: {} },
-  account,
-)
-
 const runner: XyoGatewayRunner = await new GatewayBuilder()
   .name(id)
   .rpcUrl(`${network.url}/rpc`)
   .dataLakeEndpoint(NetworkDataLakeUrls[id])
-  .build(signer)
+  .account(account)
+  .buildRunner()
 ```
 
 The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendMany`, and `confirmSubmittedTransaction` are all available. See [Gateway — Submitting Transactions](gateway.md#submitting-transactions) for the call surface.
 
-**Always derive through `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`** before wrapping with `buildSimpleXyoSignerV2`. This is the same derivation path MetaMask and the XYO browser extension use, so a single seed phrase produces the same address across every environment. `runner.signer.address()` will match `account.address` and the address an end user sees in their wallet on the same seed. If you bypass these helpers, addresses will not line up across browser and headless contexts. See [Identity & Wallets](identity.md) for the full rationale.
+**Always derive through `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`.** This is the same derivation path MetaMask and the XYO browser extension use, so a single seed phrase produces the same address across every environment. `runner.signer.address()` will match `account.address` and the address an end user sees in their wallet on the same seed. If you bypass these helpers, addresses will not line up across browser and headless contexts. See [Identity & Wallets](identity.md) for the full rationale.
 
-**Why `buildSimpleXyoSignerV2`?** `GatewayBuilder` accepts any `XyoSigner` implementation. `buildSimpleXyoSignerV2` is the canonical adapter from `AccountInstance` (what the seed-phrase helpers return) to `XyoSigner` — it builds a `SimpleXyoSigner` through a `ProviderFactoryLocator` so the signer participates in the same provider graph the runner uses. The `{ config, caches, singletons }` argument is the minimum `BaseConfigContext` the locator needs; `ConfigZod.parse({})` produces the empty defaults.
+**Choosing a signing origin.** `.account()` covers the ordinary case: the process owns the key. The other two exist for callers that do not own a plain `AccountInstance` — `.signerFactory(factory)` registers a custom signer provider (hardware, composed, or a test double), and `.signerTransport(transport)` points at a remote signer over RPC (for example an injected page whose gateway carries a signer transport). `buildSimpleXyoSigner(context, account)` still exists for code that genuinely needs a standalone `XyoSigner` instance, but it is no longer part of building a runner. `buildSimpleXyoSignerV2` is a deprecated alias of it.
+
+`.buildRunner()` throws if none of `.signerFactory()`, `.account()`, or `.signerTransport()` was set.
 
 ### Builder reference
 
@@ -90,10 +90,14 @@ The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendM
 | `.validators(validators)` | Custom block validators |
 | `.additionalProviders(factories)` | Extra `CreatableProviderFactory` entries (read path) |
 | `.additionalRunnerProviders(factories)` | Extra `CreatableProviderFactory` entries (write path) |
-| `.build()` | Resolve a read-only `XyoGateway` |
-| `.build(signer)` | Resolve a write-capable `XyoGatewayRunner` |
+| `.account(account)` | Signing origin — an owned `AccountInstance` (the usual choice) |
+| `.signerFactory(factory)` | Signing origin — a custom signer provider factory |
+| `.signerTransport(transport)` | Signing origin — an RPC transport to a remote signer |
+| `.logger(logger)` | Logger passed through to the locator |
+| `.build()` | Resolve a read-only `XyoGateway` (no arguments) |
+| `.buildRunner()` | Resolve a write-capable `XyoGatewayRunner` |
 
-`build()` throws if neither `.rpcUrl()` nor `.postMessage()` was set.
+`build()` and `buildRunner()` both throw if neither `.rpcUrl()` nor `.postMessage()` was set. `buildRunner()` additionally throws if no signing origin was configured.
 
 ---
 
@@ -114,18 +118,19 @@ import { getRestGateway, getRestGatewayRunner } from '@xyo-network/xl1-sdk'
 const gateway = await getRestGateway('https://cdn.xl1.example')
 
 // Write-capable: reads over REST/S3, submits over RPC. Same consumer-facing
-// write surface as GatewayBuilder.build(signer).
+// write surface as GatewayBuilder.buildRunner().
 const runner = await getRestGatewayRunner({
   endpoint: 'https://cdn.xl1.example',
   rpcUrl: `${network.url}/rpc`,
-  signer,
+  signerAccount: account,
 })
 ```
 
 Prefer this over `GatewayBuilder` when reads should come from published static
 index/step-summary files (fewer, cacheable GETs) rather than per-request RPC
-calls. `getRestGatewayRunner` also accepts `signerFactory` or `signerTransport`
-instead of an owned `signer` for injected/remote-signer setups.
+calls. Signing works the same way as on the builder — supply exactly one of
+`signerAccount`, `signerFactory`, or `signerTransport`. There is no `signer`
+key: a pre-built signer instance is never injected.
 
 ---
 
@@ -143,15 +148,12 @@ export function getGateway(): Promise<XyoGatewayRunner> {
     gatewayPromise = (async () => {
       const baseWallet = await generateXyoBaseWalletFromPhrase(process.env.SEED_PHRASE!)
       const account = await baseWallet.derivePath('0')
-      const signer = await buildSimpleXyoSignerV2(
-        { config: ConfigZod.parse({}), caches: {}, singletons: {} },
-        account,
-      )
       return new GatewayBuilder()
         .name('sequence')
         .rpcUrl(`${network.url}/rpc`)
         .dataLakeEndpoint(NetworkDataLakeUrls.sequence)
-        .build(signer)
+        .account(account)
+        .buildRunner()
     })()
   }
   return gatewayPromise
@@ -188,7 +190,7 @@ import { basicRemoteViewerLocator } from '@xyo-network/xl1-sdk/providers'
 
 const locator = await basicRemoteViewerLocator(
   id,
-  { rpc: { protocol: 'http', url: `${network.url}/rpc` } },
+  { protocol: 'http', url: `${network.url}/rpc` },
   NetworkDataLakeUrls[id],
 )
 const gateway = await locator.getInstance<XyoGateway>(XyoGatewayMoniker)

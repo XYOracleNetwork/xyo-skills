@@ -45,7 +45,7 @@ Wrap the protocol-level `pollForNewData` (defined in [Chain Data Indexing — Pr
 ```ts
 import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
 import { useEffect, useRef, useState } from 'react'
-import type { Payload, Schema } from '@xyo-network/sdk-js'
+import type { Payload, Schema } from '@xyo-network/sdk'
 
 function useChainData(schemas: Schema[], intervalMs = 5000) {
   const { defaultGateway } = useProvidedGateway()
@@ -96,7 +96,7 @@ For a bounded dApp (one querying its own self-authored schemas — see [Floor Bl
 
 ```ts
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
-import type { Payload, Schema } from '@xyo-network/sdk-js'
+import type { Payload, Schema } from '@xyo-network/sdk'
 
 const FLOOR_BLOCK = Number(import.meta.env.VITE_INDEXER_FLOOR_BLOCK ?? 0)
 

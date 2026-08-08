@@ -83,11 +83,14 @@ same phrase in your script.
 
 Point the SDK at the local RPC. This is the same shape as headless testnet
 verification — read, sign, submit, confirm, read back — just against `localhost`.
-The following is verified end-to-end against `xl1` `4.4.0`:
+The script below targets `xl1` 5.x (`@xyo-network/xl1-cli` 5.0.1). Its last full
+end-to-end run was against `4.4.0`, before the 5.0 gateway-construction change —
+the construction here matches the current API, but re-run it locally before
+treating it as a regression baseline.
 
 ```ts
-import { buildSimpleXyoSignerV2, GatewayBuilder } from '@xyo-network/xl1-sdk'
-import { ConfigZod, generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
+import { GatewayBuilder } from '@xyo-network/xl1-sdk'
+import { generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
 
 const RPC = 'http://localhost:8080/rpc'
 const MNEMONIC = 'test test test test test test test test test test test junk'
@@ -97,13 +100,15 @@ const ro = await new GatewayBuilder().name('local').rpcUrl(RPC).build()
 const viewer = ro.connection.viewer!
 console.log('block:', String(await viewer.block.currentBlockNumber()))
 
-// Signer for the genesis-funded account 0
+// Write-capable runner for the genesis-funded account 0
 const base = await generateXyoBaseWalletFromPhrase(MNEMONIC)
 const account0 = await base.derivePath('0')
-const context = { config: ConfigZod.parse({}), caches: {}, singletons: {} }
-const signer = await buildSimpleXyoSignerV2(context, account0)
 
-const runner = await new GatewayBuilder().name('local-signer').rpcUrl(RPC).build(signer)
+const runner = await new GatewayBuilder()
+  .name('local-signer')
+  .rpcUrl(RPC)
+  .account(account0)
+  .buildRunner()
 
 // Submit + confirm a transfer, then read back
 const to = (await base.derivePath('1')).address
@@ -124,8 +129,10 @@ Notes:
   `10_000` delay is unnecessary locally).
 - The SDK also ships a `local` entry in `DefaultNetworks` (`http://localhost:8080/rpc`);
   the explicit `.rpcUrl(...)` above is equivalent and self-documenting.
-- If your dApp reads through the datalake, add
-  `.dataLakeEndpoint('http://localhost:8080/dataLake')` to the builder.
+- The local `api` actor mounts only `/rpc`, `/rpc/indexed`, and probe routes —
+  there is no `/dataLake` route to point `.dataLakeEndpoint(...)` at. For local
+  datalake-backed reads, run the composed stack in
+  [local chain + Aries data store](local-chain-datalake.md) and use its endpoint.
 - As with headless testnet verification, **import your dApp's own domain
   functions** into the script rather than re-implementing submission logic.
 

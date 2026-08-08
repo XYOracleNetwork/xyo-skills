@@ -63,11 +63,11 @@ Always use ES modules. No CommonJS.
 
 ## Imports: Root Barrel Packages and Tree Shaking
 
-**Import from the root barrel package of each monorepo.** Each SDK monorepo publishes a single root package that re-exports everything. Tree shaking eliminates what you don't use.
+**Import from the root barrel package of each monorepo.** Each SDK monorepo publishes a root package that re-exports its core surface; reach for a named sub-package only when the symbol genuinely is not on the barrel. Tree shaking eliminates what you don't use.
 
 ```ts
 // Good — root barrel import, tree shaking handles the rest
-import { Payload, PayloadBuilder, Account, BoundWitnessBuilder } from '@xyo-network/sdk-js'
+import { Payload, PayloadBuilder, Account, BoundWitnessBuilder } from '@xyo-network/sdk'
 
 // Avoid — importing from sub-packages
 import { Payload } from '@xyo-network/payload-model'

@@ -102,7 +102,7 @@ References the target inscription by its content-addressed ID and declares the n
 The substrate uses **carrier Path A** (off-chain payload referenced by TransactionBoundWitness) plus **dual sentinel transfers** for free chain-native indexing. See [Chain Data Indexing — Choosing a Carrier](chain-data-indexing-protocol.md#choosing-a-carrier--how-to-anchor-off-chain-data-on-chain) and [Destination as Protocol](chain-data-indexing-protocol.md#destination-as-protocol--a-native-xl1-pattern) for the full landscape.
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk-js'
+import { PayloadBuilder } from '@xyo-network/sdk'
 import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
 // Pinned protocol sentinel — equals sentinelAddressFromSchema('network.xyo.ordinal')
@@ -112,8 +112,12 @@ const inscription = new PayloadBuilder<Inscription>({ schema: InscriptionSchema 
   .fields({ contentType: 'text/plain', content: 'Hello, XL1.' })
   .build()
 
+// The inscription ID. `build()` is synchronous and does NOT attach `_hash` —
+// compute the data hash explicitly. See the anti-pattern note below.
+const inscriptionId = await PayloadBuilder.dataHash(inscription)
+
 // Per-payload burn address — verifiably no key, bound to this specific inscription
-const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', inscription._hash)
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', inscriptionId)
 
 // One Transfer payload, two recipients: protocol sentinel + per-payload burn
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
@@ -134,7 +138,9 @@ await datalakeRunner.insert([inscription])
 const [txHash] = await defaultGateway.addPayloadsToChain([sentinelTransfer], [inscription])
 ```
 
-The inscription ID is the payload's data hash, equal to `inscription._hash` once the payload is built. Treat that hash as the canonical inscription identifier throughout the application.
+The inscription ID is the payload's **data hash**. Treat it as the canonical inscription identifier throughout the application.
+
+> **`build()` does not attach `_hash`.** `PayloadBuilder.build()` is synchronous and returns the plain payload; `_hash` / `_dataHash` are attached only by the async `PayloadBuilder.addHashMeta()` / `addStorageMeta()`. Reading `payload._hash` straight after `build()` yields `undefined` — and because `sentinelAddressFromSchema(schema, payloadHash?)` takes an *optional* second argument, passing `undefined` silently returns the **static protocol sentinel** instead of the per-payload burn address. No error is thrown; the dual-sentinel transfer quietly degrades to a single recipient. Always compute the hash with `await PayloadBuilder.dataHash(payload)` (or read `_hash` off payloads that came back from `payloadsByHash`, which are `WithHashMeta`).
 
 The dual sentinel transfer:
 - Adds the inscription's transaction to `accountBalanceHistory(ORDINAL_SENTINEL)` — anyone can list every ordinal protocol invocation chain-side, no global indexer required.
@@ -157,7 +163,8 @@ const transfer = new PayloadBuilder<OrdinalTransfer>({ schema: OrdinalTransferSc
   })
   .build()
 
-const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', transfer._hash)
+const transferId = await PayloadBuilder.dataHash(transfer)
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', transferId)
 
 const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
   .fields({
@@ -208,7 +215,7 @@ If the dApp wants real bounded performance, it must split: one process runs the 
 The substrate's record is intentionally schema-agnostic. Anything with an artifact-shaped lifecycle — a plain inscription, a token deploy, a collection root — goes in the same map. Schema-specific details live in higher-layer state alongside it.
 
 ```ts
-import type { Payload } from '@xyo-network/sdk-js'
+import type { Payload } from '@xyo-network/sdk'
 
 type ArtifactRecord = {
   id: string                    // content-addressed hash — the artifact ID
@@ -236,7 +243,7 @@ The `TransactionBoundWitness` is the structural carrier of authorship — its `f
 ```ts
 import type { XyoGateway } from '@xyo-network/xl1-sdk'
 import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
-import type { Address, Hash } from '@xyo-network/sdk-js'
+import type { Address, Hash } from '@xyo-network/sdk'
 
 const SUBSTRATE_SCHEMAS = new Set<string>([InscriptionSchema, OrdinalTransferSchema])
 
@@ -308,7 +315,7 @@ Content-addressed identity means duplicates collapse harmlessly. First-finalized
 ```ts
 function registerArtifact(
   state: IndexerState,
-  payload: Payload,
+  payload: WithHashMeta<Payload>,  // from payloadsByHash — carries `_hash`
   signer: Address,
   blockHeight: XL1BlockNumber,
 ) {
@@ -437,7 +444,8 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 |---|---|---|
 | Putting `from`, `creator`, or `owner` in the inscription or transfer payload | Mixes declarative content with structural authorship — creates two sources of truth that can disagree | Derive the actor from `transactionBoundWitness.from` |
 | Polling `viewer.block.currentBlockNumber()` for the indexer's replay bound | Includes unfinalized blocks; ownership transitions can be reorged out and the ledger goes stale | Use `viewer.finalization.headNumber()` to bound replay |
-| Using `(blockHeight, payloadIndex)` as the inscription ID | Loses content-addressing — byte-identical inscriptions get separate IDs, breaks idempotency, breaks the deploy-collision-is-a-feature property | Use the payload's data hash (`payload._hash`) |
+| Using `(blockHeight, payloadIndex)` as the inscription ID | Loses content-addressing — byte-identical inscriptions get separate IDs, breaks idempotency, breaks the deploy-collision-is-a-feature property | Use the payload's data hash (`await PayloadBuilder.dataHash(payload)`, or `_hash` on payloads from `payloadsByHash`) |
+| Reading `payload._hash` right after `PayloadBuilder.build()` | `build()` is synchronous and attaches no hash meta — `_hash` is `undefined`, and `sentinelAddressFromSchema` silently falls back to the static protocol sentinel | `await PayloadBuilder.dataHash(payload)` |
 | Trusting the chain to validate inscription semantics | The chain validates BoundWitness signatures and balance flows only; inscription/transfer rules are off-chain | Indexer enforces rules (target exists, signer is owner) on replay |
 | Committing inscription bytes only to a local archivist before chain submission | The data hash on-chain references bytes nobody else can fetch | Always insert into the dApp's datalake (`RestDataLakeRunner`) before `addPayloadsToChain` |
 | Submitting a transfer signed by an account that isn't the current owner | Indexer drops it silently; on-chain fee is wasted; UX appears broken | Read the indexer's current owner before signing a transfer |
@@ -458,7 +466,7 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 | Multiple indexers across operators? | Encouraged. The substrate's rules are deterministic; competing diviners that agree provide social consensus on ledger state. Document the reference implementation; let others replicate |
 | Reorg deeper than expected? | Persist `lastProcessedBlock` only when finalized; the substrate's finalization-only discipline already handles common reorg windows |
 | Need free chain-native per-user discovery without running a global indexer? | Use the dual-sentinel pattern in [Step 2](#step-2-inscribe). `accountBalanceHistory(userAddress)` then surfaces every inscription that user submitted, no diviner required |
-| Need verifiable real cost per inscription? | Per-payload derived burn address — `sentinelAddressFromSchema('network.xyo.ordinal', payload._hash)`. Each inscription burns dust to a unique no-key address |
+| Need verifiable real cost per inscription? | Per-payload derived burn address — `sentinelAddressFromSchema('network.xyo.ordinal', await PayloadBuilder.dataHash(payload))`. Each inscription burns dust to a unique no-key address |
 | Want both protocol-wide free indexing *and* per-payload burn? | Use both sentinels in one Transfer payload's `transfers` map. One extra payload, two recipients |
 
 ---
@@ -506,7 +514,7 @@ type CoWitnessedArtifactRecord = ArtifactRecord & {
 
 function registerCoWitnessedArtifact(
   state: IndexerState,
-  payload: BoundWitness,
+  payload: WithHashMeta<BoundWitness>,  // from payloadsByHash — carries `_hash`
   gasPayer: Address,
   blockHeight: XL1BlockNumber,
 ) {
