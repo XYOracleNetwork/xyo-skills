@@ -12,10 +12,16 @@ export const baseTemplate = {
     description: 'shared base preset',
     deps: {
         runtime: [],
-        dev: ['@xylabs/toolchain', '@xylabs/tsconfig', 'eslint', 'typescript', 'vitest'],
+        dev: ['@ariestools/toolchain', '@ariestools/tsconfig', 'eslint', 'typescript', 'vitest'],
+        // typescript is pinned rather than resolved to `^latest`: typescript-eslint
+        // declares `typescript: >=4.8.4 <6.1.0`, so an unpinned TS resolves to 7.x
+        // and every `pnpm lint` dies with "typescript-eslint does not support TS
+        // 7.0" before linting a single file. Raise this to ^6 once typescript-eslint
+        // ships TS >=7 support (typescript-eslint#10940).
+        versions: { typescript: '^5' },
     },
     tsconfig: {
-        extends: '@xylabs/tsconfig',
+        extends: '@ariestools/tsconfig',
         compilerOptions: { outDir: './dist', rootDir: './src' },
         include: ['src'],
     },

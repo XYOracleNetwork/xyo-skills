@@ -3,7 +3,7 @@ const xl1MonorepoTemplateOverrides = {
     name: 'xl1-monorepo',
     description: 'pnpm workspace root for XL1 dApps (sub-packages added via subsequent --workspace-member scaffolds)',
     // No runtime deps at the workspace root. devDeps come from base
-    // (@xylabs/toolchain, @xylabs/tsconfig, eslint, typescript, vitest) — sub-
+    // (@ariestools/toolchain, @ariestools/tsconfig, eslint, typescript, vitest) — sub-
     // packages share these via `pnpm -r run lint/typecheck/test/build`.
     deps: {
         runtime: [],

@@ -19,6 +19,14 @@ export function assertExtendsBase(template: Template): void {
       for (const dep of baseTemplate.deps.dev) expect(template.deps.dev).toContain(dep)
     })
 
+    // Guards the typescript pin in particular: unpinned, it resolves to 7.x and
+    // every generated project's `pnpm lint` dies before linting a single file.
+    it('inherits base dependency version pins', () => {
+      for (const [dep, pin] of Object.entries(baseTemplate.deps.versions ?? {})) {
+        expect(template.deps.versions?.[dep]).toBe(pin)
+      }
+    })
+
     it('includes base scripts', () => {
       for (const key of Object.keys(baseTemplate.scripts)) expect(template.scripts).toHaveProperty(key)
     })

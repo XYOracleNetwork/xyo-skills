@@ -8,8 +8,8 @@ import { assertExtendsBase } from './shared-assertions.js'
 assertExtendsBase(nodeTemplate)
 
 describe('node preset specifics', () => {
-  it('extends the base @xylabs/tsconfig (no DOM)', () => {
-    expect(nodeTemplate.tsconfig.extends).toBe('@xylabs/tsconfig')
+  it('extends the base @ariestools/tsconfig (no DOM)', () => {
+    expect(nodeTemplate.tsconfig.extends).toBe('@ariestools/tsconfig')
   })
 
   it('overrides noEmit to false so `tsc` produces dist/', () => {

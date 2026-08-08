@@ -6,7 +6,7 @@ const reactTemplateOverrides = {
         runtime: [
             'react',
             'react-dom',
-            '@xyo-network/sdk-js',
+            '@xyo-network/sdk',
             '@xyo-network/xl1-sdk',
             '@xyo-network/xl1-react-client-sdk',
             '@xyo-network/archivist-storage',
@@ -15,14 +15,17 @@ const reactTemplateOverrides = {
         // Peers-of-peers (emotion is peer of @mui/material) and non-peer extras.
         // The 'events' polyfill covers @metamask/safe-event-emitter's direct
         // import of Node's 'events' module from the wallet postMessage transport.
-        extras: ['@emotion/react', '@emotion/styled', 'events'],
+        // 'ajv' is a peer of @xyo-network/sdk-protocol-core — two levels below
+        // @xyo-network/sdk, so expandWithPeers' one-level walk misses it and
+        // eslint's transitive ajv@6 would win resolution.
+        extras: ['@emotion/react', '@emotion/styled', 'events', 'ajv'],
         // tsconfig-react extends tsconfig-dom extends tsconfig — both extras need
         // to be direct dev deps so the ESLint import resolver can walk the
-        // tsconfig extends chain. (`@xylabs/tsconfig` itself comes from base.)
+        // tsconfig extends chain. (`@ariestools/tsconfig` itself comes from base.)
         dev: [
-            '@xylabs/tsconfig-dom',
-            '@xylabs/tsconfig-react',
-            '@xylabs/eslint-config-react-flat',
+            '@ariestools/tsconfig-dom',
+            '@ariestools/tsconfig-react',
+            '@ariestools/eslint-config-react-flat',
             '@types/react',
             '@types/react-dom',
             '@vitejs/plugin-react',
@@ -32,14 +35,13 @@ const reactTemplateOverrides = {
             'vite-plugin-svgr',
         ],
         versions: {
-            'typescript': '^5',
             '@mui/material': '^9',
             '@mui/icons-material': '^9',
             '@react-spring/web': '~10.0',
         },
     },
     tsconfig: {
-        extends: '@xylabs/tsconfig-react',
+        extends: '@ariestools/tsconfig-react',
         compilerOptions: { noEmit: true },
     },
     scripts: {
