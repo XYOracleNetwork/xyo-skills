@@ -4,15 +4,17 @@ XL1 / XYO development skills for AI coding assistants. The same skill content is
 
 ## What's Included
 
-Six skill layers that cascade top-down:
+Eight skill layers that cascade top-down:
 
 | Layer | Skill | Covers |
 |-------|-------|--------|
-| 6 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, Node service, monorepo) |
-| 5 | `xl1-patterns` | Commit-reveal, chain data indexing, in-page datalakes, prediction markets |
+| 8 | `xl1-build` | Planning wizard — refines a vague build request into a concrete dApp spec |
+| 7 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo) |
+| 6 | `xl1-testing` | Local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI |
+| 5 | `xl1-patterns` | Commit-reveal, chain data indexing, in-page datalakes, atomic exchange, fungible tokens |
 | 4 | `xl1-knowledge` | XL1 chain, datalakes, gateway, browser wallet |
 | 3 | `xyo-knowledge` | XYO payloads, bound witnesses, modules, identity |
-| 2 | `xy-toolchain` | @xylabs/toolchain, ESLint flat config, TypeScript config, Vitest |
+| 2 | `xy-toolchain` | @ariestools/toolchain, ESLint flat config, TypeScript config, Vitest |
 | 1 | `xy-development` | TypeScript, Git workflow, testing, dev conventions |
 
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs the agent to read sub-files on demand based on task context.
