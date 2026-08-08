@@ -37,11 +37,16 @@ export async function resolveVersions(
   return Object.fromEntries(entries)
 }
 
-// @xyo-network/sdk-js and xl1-sdk declare their runtime deps (ajv, zod, ethers
+// @xyo-network/sdk and xl1-sdk declare their runtime deps (ajv, zod, ethers
 // and dozens of @xyo-network/* sub-packages) as peer dependencies. pnpm's
 // auto-install-peers setting does not reliably pull the right major versions,
 // so we walk peer deps one level deep and add them to the direct dep list.
 // Filters out anything already in our dev deps or the direct list.
+//
+// One level is deliberate but not sufficient on its own: a peer declared by a
+// package reached through a regular (non-peer) dependency edge — e.g. ajv,
+// declared by @xyo-network/sdk-protocol-core — is invisible to this walk no
+// matter how deep it goes on peers alone. Those go in a preset's `deps.extras`.
 export async function expandWithPeers(directDeps: string[], excludes: string[] = []): Promise<string[]> {
   const excludeSet = new Set([...excludes, ...directDeps])
   const peers = new Set<string>()

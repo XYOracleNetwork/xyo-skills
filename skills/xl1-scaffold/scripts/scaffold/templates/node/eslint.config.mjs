@@ -1,4 +1,4 @@
-import { config as xylabsConfig } from '@xylabs/eslint-config-flat'
+import { config as ariesConfig } from '@ariestools/eslint-config-flat'
 
 export default [
   {
@@ -10,5 +10,5 @@ export default [
       'vitest.config.ts',
     ],
   },
-  ...xylabsConfig,
+  ...ariesConfig,
 ]

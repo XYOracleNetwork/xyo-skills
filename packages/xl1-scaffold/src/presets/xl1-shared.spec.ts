@@ -8,8 +8,8 @@ import { xl1SharedTemplate } from './xl1-shared.js'
 assertExtendsBase(xl1SharedTemplate)
 
 describe('xl1-shared preset specifics', () => {
-  it('extends the environment-neutral @xylabs/tsconfig (no DOM, no Node-only)', () => {
-    expect(xl1SharedTemplate.tsconfig.extends).toBe('@xylabs/tsconfig')
+  it('extends the environment-neutral @ariestools/tsconfig (no DOM, no Node-only)', () => {
+    expect(xl1SharedTemplate.tsconfig.extends).toBe('@ariestools/tsconfig')
   })
 
   it('emits dist/ so workspace consumers can import compiled JS', () => {

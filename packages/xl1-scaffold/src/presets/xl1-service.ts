@@ -6,7 +6,7 @@ const xl1ServiceTemplateOverrides: Override = {
   name: 'xl1-service',
   description: 'XL1 Node.js service with Express HTTP server (extends node)',
   deps: {
-    runtime: ['express', '@xyo-network/sdk-js', '@xyo-network/xl1-sdk'],
+    runtime: ['express', '@xyo-network/sdk', '@xyo-network/xl1-sdk'],
     dev: ['@types/express'],
     versions: { express: '^5' },
   },
