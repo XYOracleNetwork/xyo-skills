@@ -246,6 +246,7 @@ Remove build artifacts (`dist`, `build`, and configured patterns). Array fields 
 | *(default)* | Clean built-in and configured patterns, subject to safety rules and excludes |
 | `--full` | Also remove all gitignored files under each package (fresh-clone hygiene); still honors `commands.clean.exclude` and default excludes such as `node_modules` |
 | `--full-all` | Like `--full`, but also ignores `exclude` / default excludes; only `.git` remains protected |
+| `--rules` | List the clean rules and their effective levels |
 
 Configure under `commands.clean` in `xy.config.ts`:
 
