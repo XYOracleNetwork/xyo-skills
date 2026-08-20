@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.30](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.29...v1.1.30) (2026-08-20)
+
+
+### Features
+
+* document the internal apiLocal vitest harness and new xy toolchain flags ([858882a](https://github.com/XYOracleNetwork/xyo-skills/commit/858882a2052100a9b3ca17d9ac58a9f3abcc5d9c))
+* **xl1-testing:** document the internal apiLocal vitest harness ([28be4db](https://github.com/XYOracleNetwork/xyo-skills/commit/28be4db0ad66c2414316c3ce0f835ae90e4ea9fd))
+
 ## [1.1.29](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.28...v1.1.29) (2026-08-08)
 
 
