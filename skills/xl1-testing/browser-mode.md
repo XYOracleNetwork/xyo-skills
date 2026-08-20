@@ -65,6 +65,14 @@ Spec-directory routing under the preset:
 Put browser-only suites under `spec/browser/`. Keep shared logic under plain
 `spec/` when both realms should run it.
 
+> **If the repo switches to `defineXl1VitestConfig`** (the XL1 preset — see
+> [local chain via the vitest harness](local-chain-vitest.md)), this table stops
+> holding: `browserOnly` defaults to `true`, so the browser project includes
+> only `spec/browser/**` and stops re-running shared specs. A repo with no
+> `spec/browser/**` directory gets a browser project that matches nothing and
+> reports `browser — not run`, with no failure. Pass `browserOnly: false` to
+> keep the routing above.
+
 If the preset's default browser options need a force-headless override for a
 particular repo, pass the matching options through `browser` (or compose with
 `defineXyVitestProjects` + a custom top-level config). Prefer inspecting the
@@ -164,6 +172,7 @@ to validate the assembled UI.
 ## Cross-References
 
 - [xl1-testing](SKILL.md) — the testing barrel this approach belongs to.
+- [Local chain via the vitest harness](local-chain-vitest.md) — the XL1 vitest preset, and the `browserOnly` default that silently narrows this project.
 - [xy-toolchain testing](../xy-toolchain/testing.md) — `@ariestools/vitest-config`, `spec/` layout, `xy test` / `xy retest`.
 - `xylabs-e2e-setup` skill — scaffolds a full-app Playwright e2e package (Chromium/Firefox/WebKit).
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — the in-page gateway / `InPageGatewaysProvider` code this mode is well-suited to test.
