@@ -18,10 +18,17 @@ This method uses only **publicly installable** packages:
   pulls no restricted `@xyo-network/*` runtime packages.
 - `@xyo-network/xl1-sdk` — the client SDK you already use for dApp code.
 
-> The XYO team's internal `api-local` vitest harness (`@xyo-network/chain-test`)
-> is **not** used here — it publishes `access: restricted` and depends on the
-> private chain runtime, so external developers cannot install it. Launching the
-> chain through the public `xl1` CLI is the accessible equivalent.
+> The XYO team's internal `api-local` vitest harness is **not** used here — it
+> reaches the same chain through `@xyo-network/xl1-vitest-config` /
+> `@xyo-network/chain-test`, both `access: restricted`, so external developers
+> cannot install it. Launching the chain through the public `xl1` CLI is the
+> accessible equivalent.
+>
+> **XYO-internal developers should prefer the harness** — it boots and tears
+> down a chain per spec file instead of leaving you to babysit a background
+> process. See [Local chain via the vitest harness](local-chain-vitest.md).
+> Note that a restricted package returns `E404` to an unauthenticated
+> `npm view`, so check `npm whoami` before concluding one does not exist.
 
 ## What the local chain is (and isn't)
 
@@ -83,10 +90,13 @@ same phrase in your script.
 
 Point the SDK at the local RPC. This is the same shape as headless testnet
 verification — read, sign, submit, confirm, read back — just against `localhost`.
-The script below targets `xl1` 5.x (`@xyo-network/xl1-cli` 5.0.1). Its last full
-end-to-end run was against `4.4.0`, before the 5.0 gateway-construction change —
-the construction here matches the current API, but re-run it locally before
-treating it as a regression baseline.
+
+The gateway construction below is the 5.x SDK API. CLI and SDK versions move
+independently: this script was last run end-to-end against a chain from a
+globally installed `@xyo-network/xl1-cli` **4.4.0** with `@xyo-network/xl1-sdk`
+**5.2.3** — read, a 1 XL1 transfer, `confirmSubmittedTransaction`, and the
+balance read-back all passed. A pre-5.0 CLI does not require a pre-5.0 SDK
+construction.
 
 ```ts
 import { GatewayBuilder } from '@xyo-network/xl1-sdk'
@@ -98,7 +108,8 @@ const MNEMONIC = 'test test test test test test test test test test test junk'
 // Read-only gateway
 const ro = await new GatewayBuilder().name('local').rpcUrl(RPC).build()
 const viewer = ro.connection.viewer!
-console.log('block:', String(await viewer.block.currentBlockNumber()))
+console.log('current head:', await viewer.block.currentBlockNumber())
+console.log('finalized head:', await viewer.finalization.headNumber())
 
 // Write-capable runner for the genesis-funded account 0
 const base = await generateXyoBaseWalletFromPhrase(MNEMONIC)
@@ -133,8 +144,35 @@ Notes:
   there is no `/dataLake` route to point `.dataLakeEndpoint(...)` at. For local
   datalake-backed reads, run the composed stack in
   [local chain + Aries data store](local-chain-datalake.md) and use its endpoint.
+- Two different heights, both plain JS `number`s (branded `XL1BlockNumber`, not
+  `bigint`): `viewer.block.currentBlockNumber()` is the **current** head,
+  `viewer.finalization.headNumber()` is the **finalized** head. Finalization
+  keeps close pace on a dev chain, so the two are frequently equal — assert on
+  the one your code actually trusts. Balances are the values that *are*
+  `bigint` (attoXL1).
 - As with headless testnet verification, **import your dApp's own domain
   functions** into the script rather than re-implementing submission logic.
+
+## It is not an EVM JSON-RPC endpoint
+
+`/rpc` speaks the XL1 protocol, not Ethereum JSON-RPC. `eth_*` methods are not
+registered, so the reflexive liveness probe fails in a way that reads like a
+dead chain:
+
+```sh
+curl -s -X POST http://localhost:8080/rpc \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}'
+# {"jsonrpc":"2.0","id":1,"error":{"code":-32603,
+#   "message":"The method does not exist or is not available. (eth_blockNumber)", ...}}
+```
+
+Guessing XL1 method names by hand fails the same way (`block.currentBlockNumber`,
+`finalization.headNumber` are SDK surfaces, not wire names). **Probe with the
+SDK** — build a `GatewayBuilder` gateway and read
+`viewer.block.currentBlockNumber()`, as in the script above. For "is the port
+up yet" in CI, a TCP connect or the api actor's probe routes is enough; do not
+reach for `eth_*`.
 
 ## Teardown
 
@@ -144,6 +182,7 @@ clean chain.
 
 ## Cross-References
 
+- [Local chain via the vitest harness](local-chain-vitest.md) — the XYO-internal route to the same chain, with vitest owning the lifecycle.
 - [Headless testnet verification](headless-testnet-verification.md) — the same signer/verify pattern against the live Sequence testnet; validate there before production.
 - [Local chain + Aries data-lake fixture](local-chain-datalake.md) — add an independently hosted data/object lake to the local chain.
 - [Full local XL1 dApp stack](local-dapp-stack.md) — add a real reducer, coherent state/index publication, and public consumer verification.

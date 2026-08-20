@@ -136,7 +136,18 @@ Analyze declaration liveness at package, repository, and active editor-workspace
 
 ### `xy license` and `xy secure`
 
-Use `xy license` to check production dependency licenses against the configured allowlist. Use `xy secure` to audit direct dependency age and download metadata. Do not describe `xy secure` as a full vulnerability scanner.
+Use `xy license` to check production dependency licenses against the configured allowlist.
+
+`xy secure` is an overview that runs both security audits and prints a summary line each, pointing at the subcommands for detail:
+
+| Command | Behavior |
+|---|---|
+| `xy secure deps [package]` | Audit direct dependency age and download metadata. Not a vulnerability scanner — it reports no CVEs. |
+| `xy secure dependabot` | Report GitHub Dependabot security alerts via the `gh` CLI |
+
+`xy secure dependabot` needs `gh` installed and authenticated; the standard `repo` scope suffices. Alerts are enabled per repository, and a repo with the feature off is reported as such, not as a failure. Flags: `--org <name>` (sweep a whole org), `--scope`, `--relationship`, `--state`, `--summary`, `--rules`.
+
+Findings are rule-bearing: `dependabot.critical` / `.high` / `.medium` / `.low`, plus `dependabot.alerts-enabled`. Alerts are overwhelmingly transitive lockfile findings, so nothing fails by default (`critical` and `high` warn; `medium` and `low` are off) — raise levels under `commands.dependabot.rules` to gate. Console output caps at 50 alerts and reports how many were held back; `--json` carries every finding.
 
 ## Repository policy
 
@@ -146,12 +157,14 @@ Use the focused command when diagnosing one policy family:
 |---|---|
 | `xy git lint` | Repository Git configuration such as LF settings and case sensitivity |
 | `xy packman lint` | Package-manager safety configuration, including pnpm release-age policy |
-| `xy repo lint` | Workspace structure, versions, engines, package-manager fields, and spec layout |
+| `xy repo lint` | Workspace structure, versions, engines, package-manager fields, spec layout, and Dependabot enablement |
 | `xy node lint` | Root Volta pin and package `engines.node` portability |
 | `xy lint lint` | Local ESLint config package, `.gitignore` parity, redundant rules, and overrides |
 | `xy skills lint` | Required project skills, versions, and duplicate/unnecessary installations |
 
 `xy check --fix` runs the fixable forms of the policy families included by `xy check`. Rerun without `--fix`, and use `--strict` when warnings must block CI.
+
+`xy repo lint` includes `repo.dependabot-enabled`, which warns when GitHub Dependabot alerts are switched off for the repository and enables them under `--fix` (needs admin on the repo; reports the finding as still open when the token cannot). It stays silent when `gh` is missing, unauthenticated, or the remote is not GitHub.
 
 ## Skills and work tracking
 
@@ -246,6 +259,7 @@ Remove build artifacts (`dist`, `build`, and configured patterns). Array fields 
 | *(default)* | Clean built-in and configured patterns, subject to safety rules and excludes |
 | `--full` | Also remove all gitignored files under each package (fresh-clone hygiene); still honors `commands.clean.exclude` and default excludes such as `node_modules` |
 | `--full-all` | Like `--full`, but also ignores `exclude` / default excludes; only `.git` remains protected |
+| `--rules` | List the clean rules and their effective levels |
 
 Configure under `commands.clean` in `xy.config.ts`:
 
