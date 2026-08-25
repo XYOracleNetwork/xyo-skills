@@ -39,17 +39,18 @@ pnpm sync:codex  --out .preview/codex    # inspect the would-be Codex tree
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
 ```
-Layer 8: xl1-build/        — Planning wizard: vague build request → concrete dApp spec
-Layer 7: xl1-scaffold/     — Bootstrap new XL1 apps (React dApp, xl1-service, Node service, monorepo)
-Layer 6: xl1-testing/      — Local dev-chain, headless testnet verification, browser-mode tests
-Layer 5: xl1-patterns/     — Prescriptive design patterns (commit-reveal, indexing, atomic exchange)
-Layer 4: xl1-knowledge/    — XL1 chain, datalakes, gateway, wallet, dev patterns
+Layer 9: xl1-build/        — Planning wizard: vague build request → concrete dApp spec
+Layer 8: xl1-scaffold/     — Bootstrap new XL1 apps (React dApp, xl1-service, Node service, monorepo)
+Layer 7: xl1-testing/      — Local dev-chain, headless testnet verification, browser-mode tests
+Layer 6: xl1-dapp-kit/     — Headless application contracts (manifest, ports, recovery, hosting)
+Layer 5: xl1-patterns/     — Prescriptive patterns (indexing, Statement Graph, wakes, tokens, …)
+Layer 4: xl1-knowledge/    — XL1 chain, datalakes, gateway, wallet, FinalizedBlockStream
 Layer 3: xyo-knowledge/    — XYO payloads, bound witnesses, modules, identity
 Layer 2: xy-toolchain/     — REDIRECT → ariestools/ariestools-skills (do not edit body docs here)
 Layer 1: xy-development/   — REDIRECT → ariestools/ariestools-skills (do not edit body docs here)
 ```
 
-When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers. When working on XL1 infrastructure or need reference docs, start with Layer 4.
+When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers. When adopting `@xyo-network/dapp-kit*`, also load Layer 6. When working on XL1 infrastructure or need reference docs, start with Layer 4.
 
 **Do not expand `skills/xy-development` or `skills/xy-toolchain` in this repo.** They are redirect stubs; edit and release those skills in ariestools-skills. `scripts/validate-skills.mjs` enforces the stub allowlist.
 

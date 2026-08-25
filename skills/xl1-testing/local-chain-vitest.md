@@ -3,25 +3,28 @@
 > Sub-doc of [xl1-testing](SKILL.md). Boots a real local XL1 chain **inside the
 > vitest run** — one chain per spec file, started in `beforeAll` and stopped in
 > `afterAll` — instead of hand-managing a background `xl1 start` process.
-> **XYO-internal track:** needs npm access to restricted `@xyo-network/*`
-> packages. External developers use
-> [local dev-chain verification](local-chain.md) instead.
+> **XYO-internal track only:** needs npm access to restricted `@xyo-network/*`
+> packages.
+>
+> **Public / dapp-kit consumers:** use
+> **[Local chain via dApp Kit Vitest](local-chain-dapp-kit-vitest.md)**
+> (`@xyo-network/dapp-kit-vitest-config`) instead — same vitest-owned lifecycle,
+> published packages. Manual [local `xl1 start`](local-chain.md) remains the
+> zero-preset escape hatch.
 
 The chain, the signer, and the app-level surface are the same as
 [local dev-chain verification](local-chain.md); only the *lifecycle* differs.
-This route trades public installability for a chain that the test runner owns.
 
 ## Which route to take
 
-| | [Public `xl1 start`](local-chain.md) | `apiLocal` harness (this doc) |
-|---|---|---|
-| Packages | public only (`@xyo-network/xl1-cli`, `/xl1-sdk`) | restricted `@xyo-network/xl1-vitest-config` (+ transitive `chain-test`) |
-| Chain lifecycle | you start and stop the process | vitest `beforeAll` / `afterAll`, per spec file |
-| Chain runtime | bundled CLI binary | chain actors built in-process by the orchestrator |
-| Actors | `api producer finalizer` | `api producer finalizer mempool` |
-| RPC URL | fixed `http://localhost:8080/rpc` | per-file port; read it from a test global |
-| Isolation | one chain shared by every spec | a fresh chain (and fresh chain id) per spec file |
-| Cost | one manual step per session | ~0.5 s boot per spec file |
+| | [Public `xl1 start`](local-chain.md) | [dapp-kit `local-xl1`](local-chain-dapp-kit-vitest.md) | `apiLocal` (this doc) |
+|---|---|---|---|
+| Packages | public CLI + SDK | **public** `dapp-kit-vitest-config` | restricted `xl1-vitest-config` (+ `chain-test`) |
+| Chain lifecycle | you start and stop | vitest per spec file | vitest per spec file |
+| Chain runtime | published `xl1` CLI | published `xl1` CLI | in-process / restricted orchestrator |
+| Actors | `api producer finalizer` | `api producer finalizer` | `api producer finalizer mempool` |
+| RPC URL | fixed `http://localhost:8080/rpc` | per-file port (`localXl1RpcUrl()`) | per-file port (test global) |
+| Who | anyone | **preferred public default** | XYO-internal only |
 
 Neither is Sequence qualification — see
 [What the local chain is (and isn't)](local-chain.md#what-the-local-chain-is-and-isnt).

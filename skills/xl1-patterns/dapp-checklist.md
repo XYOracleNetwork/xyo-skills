@@ -129,8 +129,22 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] `confirmSubmittedTransaction` calls pass explicit options for non-local networks (e.g., `{ attempts: 30, delay: 10_000 }` for Sequence) — defaults time out before finalization
 - [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
 - [ ] Script defaults to a non-mainnet network (e.g., `XL1_NETWORK=sequence`) — explicit override required to point at mainnet
+- [ ] **(if local vitest chain)** Prefer `@xyo-network/dapp-kit-vitest-config` `local-xl1` for public/dapp-kit consumers; use XYO-internal `apiLocal` only when restricted packages are available — see [dApp Kit Vitest](../xl1-testing/local-chain-dapp-kit-vitest.md)
 
 **Source:** [Headless Testnet Verification](../xl1-testing/headless-testnet-verification.md) (in the `xl1-testing` skill)
+
+---
+
+## dApp Kit (if using `@xyo-network/dapp-kit*` / `xl1.dapp.json`)
+
+- [ ] `xl1-dapp validate` (and `plan` for the deployment under test) succeeds
+- [ ] Clients use **application ports** / documented status — not a one-off shadow REST schema as the protocol
+- [ ] Effect journal / crash recovery expectations are met or explicitly out of scope with reason
+- [ ] If event-driven: wake ≠ durable event ≠ subscription cursor ([Events and wakes](../xl1-dapp-kit/events-and-wakes.md))
+- [ ] Evidence label is stated (**local** / packed / Sequence / …); local green is not hosted or production qualification ([Conformance](../xl1-dapp-kit/conformance.md))
+- [ ] Local chain automation uses [dapp-kit vitest `local-xl1`](../xl1-testing/local-chain-dapp-kit-vitest.md) when specs need a vitest-owned chain
+
+**Source:** [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md), [Full local dApp stack — dapp-kit](../xl1-testing/local-dapp-stack.md#dapp-kit)
 
 ---
 

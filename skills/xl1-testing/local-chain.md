@@ -18,17 +18,15 @@ This method uses only **publicly installable** packages:
   pulls no restricted `@xyo-network/*` runtime packages.
 - `@xyo-network/xl1-sdk` — the client SDK you already use for dApp code.
 
-> The XYO team's internal `api-local` vitest harness is **not** used here — it
-> reaches the same chain through `@xyo-network/xl1-vitest-config` /
-> `@xyo-network/chain-test`, both `access: restricted`, so external developers
-> cannot install it. Launching the chain through the public `xl1` CLI is the
-> accessible equivalent.
+> Prefer **[`@xyo-network/dapp-kit-vitest-config`](local-chain-dapp-kit-vitest.md)**
+> when you want vitest to own the chain lifecycle (public packages, one chain per
+> spec file). This `xl1 start` doc is the manual / session escape hatch.
 >
-> **XYO-internal developers should prefer the harness** — it boots and tears
-> down a chain per spec file instead of leaving you to babysit a background
-> process. See [Local chain via the vitest harness](local-chain-vitest.md).
-> Note that a restricted package returns `E404` to an unauthenticated
-> `npm view`, so check `npm whoami` before concluding one does not exist.
+> The XYO-internal `apiLocal` harness
+> (`@xyo-network/xl1-vitest-config` / `chain-test`, restricted) is documented in
+> [local-chain-vitest.md](local-chain-vitest.md) for internal monorepos only.
+> A restricted package returns `E404` to an unauthenticated `npm view` — check
+> `npm whoami` before concluding one does not exist.
 
 ## What the local chain is (and isn't)
 
