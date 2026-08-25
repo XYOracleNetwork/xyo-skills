@@ -32,6 +32,9 @@ Run these inside a consumer project that declares `xl1.dapp.json`. Prefer the CL
 | `@xyo-network/dapp-kit-port` | Port peers + WebSocket wire mapping |
 | `@xyo-network/dapp-kit-events` | Event Kit admitted-wake → durable event bridge |
 | `@xyo-network/dapp-kit-vercel` / `-cloudflare` / `-s3` / `-cloudflare-r2` | Target / object-store adapters |
+| `@xyo-network/dapp-kit-vitest-config` | Public Vitest preset + opt-in `local-xl1` chain ([testing skill](../xl1-testing/local-chain-dapp-kit-vitest.md)) |
+
+These packages are **published on npm** (1.x). Prefer them over copying host/bootstrap code from the dapp-kit monorepo.
 
 ## Anti-patterns
 

@@ -21,13 +21,13 @@ This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It s
 
 **Skill identity.** Report as `xl1-dapp-kit v<version>` from this file's `metadata.version`.
 
-**Maturity:** packages at **0.1.x**, often restricted. Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates are still open**. Prefer local conformance; do not claim hosted qualification from local tests.
+**Maturity:** `@xyo-network/dapp-kit*` is **published on npm** (1.x line, public access; license may still be `UNLICENSED`). Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates can still be open** per consumer — check the deployment's evidence labels. Prefer local conformance via [`@xyo-network/dapp-kit-vitest-config`](../xl1-testing/local-chain-dapp-kit-vitest.md); do not claim hosted qualification from local tests.
 
 ## Lower layers
 
 - **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain, gateway, datalakes, identity
 - **[XL1 Patterns](../xl1-patterns/SKILL.md)** — indexing, statement graph, wakes, DoD checklist
-- **[XL1 Testing](../xl1-testing/SKILL.md)** — headless verification (and eventual dapp-kit local stack path)
+- **[XL1 Testing](../xl1-testing/SKILL.md)** — headless verification, including [dapp-kit vitest `local-xl1`](../xl1-testing/local-chain-dapp-kit-vitest.md) and [local dapp-kit stack](../xl1-testing/local-dapp-stack.md#dapp-kit)
 - **[xy-toolchain](../xy-toolchain/SKILL.md)** / **[xy-development](../xy-development/SKILL.md)** — from **ariestools-skills** (redirect stubs may appear in this pack)
 
 ## Table of Contents

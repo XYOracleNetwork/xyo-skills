@@ -1,16 +1,34 @@
 # Full Local XL1 dApp Stack
 
-> Sub-doc of [xl1-testing](SKILL.md). Extend the
-> [local chain + Aries fixture](local-chain-datalake.md) with a project-owned
-> finalized-chain source, real `DappReducer`, coherent publication, and
-> anonymous consumer verification.
+> Sub-doc of [xl1-testing](SKILL.md). Local end-to-end backend ceremony for an
+> XL1 dApp that derives public state or indexes from finalized chain data and/or
+> datalake bodies — without a public IP, live network, or production object store.
 
-Use this as the local end-to-end backend ceremony for an XL1 dApp that derives
-public state or indexes from finalized chain data and/or datalake bodies. It
-proves the application composition without requiring a public IP, live network,
-or production object store.
+There are **two application compositions**. Pick by what the repo actually uses:
 
-## Composition
+| Path | When | Jump |
+|------|------|------|
+| **Classic (aries-dapp-core)** | Project-owned `DappReducer` + Aries data/state/index publication; typical older scaffolds | [Classic](#classic-aries-dapp-core) below |
+| **dapp-kit** | `@xyo-network/dapp-kit*` / `xl1.dapp.json` / ports / effect journals | [dapp-kit](#dapp-kit) |
+
+Shared authority rules (both paths):
+
+- XL1 supplies signed attribution, ordering, and finality.
+- Datalake/object bodies supply content availability, not chain acceptance.
+- Reducers / projections are rebuildable interpretations — not protocol truth.
+- Prefer [dapp-kit vitest `local-xl1`](local-chain-dapp-kit-vitest.md) or
+  [manual `xl1 start`](local-chain.md) for the chain boot; XYO-internal repos may
+  use [apiLocal](local-chain-vitest.md).
+
+---
+
+## Classic (aries-dapp-core)
+
+Extend the [local chain + Aries fixture](local-chain-datalake.md) with a
+project-owned finalized-chain source, real `DappReducer`, coherent publication,
+and anonymous consumer verification.
+
+### Composition
 
 ```text
 @xyo-network/xl1-cli
@@ -26,13 +44,7 @@ GatewayBuilder finalized source ----> project DappReducer
                      @ariestools/aries-dapp-core/consumer
 ```
 
-Keep authority explicit:
-
-- XL1 supplies signed attribution, ordering, and finality.
-- Datalake/object bodies supply content availability, not chain acceptance.
-- The reducer supplies a rebuildable interpretation.
-- Published state and indexes are derived views, not protocol or identity
-  authority.
+The remainder of this file through **Minimum acceptance** / **What this does not prove** is the **classic** ceremony. For dapp-kit projects, skip to [dapp-kit](#dapp-kit).
 
 ## Identify the project contracts first
 
@@ -330,10 +342,54 @@ Follow a green local run with
 [headless Sequence verification](headless-testnet-verification.md), provider
 contract tests where applicable, and browser/full-app tests for user journeys.
 
+---
+
+## dapp-kit
+
+Use this path when the repo depends on `@xyo-network/dapp-kit*` and declares
+`xl1.dapp.json`. Do **not** force `aries-dapp-core` into a dapp-kit project.
+
+### Composition (conceptual)
+
+```text
+published xl1 CLI  (or dapp-kit-vitest-config local-xl1)
+        |
+        v
+dapp-kit-local / dapp-kit-node host
+  · planId / incarnation
+  · effect journal + recovery
+  · application ports / status
+  · optional dapp-kit-events (wakes → durable events)
+        |
+        v
+rebuildable projections / consumers (not chain truth)
+```
+
+### Procedure
+
+1. Install published packages (`@xyo-network/dapp-kit`, `-cli`, host packs as needed).
+2. `xl1-dapp validate` and `xl1-dapp plan --deployment <name>` for the deployment under test — see [Project manifest](../xl1-dapp-kit/project-manifest.md).
+3. Boot local chain via **[dapp-kit vitest `local-xl1`](local-chain-dapp-kit-vitest.md)** for automated specs, or [`xl1 start`](local-chain.md) / `xl1-dapp dev` for interactive ownership.
+4. Exercise the happy path through **application ports** / documented status — not a one-off shadow REST API.
+5. If event-driven: keep wake ≠ durable event ≠ cursor ([Events and wakes](../xl1-dapp-kit/events-and-wakes.md)).
+6. Label evidence as **local** (or packed) per [Conformance](../xl1-dapp-kit/conformance.md) — local green ≠ Sequence/hosted/production.
+7. Still pass [Gateway & chain access](../xl1-patterns/dapp-checklist.md#gateway--chain-access) rules.
+
+`localDatalake` / `localSystem` / `localBrowser` installer **project names** exist on the vitest preset for suite isolation; only `localXl1` auto-boots infrastructure today — do not invent setup behavior the catalog does not provide.
+
+### Minimum acceptance (dapp-kit)
+
+1. `xl1-dapp validate` / `plan` succeed for the deployment.
+2. Local chain interactions green via `local-xl1` and/or `xl1-dapp test`/`dev` as appropriate.
+3. Recovery / effect-journal expectations met or explicitly out of scope with reason.
+4. Evidence label stated; Sequence confirmation still required before shipping.
+
 ## Cross-references
 
-- [Local chain + Aries data-lake fixture](local-chain-datalake.md) — the lower-level infrastructure composition.
+- [Local chain via dApp Kit Vitest](local-chain-dapp-kit-vitest.md) — public vitest-owned chain.
+- [Local chain + Aries data-lake fixture](local-chain-datalake.md) — classic lower-level infrastructure composition.
 - [Local dev-chain verification](local-chain.md) — transaction/signing verification without the dApp backend.
+- [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md) — vocabulary, ports, hosting, conformance.
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — canonical source construction.
 - [Chain data indexing](../xl1-patterns/chain-data-indexing-protocol.md) — finalized replay and index semantics.
 - [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) — the broader completion gate.
