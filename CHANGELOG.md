@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.31](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.30...v1.1.31) (2026-08-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* redirect xy-development and xy-toolchain to ariestools-skills ([#72](https://github.com/XYOracleNetwork/xyo-skills/issues/72))
+
+### Features
+
+* redirect xy-development and xy-toolchain to ariestools-skills ([#72](https://github.com/XYOracleNetwork/xyo-skills/issues/72)) ([b67cd91](https://github.com/XYOracleNetwork/xyo-skills/commit/b67cd91298acdb75d7b385c691e8a28cf34a70b1))
+* Statement Graph, dapp-kit skills, base-skill redirects, and published vitest path ([fb8335f](https://github.com/XYOracleNetwork/xyo-skills/commit/fb8335f01db60d95a9e51c4fc4633883db4cced7))
+* Statement Graph, FinalizedBlockStream, xl1-dapp-kit, and wake delivery skills ([#73](https://github.com/XYOracleNetwork/xyo-skills/issues/73)) ([ab59bd7](https://github.com/XYOracleNetwork/xyo-skills/commit/ab59bd71ce3f7794d6b10264b705c0684e2ea467))
+
 ## [1.1.30](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.29...v1.1.30) (2026-08-20)
 
 
