@@ -61,6 +61,82 @@ function hasSymlinkAnywhere(dir) {
   return null
 }
 
+/**
+ * Base skills whose authority lives in ariestools/ariestools-skills.
+ * This repo may keep only temporary redirect stubs under these names.
+ */
+const REDIRECT_STUBS = {
+  'xy-development': new Set(['SKILL.md', 'workflow.md']),
+  'xy-toolchain': new Set(['SKILL.md', 'testing.md']),
+}
+
+const REDIRECT_SKILL_MD_MAX_LINES = 80
+const REDIRECT_SHIM_MD_MAX_LINES = 60
+
+function validateRedirectStub(skillsDir, name, allowlist) {
+  const dir = join(skillsDir, name)
+  const entries = readdirSync(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+    const full = join(dir, entry.name)
+    if (entry.isDirectory() || entry.isSymbolicLink()) {
+      err(full, null, `redirect stub "${name}" must not contain nested dirs or symlinks`)
+      continue
+    }
+    if (!allowlist.has(entry.name)) {
+      err(full, null, `redirect stub "${name}" may only contain ${[...allowlist].join(', ')}; remove "${entry.name}" (canonical docs live in ariestools/ariestools-skills)`)
+    }
+  }
+
+  const skillMd = join(dir, 'SKILL.md')
+  let content
+  try {
+    content = readFileSync(skillMd, 'utf8')
+  } catch {
+    err(skillMd, null, 'SKILL.md not found')
+    return
+  }
+
+  const lineCount = content.split('\n').length
+  if (lineCount > REDIRECT_SKILL_MD_MAX_LINES) {
+    err(skillMd, null, `redirect stub SKILL.md is ${lineCount} lines (max ${REDIRECT_SKILL_MD_MAX_LINES}); do not grow docs here — edit ariestools/ariestools-skills`)
+  }
+  if (!/REDIRECT ONLY/i.test(content)) {
+    err(skillMd, null, 'redirect stub SKILL.md must say "REDIRECT ONLY" in the description or body')
+  }
+  if (!/ariestools\/ariestools-skills/.test(content)) {
+    err(skillMd, null, 'redirect stub SKILL.md must point at ariestools/ariestools-skills')
+  }
+  if (!/status:\s*redirect/.test(content)) {
+    err(skillMd, null, 'redirect stub SKILL.md frontmatter must include `status: redirect`')
+  }
+  if (!/canonical:\s*ariestools\/ariestools-skills/.test(content)) {
+    err(skillMd, null, 'redirect stub SKILL.md frontmatter must include `canonical: ariestools/ariestools-skills`')
+  }
+
+  for (const fileName of allowlist) {
+    if (fileName === 'SKILL.md') continue
+    const shimPath = join(dir, fileName)
+    let shim
+    try {
+      shim = readFileSync(shimPath, 'utf8')
+    } catch {
+      err(shimPath, null, `required redirect shim missing: ${fileName}`)
+      continue
+    }
+    const shimLines = shim.split('\n').length
+    if (shimLines > REDIRECT_SHIM_MD_MAX_LINES) {
+      err(shimPath, null, `redirect shim ${fileName} is ${shimLines} lines (max ${REDIRECT_SHIM_MD_MAX_LINES}); do not grow docs here`)
+    }
+    if (!/redirect stub|moved/i.test(shim)) {
+      err(shimPath, null, `redirect shim ${fileName} must state it is a redirect / moved`)
+    }
+    if (!/ariestools\/ariestools-skills/.test(shim)) {
+      err(shimPath, null, `redirect shim ${fileName} must point at ariestools/ariestools-skills`)
+    }
+  }
+}
+
 function validateSkill(skillsDir, name) {
   const dir = join(skillsDir, name)
   if (!SKILL_DIR_NAME_RE.test(name)) {
@@ -103,6 +179,11 @@ function validateSkill(skillsDir, name) {
   const declaredName = fields.name?.value
   if (declaredName && declaredName !== name) {
     err(skillMd, fields.name.line, `frontmatter name "${declaredName}" does not match directory name "${name}"`)
+  }
+
+  const allowlist = REDIRECT_STUBS[name]
+  if (allowlist) {
+    validateRedirectStub(skillsDir, name, allowlist)
   }
 }
 

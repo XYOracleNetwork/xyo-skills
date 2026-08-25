@@ -6,7 +6,7 @@ This file provides guidance to Codex and any other agent that reads `AGENTS.md` 
 
 This repo serves three roles:
 
-1. **Skill source of truth** — the canonical home of the 8-layer XL1/XYO skill stack (`skills/`). Installed directly by [Skills.sh](https://skills.sh) and mirrored to marketplace repos for Claude Code and Codex.
+1. **Skill source of truth for XYO/XL1 domain layers** — `xyo-knowledge` and `xl1-*` under `skills/`. Installed directly by [Skills.sh](https://skills.sh) and mirrored to marketplace repos for Claude Code and Codex. Layers 1–2 (`xy-development`, `xy-toolchain`) are owned by [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills); this repo keeps temporary redirect stubs only.
 2. **Scaffold tool** — `packages/xl1-scaffold/` scaffolds a new XL1 app (React dApp, `xl1-service` backend, plain Node service/CLI, or a full-stack pnpm monorepo) with the correct dep graph, tsconfig, ESLint, and smoke test wired up.
 3. **Evaluation test bed** — `src/` is where a rock-paper-scissors game gets built to test the skill stack's quality.
 
@@ -16,7 +16,7 @@ The skills themselves are the primary artifact. When implementation reveals inco
 
 The Claude Code and Codex marketplaces want incompatible repository layouts, so this repo ships *just the source* and renders marketplace-shaped trees into two mirror repos on each release:
 
-- **`XYOracleNetwork/xyo-skills`** (this repo) — source of truth. Skills.sh installs from here directly.
+- **`XYOracleNetwork/xyo-skills`** (this repo) — source of truth for XYO/XL1 domain skills. Skills.sh installs from here directly.
 - **`XYOracleNetwork/xyo-claude-plugin`** — Claude Code marketplace target. Written by release automation; do not edit by hand.
 - **`XYOracleNetwork/xyo-codex-plugin`** — Codex marketplace target. Written by release automation; do not edit by hand.
 
@@ -45,11 +45,13 @@ Layer 6: xl1-testing/      — Local dev-chain, headless testnet verification, b
 Layer 5: xl1-patterns/     — Prescriptive design patterns (commit-reveal, indexing, atomic exchange)
 Layer 4: xl1-knowledge/    — XL1 chain, datalakes, gateway, wallet, dev patterns
 Layer 3: xyo-knowledge/    — XYO payloads, bound witnesses, modules, identity
-Layer 2: xy-toolchain/     — @ariestools/toolchain, ESLint, TypeScript config, Vitest
-Layer 1: xy-development/   — TypeScript, Git, testing, workflow conventions
+Layer 2: xy-toolchain/     — REDIRECT → ariestools/ariestools-skills (do not edit body docs here)
+Layer 1: xy-development/   — REDIRECT → ariestools/ariestools-skills (do not edit body docs here)
 ```
 
 When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers. When working on XL1 infrastructure or need reference docs, start with Layer 4.
+
+**Do not expand `skills/xy-development` or `skills/xy-toolchain` in this repo.** They are redirect stubs; edit and release those skills in ariestools-skills. `scripts/validate-skills.mjs` enforces the stub allowlist.
 
 ## Development
 

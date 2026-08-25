@@ -1,26 +1,32 @@
 ---
 name: xy-development
-description: Core development standards for TypeScript, Git workflow, testing principles, and development workflow. Activates when writing code, running builds, performing git operations, or completing features.
+description: >-
+  REDIRECT ONLY. Canonical xy-development lives in ariestools/ariestools-skills.
+  Install that pack and read its xy-development skill for TypeScript conventions,
+  Git workflow, testing principles, and the definition of done. This xyo-skills
+  copy is a temporary redirect stub — do not use it as documentation.
 metadata:
   version: 1.1.30 # x-release-please-version
+  status: redirect
+  canonical: ariestools/ariestools-skills
 ---
 
-# Development Standards
+# Development Standards — moved
 
-This skill defines foundational development practices. Load the relevant sub-topic based on your current task:
+**This file is not the skill.** The canonical `xy-development` skill is maintained only in [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills).
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xy-development v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+## Required action
 
-## Table of Contents
+1. Install the Aries Skills pack if it is missing:
+   - Preferred in XY/XYO repos: `xy skills defaults`
+   - Or: `npx skills add ariestools/ariestools-skills --skill xy-development`
+   - Claude: install `ariestools-skills` from `ariestools/ariestools-claude-plugin`
+   - Codex: `codex plugin add ariestools-skills@ariestools-skills` after adding `ariestools/ariestools-codex-plugin`
+2. **Load / read that installed skill** (`xy-development` from ariestools-skills).
+3. Ignore every other `xy-development` file under `XYOracleNetwork/xyo-skills`.
 
-### [TypeScript Conventions](typescript.md)
-Read when writing, reviewing, or refactoring TypeScript code. Covers strictness posture, the `any` escape hatch policy, return type inference, interface vs type usage, and naming conventions.
+## Why this stub exists
 
-### [Git Workflow](git.md)
-Read when creating commits, branches, or preparing changes for review. Covers conventional commits, atomic commit discipline, and branch naming patterns.
+Older xyo-skills installs and in-repo relative links still resolve here. Those links are deprecated. Do not expand this stub with development-standards docs — edit [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills) instead.
 
-### [Testing Principles](testing.md)
-Read when writing tests, discussing test strategy, or evaluating coverage. Covers framework-agnostic testing principles. Note: specific test frameworks and tooling are defined in the XY Toolchain skill (Layer 2).
-
-### [Development Workflow](workflow.md)
-Read before running any build, lint, or test command, and before declaring any task complete. Covers native toolchain discovery (use the repo's commands, not ad-hoc one-offs) and the definition of done checklist.
+Deep-link shim still present for older links: [workflow.md](workflow.md).

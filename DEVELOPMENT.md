@@ -110,17 +110,21 @@ Each skill is a directory under `skills/` containing a `SKILL.md` router and top
 
 ```
 skills/
-├── xy-development/
-│   ├── SKILL.md          ← router (frontmatter + table of contents)
-│   ├── typescript.md
-│   ├── git.md
-│   ├── testing.md
-│   └── workflow.md
-├── xy-toolchain/
+├── xy-development/       ← REDIRECT STUB only (canonical: ariestools/ariestools-skills)
 │   ├── SKILL.md
+│   └── workflow.md       ← deep-link shim
+├── xy-toolchain/         ← REDIRECT STUB only (canonical: ariestools/ariestools-skills)
+│   ├── SKILL.md
+│   └── testing.md        ← deep-link shim
+├── xyo-knowledge/
+│   ├── SKILL.md
+│   └── ...
+├── xl1-*/
 │   └── ...
 └── ...
 ```
+
+**Never restore full body docs under `xy-development` or `xy-toolchain` here.** Edit those skills in [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). `node scripts/validate-skills.mjs skills` enforces the stub allowlist and size caps.
 
 `SKILL.md` files require YAML frontmatter with a `description` field. Claude uses this to decide when to activate the skill:
 
