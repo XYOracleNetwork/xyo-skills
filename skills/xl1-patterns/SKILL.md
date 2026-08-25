@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, and fungible tokens. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill.)
+description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
 metadata:
   version: 1.1.30 # x-release-please-version
 ---
@@ -16,9 +16,10 @@ This skill provides prescriptive, recipe-style patterns for building common appl
 These patterns compose primitives from the full skill stack:
 
 - **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway (generic, browser, and Node)
+- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — headless application contracts, ports, recovery (when adopting `@xyo-network/dapp-kit*`)
 - **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — payloads, bound witnesses, modules, identity
-- **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest
-- **[Development](../xy-development/SKILL.md)** — coding conventions, Git, testing, workflow
+- **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest (canonical: ariestools-skills)
+- **[Development](../xy-development/SKILL.md)** — coding conventions, Git, testing, workflow (canonical: ariestools-skills)
 
 ## Table of Contents
 
@@ -61,6 +62,12 @@ Read when your application needs persistent, transferable, owned objects on XL1 
 
 ### [Fungible Tokens (XRC-20)](fungible-tokens.md)
 Read when building a fungible token on XL1 in the style of Bitcoin's BRC-20 — open ticker registration, capped mints, address-to-address transfers, off-chain ledger from on-chain events. Layered directly on the inscription substrate. Covers deploy/mint/transfer schemas, the dual-pass indexer, canonical ordering rules, and the deliberate divergence from BRC-20's two-step transfer.
+
+### [Statement Graph](statement-graph.md)
+Read when you need a replayable, source-attributed relationship / assertion graph on XL1 (bindings, grants, approvals, membership). Closed lifecycle (`network.xyo.statement.claim` only) + open product vocabulary; protocol v2 has no revoke verb. Peer of inscription substrate — not for NFT-like custody.
+
+### [Authenticated Wake Delivery](authenticated-wake-delivery.md)
+Read when a sleepable indexer/host must be woken by wallet-JWT publishers allowlisted via Statement Graph grants — not HMAC webhooks. Event Kit admission, `wakeId` vs `jti`, and WakeQueue leases. Wakes schedule work; they are not chain truth.
 
 ### Headless verification → moved to [xl1-testing](../xl1-testing/SKILL.md)
 Headless dApp verification now lives in the **[xl1-testing](../xl1-testing/SKILL.md)** skill as [Headless testnet verification](../xl1-testing/headless-testnet-verification.md) — proving a dApp's chain interactions end-to-end via an in-process seed-phrase signer (`GatewayBuilder.buildRunner()`), for agentic development, CI smoke tests, and regression scripts. It remains a required part of the [dApp Definition of Done](dapp-checklist.md) below.

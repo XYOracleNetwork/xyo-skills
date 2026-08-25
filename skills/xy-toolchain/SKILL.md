@@ -1,48 +1,33 @@
 ---
 name: xy-toolchain
-description: Aries Tools TypeScript toolchain used by XY, XYO, and XL1 repositories. Covers the @ariestools/toolchain xy CLI, library and application profiles, monorepo and single-package topology, package-manager behavior, xy.config.ts compile modes, tiered ESLint flat configs, @ariestools TypeScript configs (including lib-neutral ambient globals), @ariestools/vitest-config, Vitest, dependency and API-exposure analysis (deplint roles, pick, placement/presence), publishing checks, dead-code analysis, repository policy, skills, xy work tracking with optional GitHub Issues dual-write/sync and multi-folder workspace scope, and configurable clean (including --full hygiene). Use when setting up or maintaining projects, selecting a project profile, running or debugging build/lint/test commands, configuring package output, fixing dependency placement or required presence, validating publish surfaces, tracking work with xy work, or interpreting xy command failures.
+description: >-
+  REDIRECT ONLY. Canonical xy-toolchain lives in ariestools/ariestools-skills.
+  Install that pack and read its xy-toolchain skill for @ariestools/toolchain,
+  the xy CLI, ESLint flat configs, TypeScript configs, Vitest, deplint, repository
+  policy, skills, and work tracking. This xyo-skills copy is a temporary redirect
+  stub — do not use it as documentation.
 metadata:
   version: 1.1.30 # x-release-please-version
+  status: redirect
+  canonical: ariestools/ariestools-skills
 ---
 
-# XY Toolchain
+# XY Toolchain — moved
 
-Use the active [`@ariestools/toolchain`](https://github.com/ariestools/toolchain) packages. Do not install the retired `@xylabs/*` compatibility names in new work.
+**This file is not the skill.** The canonical `xy-toolchain` skill is maintained only in [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills).
 
-Inspect the repository's `package.json`, lockfile, `xy.config.ts`, ESLint config, TypeScript configs, and test config before choosing commands. Prefer existing repository scripts; use the `xy` CLI directly when the repository exposes no narrower wrapper.
+## Required action
 
-This skill builds on the [Development Skill](../xy-development/SKILL.md), which covers language and workflow principles. Load only the reference needed for the task:
+1. Install the Aries Skills pack if it is missing:
+   - Preferred in XY/XYO repos: `xy skills defaults`
+   - Or: `npx skills add ariestools/ariestools-skills --skill xy-toolchain`
+   - Claude: install `ariestools-skills` from `ariestools/ariestools-claude-plugin`
+   - Codex: `codex plugin add ariestools-skills@ariestools-skills` after adding `ariestools/ariestools-codex-plugin`
+2. **Load / read that installed skill** (`xy-toolchain` from ariestools-skills).
+3. Ignore every other `xy-toolchain` file under `XYOracleNetwork/xyo-skills`.
 
-## References
+## Why this stub exists
 
-### [Project profiles](project-profiles.md)
+Older xyo-skills installs and in-repo relative links still resolve here. Those links are deprecated. Do not expand this stub with toolchain docs — edit [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills) instead.
 
-Read first when classifying a repository or package as a library, service, app, CLI, or other role; choosing neutral/node/browser/React guidance; deciding how monorepo and single-package setup differ; or determining whether framework tooling or `xy compile` owns production output.
-
-### [Toolchain and project setup](toolchain.md)
-
-Read when installing the toolchain, selecting a package manager, wiring scripts, distinguishing `xy` commands from `package-*` hooks, migrating from `@xylabs/*`, or troubleshooting project setup.
-
-### [Compilation and package output](compilation.md)
-
-Read when editing `xy.config.ts`, selecting neutral/node/browser targets, choosing library/bundle/transpile/monolith/vendor mode, configuring validation, or debugging emitted files and export layouts.
-
-### [Command and policy catalog](commands.md)
-
-Read when choosing among `build`, `check`, `fix`, `clean`, `deplint` (including `pick` and package roles), `api-exposure`, `publint`, `dead`, repository-policy commands, `skills`, or `work` (including GitHub Issues dual-write, `list --all`, `sync`, and multi-folder `--workspace` scope); also read when configuring dependency placement/presence, clean patterns, or using `--rules`, `--json`, `--strict`, and automation behavior.
-
-### [ESLint configuration](eslint.md)
-
-Read when creating or repairing an ESLint flat config, selecting a rule tier, enabling type-aware linting, honoring `.gitignore`, diagnosing lint performance, or using `xy lint init`, `lint lint`, and `lint config`.
-
-### [TypeScript configuration](typescript.md)
-
-Read when selecting `@ariestools/tsconfig`, `-dom`, or `-react`, configuring Node types or `@ariestools/lib-neutral` ambient globals, interpreting `noEmit`, or separating type validation from toolchain emission.
-
-### [Testing with Vitest](testing.md)
-
-Read when configuring Vitest (including `@ariestools/vitest-config`), choosing spec locations and node/browser routing, running a workspace or path, clearing the test cache, or distinguishing test failures from build failures.
-
-## Scaffolding an XL1 app
-
-Use the [xl1-scaffold](../xl1-scaffold/SKILL.md) skill for an XL1 application scaffold, then verify the generated dependencies and configs use the active `@ariestools/*` packages described here before installing.
+Deep-link shim still present for older links: [testing.md](testing.md).

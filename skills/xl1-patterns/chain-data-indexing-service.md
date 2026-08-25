@@ -7,6 +7,7 @@ How to run a chain data indexer as a long-lived service: process model, state pe
 **Builds on:**
 - [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md) — conceptual rules (finalized vs latest, scan strategies, schemas)
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — server-side gateway construction (`GatewayBuilder` + `.account(account).buildRunner()`)
+- [Gateway — Finalized block stream](../xl1-knowledge/gateway.md#finalized-block-stream) — ordered gap-aware finalized delivery (`FinalizedBlockStream`)
 - [Datalakes](../xl1-knowledge/datalakes.md) — what the indexer actually reads through the gateway viewer
 - [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical backend identity for signer indexers (`generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`); the lower-level [Identity & Signing](../xyo-knowledge/identity.md) is for XYO primitives only
 
@@ -30,11 +31,27 @@ A browser tab cannot satisfy any of these. Even an in-page indexer for a single 
 
 A typical XL1 indexer service has three loops:
 
-1. **Sync loop** — poll `viewer.finalization.headNumber()`, walk new finalized blocks from `lastProcessedBlock + 1`, dispatch payloads through application handlers, advance `lastProcessedBlock`.
+1. **Sync loop** — advance through **finalized** blocks from `lastProcessedBlock + 1`, dispatch payloads through application handlers, advance `lastProcessedBlock`. Prefer a [Finalized block stream](#finalized-block-stream) for ordered delivery; polling `viewer.finalization.headNumber()` plus manual `blocksByNumber` walks remains valid when you already own that loop.
 2. **Persist loop** — periodically (or on each block boundary) write the indexer state and `lastProcessedBlock` checkpoint to durable storage.
 3. **Serve loop** — expose state via HTTP / GraphQL / whatever protocol the consumer needs.
 
 The three loops can share a single Node process. They communicate through shared in-memory state guarded by appropriate concurrency primitives (or a single async run-loop, which is simpler).
+
+### Finalized block stream
+
+For new indexers, construct a stream from the gateway and checkpoint on **block hash** (plus height for display):
+
+```ts
+import { finalizedBlockStreamFromGateway } from '@xyo-network/xl1-sdk'
+
+const stream = await finalizedBlockStreamFromGateway(gateway)
+for await (const block of stream.blocks({ after: state.lastProcessedHash })) {
+  await applyBlock(state, block)
+  await saveCheckpoint(state) // persist hash + number atomically
+}
+```
+
+Do **not** use deprecated `headUpdated` viewer events as the sync driver — they are unordered head signals. Full API: [Gateway — Finalized block stream](../xl1-knowledge/gateway.md#finalized-block-stream).
 
 ```ts
 async function indexerMain() {

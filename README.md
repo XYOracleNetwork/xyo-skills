@@ -4,24 +4,27 @@ XL1 / XYO development skills for AI coding assistants. The same skill content is
 
 ## What's Included
 
-Eight skill layers that cascade top-down:
+This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, `xy-toolchain`) are **not** authored here — install them from [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). Temporary redirect stubs under those names remain in this tree so older relative links still resolve; they are not documentation.
 
-| Layer | Skill | Covers |
-|-------|-------|--------|
-| 8 | `xl1-build` | Planning wizard — refines a vague build request into a concrete dApp spec |
-| 7 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo) |
-| 6 | `xl1-testing` | Local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI |
-| 5 | `xl1-patterns` | Commit-reveal, chain data indexing, in-page datalakes, atomic exchange, fungible tokens |
-| 4 | `xl1-knowledge` | XL1 chain, datalakes, gateway, browser wallet |
-| 3 | `xyo-knowledge` | XYO payloads, bound witnesses, modules, identity |
-| 2 | `xy-toolchain` | @ariestools/toolchain, ESLint flat config, TypeScript config, Vitest |
-| 1 | `xy-development` | TypeScript, Git workflow, testing, dev conventions |
+| Layer | Skill | Covers | Source |
+|-------|-------|--------|--------|
+| 9 | `xl1-build` | Planning wizard — refines a vague build request into a concrete dApp spec | this repo |
+| 8 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo) | this repo |
+| 7 | `xl1-testing` | Local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI | this repo |
+| 6 | `xl1-dapp-kit` | Headless application contracts — `xl1.dapp.json`, ports, effects/recovery, hosting | this repo |
+| 5 | `xl1-patterns` | Commit-reveal, indexing, inscriptions, Statement Graph, Event Kit wakes, tokens | this repo |
+| 4 | `xl1-knowledge` | XL1 chain, datalakes, gateway (`FinalizedBlockStream`), browser wallet | this repo |
+| 3 | `xyo-knowledge` | XYO payloads, bound witnesses, modules, identity | this repo |
+| 2 | `xy-toolchain` | @ariestools/toolchain, ESLint, TypeScript config, Vitest | **[ariestools-skills](https://github.com/ariestools/ariestools-skills)** (redirect stub here) |
+| 1 | `xy-development` | TypeScript, Git workflow, testing, definition of done | **[ariestools-skills](https://github.com/ariestools/ariestools-skills)** (redirect stub here) |
 
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs the agent to read sub-files on demand based on task context.
 
+**Required companion:** install **both** packs. In XY/XYO repos prefer `xy skills defaults`, which already pulls base skills from ariestools and domain skills from this repo.
+
 ## How These Work in Multiple Places
 
-Agent skills are just Markdown files with YAML frontmatter (`name`, `description`). That format is portable across the major coding agents and skill registries, so this repo is a single source of truth — you're getting the *same* skills regardless of how you install them.
+Agent skills are just Markdown files with YAML frontmatter (`name`, `description`). That format is portable across the major coding agents and skill registries. **This repo is the source of truth for XYO/XL1 domain skills**; base toolchain/development skills are sourced from ariestools-skills.
 
 The Claude Code and Codex marketplaces require incompatible repository layouts, so each release renders marketplace-shaped trees into dedicated mirror repos. Install URLs point at the mirror for your tool; the source of the skills (and where to file issues or PRs) is always this repo:
 
@@ -42,10 +45,12 @@ Browse and install through your coding agent's built-in skill marketplace.
 ##### Claude Code CLI
 
 ```shell
-# Add the marketplace
+# Add marketplaces (base skills + XL1/XYO domain skills)
+/plugin marketplace add ariestools/ariestools-claude-plugin
 /plugin marketplace add XYOracleNetwork/xyo-claude-plugin
 
-# Install the XL1 skill stack
+# Install both packs
+/plugin install ariestools-skills
 /plugin install xyo-skills
 ```
 
@@ -84,6 +89,12 @@ Add to your project's `.claude/settings.json` so the marketplace is auto-discove
 ```json
 {
   "extraKnownMarketplaces": {
+    "ariestools-skills": {
+      "source": {
+        "source": "github",
+        "repo": "ariestools/ariestools-claude-plugin"
+      }
+    },
     "xyo-skills": {
       "source": {
         "source": "github",
@@ -94,17 +105,19 @@ Add to your project's `.claude/settings.json` so the marketplace is auto-discove
 }
 ```
 
-Each team member then installs the plugin through their preferred interface (CLI or desktop app) using the steps above.
+Each team member then installs **both** plugins (`ariestools-skills` and `xyo-skills`) through their preferred interface (CLI or desktop app) using the steps above.
 
 #### OpenAI Codex
 
 ##### Codex CLI
 
 ```shell
-# Add the marketplace
+# Add marketplaces (base skills + XL1/XYO domain skills)
+codex plugin marketplace add ariestools/ariestools-codex-plugin --ref main
 codex plugin marketplace add XYOracleNetwork/xyo-codex-plugin --ref main
 
-# Install the XL1 skill stack
+# Install both packs
+codex plugin add ariestools-skills@ariestools-skills
 codex plugin add xyo-skills@xyo-skills
 ```
 
@@ -128,14 +141,20 @@ For development against a local clone of *this* repo, render the Codex tree and 
 Run from the root of your project. Skills are written into your agent's project-local folder (e.g. `.claude/skills/` for Claude Code), which you can commit alongside the project so anyone who clones it gets the same skills.
 
 ```shell
+# Base layers (required companion)
+npx skills add ariestools/ariestools-skills --all
+# XYO / XL1 domain layers
 npx skills add XYOracleNetwork/xyo-skills --all
 ```
+
+In XY/XYO repos that already use `@ariestools/toolchain`, prefer `xy skills defaults` — it installs both sources with the correct skill selectors.
 
 #### Global install
 
 Installs into your home directory (e.g. `~/.claude/skills/`) so the skills are available across every project on your machine.
 
 ```shell
+npx skills add ariestools/ariestools-skills --all -g
 npx skills add XYOracleNetwork/xyo-skills --all -g
 ```
 

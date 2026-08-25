@@ -267,6 +267,48 @@ const balance = await gateway?.connection.viewer?.account.balance.accountBalance
 
 Use finalization viewers when you need confirmed state. Use block viewers when you need the latest state including unfinalized blocks.
 
+### Finalized block stream
+
+For **ordered, gap-aware delivery of finalized blocks** (indexers, reducers, statement-graph folds), use `FinalizedBlockStream` — do **not** treat deprecated `headUpdated` viewer events as an ordered block feed (`headUpdated` is an unordered head signal; *n* blocks may have passed between emissions).
+
+This is a **client helper over viewers**, not a JSON-RPC method. Prefer the gateway helper:
+
+```ts
+import {
+  finalizedBlockStreamFromGateway,
+  type FinalizedBlockStream,
+} from '@xyo-network/xl1-sdk'
+
+const stream: FinalizedBlockStream = await finalizedBlockStreamFromGateway(gateway, {
+  // after: previousCursor.hash,  // hot resume by hash when continuing a live session
+  // fetchWindow / maxCatchUp / pollIntervalMs — see SimpleFinalizedBlockStreamOptions
+})
+
+stream.on('nextBlock', async ({ block, head }) => {
+  // process SignedHydratedBlockWithHashMeta in order
+})
+stream.on('gap', ({ before, resumedAt, skipped }) => {
+  // catch-up exceeded maxCatchUp — skipped range announced; batch-read if needed
+})
+stream.on('desynced', () => { /* terminal: previous-hash continuity failed */ })
+stream.on('stopped', () => { /* terminal: clean stop */ })
+
+// Durable indexers: cold replay from a checkpoint hash, then follow head
+// for await (const block of stream.blocks({ after: checkpointHash })) { … }
+
+await stream.stop()
+```
+
+**Cursor:** `{ block, hash }` — hash is the authoritative identity for resume/idempotency; block is for ordering math and display.
+
+| Approach | Use when |
+|----------|----------|
+| Cold `stream.blocks({ after })` | Durable indexer/reducer — gapless replay from checkpoint, then follow head; desync throws `FinalizedBlockStreamDesyncError` |
+| Hot `on('nextBlock'…)` | Shared live timeline — late subscribers miss history; may emit `gap` when lag exceeds `maxCatchUp` |
+| Poll `finalization.headNumber()` alone | Head watermark only — still need ordered block reads to process payloads |
+
+Also available: `buildFinalizedBlockStream({ blocks, finalization }, options?)` and provider `SimpleFinalizedBlockStream`. See [Chain Data Indexing — Service](../xl1-patterns/chain-data-indexing-service.md#finalized-block-stream) for indexer wiring.
+
 ### Chain Contract — `connection.viewer.chainContractViewer`
 
 XL1 chains fork, so chain id is a function of block height — see [Chain Forks](chain.md#chain-forks).

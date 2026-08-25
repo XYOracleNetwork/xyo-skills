@@ -1,6 +1,6 @@
 ---
 name: xl1-knowledge
-description: XL1 blockchain development (XYO Layer One). The top skill layer — covers the XL1 chain, datalakes, gateway (generic, browser, and Node), and building dApps. Activates when building on XL1, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
+description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
 metadata:
   version: 1.1.30 # x-release-please-version
 ---
@@ -52,3 +52,9 @@ Read when constructing a gateway in a React dApp — the Chrome wallet extension
 
 ### [Node Gateway](gateway-node.md)
 Read when constructing a gateway in any non-browser context — backend services, indexers, CLIs, scheduled jobs, tests, and headless verification of dApps. Covers the canonical `GatewayBuilder` entry point (read-only and write-capable), the seed-phrase signer pattern, the lazy-promise caching pattern, and the `basicRemoteViewerLocator` escape hatch.
+
+### Application substrates (not core chain)
+
+- **[Statement Graph](../xl1-patterns/statement-graph.md)** — append-only signed relationship claims (`network.xyo.statement.claim`); application-layer package family `@xyo-network/xl1-statement-graph-*`.
+- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — portable headless application contracts (`@xyo-network/dapp-kit*`).
+- **[Finalized block stream](gateway.md#finalized-block-stream)** — ordered finalized delivery for indexers (`FinalizedBlockStream` / `finalizedBlockStreamFromGateway`); prefer over deprecated `headUpdated`.
