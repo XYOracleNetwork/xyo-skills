@@ -57,7 +57,7 @@ Namespace `network.xyo.event.wake`:
 | `network.xyo.event.wake.grant` | `{ grantId, deploymentId, publisher, queueId?, permissions: ['enqueue'] }` |
 | `network.xyo.event.wake.grant.revocation` | `{ grant: <grant objectHash> }` — claimed by pinned controller only |
 
-Initial Event Kit schema names are unversioned; the first incompatible successor is `.v2`. `grantId` is 16 cryptographically random bytes encoded as 32 lowercase hexadecimal characters. It stays stable when retrying or republishing the same logical grant; re-enabling after revocation creates a new grant object with a fresh `grantId`.
+Event Kit schema names remain unversioned. Do not propose `.v2` or other structural suffixes for successors: new structure revisions follow [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md). Existing Event Kit JWT/envelope/hash contracts still require their own coordinated version-support migration; adding `$version` to a strict legacy envelope is not automatically supported. `grantId` is 16 cryptographically random bytes encoded as 32 lowercase hexadecimal characters. It stays stable when retrying or republishing the same logical grant; re-enabling after revocation creates a new grant object with a fresh `grantId`.
 
 Grants are ordinary SG objects: **claim** to publish; **claim a revocation object** to negate (no SG revoke verb).
 
@@ -77,6 +77,15 @@ Grants are ordinary SG objects: **claim** to publish; **claim a revocation objec
 | `@xyo-network/event-kit-testing` | WakeQueue conformance harness |
 
 ---
+
+## Hash and version boundary
+
+Use the shipped Event Kit helpers for `eventHash`, grant hashes, and JWT binding.
+Do not replace their prescribed hash algorithm because new applications default
+to root hashes. If a contract uses a data hash, that hash excludes `$version`;
+select its allowed grammar/authentication policy independently and never let an
+unbound revision choose weaker admission rules. Envelope version support, hash
+bindings, issuer/receiver rollout, and historical grants must be migrated together.
 
 ## Admission flow (receiver)
 

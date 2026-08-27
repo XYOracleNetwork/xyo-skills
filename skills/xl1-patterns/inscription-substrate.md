@@ -13,6 +13,8 @@ This pattern is the substrate. Higher-layer protocols (fungible tokens, collecti
 
 ---
 
+Ordinal inscription IDs and sentinel/burn derivation are existing **data-hash** contracts. Preserve their algorithms; root hashes are the default for new application contracts outside this substrate. Never substitute `_hash` for `_dataHash` when metadata is present. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+
 ## The Problem
 
 Bitcoin Ordinals binds arbitrary data to a specific satoshi, making the inscription transferable through Bitcoin's UTXO graph. The chain orders the inscriptions; off-chain indexers track ownership.
@@ -140,7 +142,7 @@ const [txHash] = await defaultGateway.addPayloadsToChain([sentinelTransfer], [in
 
 The inscription ID is the payload's **data hash**. Treat it as the canonical inscription identifier throughout the application.
 
-> **`build()` does not attach `_hash`.** `PayloadBuilder.build()` is synchronous and returns the plain payload; `_hash` / `_dataHash` are attached only by the async `PayloadBuilder.addHashMeta()` / `addStorageMeta()`. Reading `payload._hash` straight after `build()` yields `undefined` — and because `sentinelAddressFromSchema(schema, payloadHash?)` takes an *optional* second argument, passing `undefined` silently returns the **static protocol sentinel** instead of the per-payload burn address. No error is thrown; the dual-sentinel transfer quietly degrades to a single recipient. Always compute the hash with `await PayloadBuilder.dataHash(payload)` (or read `_hash` off payloads that came back from `payloadsByHash`, which are `WithHashMeta`).
+> **`build()` does not attach `_hash`.** `PayloadBuilder.build()` is synchronous and returns the plain payload; `_hash` / `_dataHash` are attached only by the async `PayloadBuilder.addHashMeta()` / `addStorageMeta()`. Reading `payload._hash` straight after `build()` yields `undefined` — and because `sentinelAddressFromSchema(schema, payloadHash?)` takes an *optional* second argument, passing `undefined` silently returns the **static protocol sentinel** instead of the per-payload burn address. No error is thrown; the dual-sentinel transfer quietly degrades to a single recipient. Always compute the hash with `await PayloadBuilder.dataHash(payload)` (or read the verified `_dataHash` from hydrated payloads; `_hash` is the root hash and may differ).
 
 The dual sentinel transfer:
 - Adds the inscription's transaction to `accountBalanceHistory(ORDINAL_SENTINEL)` — anyone can list every ordinal protocol invocation chain-side, no global indexer required.
@@ -315,11 +317,11 @@ Content-addressed identity means duplicates collapse harmlessly. First-finalized
 ```ts
 function registerArtifact(
   state: IndexerState,
-  payload: WithHashMeta<Payload>,  // from payloadsByHash — carries `_hash`
+  payload: WithHashMeta<Payload>,  // verified root and data hash metadata
   signer: Address,
   blockHeight: XL1BlockNumber,
 ) {
-  const id = payload._hash
+  const id = payload._dataHash // ordinal identity uses the prescribed data hash
   if (state.artifacts.has(id)) return // identical content already registered; ignore
   state.artifacts.set(id, {
     id,
@@ -444,7 +446,7 @@ Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lak
 |---|---|---|
 | Putting `from`, `creator`, or `owner` in the inscription or transfer payload | Mixes declarative content with structural authorship — creates two sources of truth that can disagree | Derive the actor from `transactionBoundWitness.from` |
 | Polling `viewer.block.currentBlockNumber()` for the indexer's replay bound | Includes unfinalized blocks; ownership transitions can be reorged out and the ledger goes stale | Use `viewer.finalization.headNumber()` to bound replay |
-| Using `(blockHeight, payloadIndex)` as the inscription ID | Loses content-addressing — byte-identical inscriptions get separate IDs, breaks idempotency, breaks the deploy-collision-is-a-feature property | Use the payload's data hash (`await PayloadBuilder.dataHash(payload)`, or `_hash` on payloads from `payloadsByHash`) |
+| Using `(blockHeight, payloadIndex)` as the inscription ID | Loses content-addressing — byte-identical inscriptions get separate IDs, breaks idempotency, breaks the deploy-collision-is-a-feature property | Use the payload's data hash (`await PayloadBuilder.dataHash(payload)`, or verified `_dataHash` on hydrated payloads) |
 | Reading `payload._hash` right after `PayloadBuilder.build()` | `build()` is synchronous and attaches no hash meta — `_hash` is `undefined`, and `sentinelAddressFromSchema` silently falls back to the static protocol sentinel | `await PayloadBuilder.dataHash(payload)` |
 | Trusting the chain to validate inscription semantics | The chain validates BoundWitness signatures and balance flows only; inscription/transfer rules are off-chain | Indexer enforces rules (target exists, signer is owner) on replay |
 | Committing inscription bytes only to a local archivist before chain submission | The data hash on-chain references bytes nobody else can fetch | Always insert into the dApp's datalake (`RestDataLakeRunner`) before `addPayloadsToChain` |

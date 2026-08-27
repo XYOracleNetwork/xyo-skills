@@ -25,19 +25,25 @@ Neither party can change their choice after committing (the hash locks it in), a
 
 ## Schema Design
 
-Define four schemas: the commit payload, the reveal payload, and their corresponding Zod types.
+These are illustrative **new application** contracts: open objects, supported
+effective version `1.0.0` through `PayloadZodLooseOfSchema`, and root hashes for
+references/commitments. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+Do not change a deployed application's preimages, names, or hash algorithm without
+an explicit migration. Preserve the agreed omission/metadata representation when
+recreating a commitment; do not hash a stripped or default-injected substitute.
+
+Define two payload identifiers, one for commits and one for reveals, with corresponding version-aware Zod definitions.
 
 ```ts
-import { asSchema } from '@xyo-network/sdk'
+import { asSchema, PayloadZodLooseOfSchema } from '@xyo-network/sdk'
 import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
-import { z } from 'zod'
+import * as z from 'zod/mini'
 
 // --- Commit ---
 
 export const CommitSchema = asSchema('com.example.rps.commit', true)
 
-export const CommitPayloadZod = z.object({
-  schema: z.literal('com.example.rps.commit'),
+export const CommitPayloadZod = z.extend(PayloadZodLooseOfSchema(CommitSchema), {
   /** Identifies the game/market/session this commit belongs to */
   topic: z.string(),
   /** hash(choice + salt) — the hidden commitment */
@@ -53,8 +59,7 @@ export const toCommitPayload = zodToFactory(CommitPayloadZod, 'toCommitPayload')
 
 export const RevealSchema = asSchema('com.example.rps.reveal', true)
 
-export const RevealPayloadZod = z.object({
-  schema: z.literal('com.example.rps.reveal'),
+export const RevealPayloadZod = z.extend(PayloadZodLooseOfSchema(RevealSchema), {
   /** Must match the commit's topic */
   topic: z.string(),
   /** The actual choice that was committed */
@@ -86,14 +91,14 @@ import { PayloadBuilder } from '@xyo-network/sdk'
 
 /**
  * Create a commitment hash from a choice and salt.
- * Uses PayloadBuilder.dataHash for deterministic, reproducible hashing.
+ * Uses PayloadBuilder.hash for deterministic, reproducible hashing.
  */
 async function createCommitment(choice: string, salt: string): Promise<string> {
   // Hash a canonical payload so the hash is reproducible during verification
   const preimage = new PayloadBuilder({ schema: RevealSchema })
     .fields({ topic: '', choice, salt })
     .build()
-  return await PayloadBuilder.dataHash(preimage)
+  return await PayloadBuilder.hash(preimage)
 }
 
 /**
@@ -169,7 +174,7 @@ const saltPayload = new PayloadBuilder({ schema: 'com.example.rps.commit.salt' }
 await secretStore.insert([saltPayload])
 
 // Before reveal — retrieve the salt
-const [stored] = await secretStore.get([await PayloadBuilder.dataHash(saltPayload)])
+const [stored] = await secretStore.get([await PayloadBuilder.hash(saltPayload)])
 ```
 
 **Datalake note:** The browser wallet does not persist off-chain payloads to the datalake. The dApp must insert the commit payload into the datalake before submitting the transaction — otherwise the commit data is lost and only the hash reference remains on-chain. See [In-Page Data Lakes](in-page-datalakes.md) for the full pattern.
@@ -217,7 +222,7 @@ async function verifyReveal(
 }
 ```
 
-The verification is deterministic because `PayloadBuilder.dataHash` produces the same hash for the same input. No signing keys are needed — the hash itself is the proof.
+The verification is deterministic because `PayloadBuilder.hash` produces the same hash for the same input. No signing keys are needed — the hash itself is the proof.
 
 ---
 
@@ -258,8 +263,8 @@ XL1 already standardizes this convention on `TransactionBoundWitness` itself —
 ```ts
 import { BlockDurationZod, type XL1BlockNumber } from '@xyo-network/xl1-sdk'
 
-export const SessionPayloadZod = z.object({
-  schema: z.literal('com.example.rps.session'),
+const SessionSchema = asSchema('com.example.rps.session', true)
+export const SessionPayloadZod = z.extend(PayloadZodLooseOfSchema(SessionSchema), {
   sessionId: z.string(),
   /** Commit window — commits must arrive while current block ∈ [commit.nbf, commit.exp) */
   commit: BlockDurationZod,

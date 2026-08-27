@@ -12,6 +12,8 @@ This is the dApp-shaped projection of the multi-party escrow flow used in the XY
 
 ---
 
+The SDK exchange terms/secrets use prescribed **data-hash** commitments. Preserve this shipped protocol contract and use its builders/validators. New independent application commitments default to root hashes; an exchange migration needs coordinated compatibility and replay handling. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+
 ## Why a separate pattern
 
 Commit-reveal alone gives **fairness** for symmetric games (RPS, sealed-bid auctions): the loser of the protocol simply forfeits and the winner takes their share.

@@ -43,7 +43,7 @@ This applies to all XYO protocol development. See also the [XL1 root barrel](../
 
 The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, signed, and transported. SDK classes implement these rules. Native browser or Node.js APIs do not:
 
-- **Hashing:** `PayloadBuilder.dataHash` strips meta fields and uses deterministic field ordering before hashing. `crypto.subtle.digest('SHA-256', JSON.stringify(payload))` produces a *different hash* because `JSON.stringify` doesn't strip meta or guarantee field order. Other protocol participants will compute a different hash for the same payload.
+- **Hashing:** `PayloadBuilder.hash` is the default for application identity, references, commitments, caches, and deduplication: it includes client metadata and uses canonical serialization. Native `JSON.stringify` plus a digest is not the protocol algorithm. `PayloadBuilder.dataHash` additionally strips all client metadata, including `$version`; use it only where a specific protocol requires that projection. See [hash and version rules](payload-schema-evolution.md#root-hash-for-virtually-all-application-uses).
 - **Datalake access:** `RestDataLakeRunner` and `RestDataLakeViewer` implement the archivist HTTP contract (request format, hash-keyed reads, schema filtering on the request). Raw `fetch()` to the same endpoint may not match the expected request shape. Note: do not use `.next()` against a remote XL1 datalake — see [Datalakes — How to read](../xl1-knowledge/datalakes.md).
 - **Chain queries:** The gateway from `useProvidedGateway()` is the correct client for reading chain state. Access viewer methods via `connection.viewer` sub-viewers. Raw `fetch` to the gateway endpoint loses type safety and provenance.
 - **Payload construction:** `PayloadBuilder` manages schema validation and meta field conventions. Raw object literals (`{ schema: '...', field: value }`) skip this and may produce invalid payloads.
@@ -53,7 +53,7 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 
 | Anti-Pattern | Protocol Risk | Use Instead |
 |---|---|---|
-| `crypto.subtle.digest` on `JSON.stringify(payload)` | Hash won't match canonical protocol hash | `PayloadBuilder.dataHash(payload)` |
+| `crypto.subtle.digest` on `JSON.stringify(payload)` | Hash will not match canonical protocol serialization | `PayloadBuilder.hash(payload)`; retain `dataHash` only for an explicit protocol contract |
 | Raw `fetch()` to datalake endpoint | May not match archivist HTTP contract | `RestDataLakeRunner` / `RestDataLakeViewer` from `@xyo-network/xl1-sdk` |
 | Calling gateway methods by string name or raw HTTP | The gateway has no `.call()` method — use the typed sub-viewer API | `defaultGateway.connection.viewer?.<sub-viewer>.<method>(...)` — see [Gateway](../xl1-knowledge/gateway.md) |
 | Manual BoundWitness field construction | Parallel array invariants easily broken | `BoundWitnessBuilder` |
@@ -80,8 +80,12 @@ Schemas are the primary mechanism for type discrimination in XYO. Choose them ca
 
 ### Format
 
-- Reverse-DNS, lowercase, dot-separated, alphanumeric — validated by `/^(?:[a-z0-9]+\.)*[a-z0-9]+$/`
-- Specific and hierarchical: `com.example.rps.move`, not `com.example.data`
+- Exact syntax: nonempty ASCII `[a-z0-9]` segments separated by single dots — `/^(?:[a-z0-9]+\.)*[a-z0-9]+$/`. No hyphens, underscores, Unicode, capitals, whitespace, URL escaping, or empty segments.
+- Specific and hierarchical: `com.example.rps.move`, not `com.example.data`.
+- Keep new type-family names stable; structural `.v1`, `.v01`, `.1`, etc. are anti-patterns. Use standardized `$version`; preserve historical identifiers pending an explicit migration.
+- Reverse-domain ownership is additional policy, not something the syntax establishes. Domain authority lookup requires ≥3 levels; base syntax does not. Never strip a real domain's hyphens to make it fit: that names a different owner.
+
+Read [Payload Schema Evolution and Identity](payload-schema-evolution.md) for the full naming, numeric version, frozen-definition, open/closed object, compatibility, and hash rules.
 
 ### Namespace tiers
 
@@ -129,14 +133,14 @@ When you need a new schema:
 
 ### Schema as Type Identity
 
-Schemas drive TypeScript type narrowing, but the canonical guard is the **Zod-factory pair** generated alongside each payload type. `zodIsFactory(MovePayloadZod)` validates schema name *and* payload shape in one step — use it whenever you read payloads from the chain or datalake.
+The canonical guard is the **Zod-factory pair** generated from each version-aware payload definition. `zodIsFactory(MovePayloadZod)` must validate schema name, supported effective `$version`, and shape together. Start from `PayloadZodLooseOfSchema` / `PayloadZodStrictOfSchema`; a bare `z.literal(schema)` does not check a revision. Use the complete guard whenever you read payloads from the chain or datalake.
 
 ```ts
 const isMovePayload = zodIsFactory(MovePayloadZod)
 const moves = allPayloads.filter(isMovePayload)
 ```
 
-`isPayloadOfSchemaType<T>()` exists and looks similar, but it checks only the `schema` field — a tag check, not a validator. Avoid it for trust-boundary reads. A payload carrying the right schema string with the wrong shape would slip through.
+`isPayloadOfSchemaType<T>()` checks the schema and supported version but not custom fields. Avoid treating it as a full validator at trust boundaries: the right tag/version with the wrong shape still passes that limited check.
 
 ### Trust boundary on chain reads
 
@@ -152,11 +156,11 @@ In practice: you can trust `tx.payload_hashes`, `tx.from`, block numbers, and si
 One concept per payload type. A `MovePayload` contains a move, not a move AND the game state AND the result. Compose larger structures from multiple focused payloads bound together in a bound witness.
 
 ### Reference by Hash, Don't Embed
-Use `$sources` to reference related payloads by hash rather than nesting payloads inside payloads. This keeps payloads flat and hashable.
+Use `$sources` to reference related payloads by **root hash** (`PayloadBuilder.hash`) rather than nesting payloads. This commits to their client metadata, including `$version`. Retain another hash only where a shipped protocol explicitly prescribes it; do not rewrite that contract implicitly.
 
 ### Respect Reserved Prefixes
 - `_*` fields are for storage infrastructure (hashes, sequences)
-- `$*` fields are for client metadata (sources, signatures)
+- `$*` fields are for standardized client metadata (`$version`, sources, signatures)
 - Never use these prefixes for application data
 
 ### Use PayloadBuilder

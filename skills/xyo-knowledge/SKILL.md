@@ -20,6 +20,9 @@ This builds on the [Development Skill](../xy-development/SKILL.md) for coding pr
 ### [Protocol Primitives](primitives.md)
 Read when working with XYO data structures — payloads, schemas, bound witnesses, payload builders, or hashing. Covers the core data model and how to construct and validate protocol objects.
 
+### [Payload Schema Evolution and Identity](payload-schema-evolution.md)
+Read before naming or revising schemas, choosing open/closed fields, using `$version`, selecting root versus data hashes, or validating/caching payloads. New schema names stay unversioned; root hashes are the application default. Preserve explicitly prescribed legacy protocol contracts.
+
 ### [Module System](modules.md)
 Read when working with XYO modules — archivists, diviners, witnesses, sentinels, nodes, or bridges. Covers the module abstraction, composition patterns, resolution, and the manifest system.
 
