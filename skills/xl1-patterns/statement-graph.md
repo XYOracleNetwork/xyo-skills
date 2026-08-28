@@ -33,6 +33,16 @@ Statement Graph fixes a **single append-only claim verb**, fans hashes into inde
 - **No revoke verb, no event-level `target`, no record `state`.** Withdrawal / negation / supersession are ordinary vocabulary payloads that are also claimed; views interpret them.
 - **Aboutness** (peer, publisher, subject, …) lives **inside object bodies**, never as positional roles in `hashes[]`. Array index is only `hashIndex` for ordering.
 
+### Existing hash contract
+
+Statement Graph's `hashes[]` currently contains **object data hashes**, as required
+by its shipped builders/fold. Preserve that protocol contract and its unversioned
+schema; do not substitute root hashes or a `.v2` suffix. A data hash does not bind
+`$version`. Version-dependent product decisions must verify a root-hash-bound
+representation or use independently trusted fixed rules. New generic application
+identities/references default to root hashes; migrating SG needs coordinated
+builder/fold/consumer changes and historical replay verification.
+
 ### Fold materializes claims; views add meaning
 
 ```
@@ -116,7 +126,7 @@ Gate expectations (enforced at write/fold): `source` must be among the transacti
 | Reintroduce `revoke` / `target` / record `state` | Claim lexicon negation or expiry objects; interpret in views |
 | Put roles in `hashes[]` position | Put aboutness fields on vocabulary objects |
 | Order views by timestamps or `firstBlock` alone | Use `(block, tx, event, hashIndex)` precedence helpers |
-| Strict-parse hydrated bodies with `_hash` / `$` meta | Strip meta before `isClaim` / Zod parse |
+| Strip `$version` then treat the copy as an original version-1 payload | Verify the original hash/version policy first; if the shipped parser needs a body projection, retain provenance and project only after those checks |
 | Dual-read v1 claim/revoke with v2 | Protocol v2 only; bump checkpoints / fold version |
 | Copy fold code into the product | Depend on `xl1-statement-graph-*` packages |
 

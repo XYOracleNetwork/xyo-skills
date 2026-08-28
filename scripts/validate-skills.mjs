@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Zero-dep validator for Agent Skills frontmatter.
+// Zero-dep validator for Agent Skills frontmatter and concrete schema examples.
 // Usage: node scripts/validate-skills.mjs <skills-dir>
 // Exits non-zero on invalid skills, emitting GitHub-style ::error annotations.
 
 import { readdirSync, readFileSync, lstatSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { exit, argv } from 'node:process'
+
+import { findSchemaLiteralErrors } from './schema-literals.mjs'
 
 const SKILL_DIR_NAME_RE = /^[a-z0-9][a-z0-9-]*$/
 const REQUIRED_FIELDS = ['name', 'description']
@@ -137,6 +139,20 @@ function validateRedirectStub(skillsDir, name, allowlist) {
   }
 }
 
+function validateSchemaExamples(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+    if (entry.isSymbolicLink()) continue // reported by the directory safety check
+    if (entry.isDirectory()) {
+      validateSchemaExamples(path)
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      for (const failure of findSchemaLiteralErrors(readFileSync(path, 'utf8'))) {
+        err(path, failure.line, failure.message)
+      }
+    }
+  }
+}
+
 function validateSkill(skillsDir, name) {
   const dir = join(skillsDir, name)
   if (!SKILL_DIR_NAME_RE.test(name)) {
@@ -180,6 +196,8 @@ function validateSkill(skillsDir, name) {
   if (declaredName && declaredName !== name) {
     err(skillMd, fields.name.line, `frontmatter name "${declaredName}" does not match directory name "${name}"`)
   }
+
+  validateSchemaExamples(dir)
 
   const allowlist = REDIRECT_STUBS[name]
   if (allowlist) {

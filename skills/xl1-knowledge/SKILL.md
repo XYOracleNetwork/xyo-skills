@@ -21,6 +21,10 @@ XL1 builds on the full skill stack. When working on XL1 projects, also consult:
 
 When you need to look up exact type definitions, install the relevant `@xyo-network/xl1-*` package and read the TypeScript declarations at `dist/neutral/index.d.ts`. The [XL1 Protocol Yellow Paper](https://docs.xyo.network) provides the full protocol specification.
 
+## Payload schema and identity rules
+
+Before defining payloads or choosing identity/commitment hashes, read [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md). New schema names use strict ASCII segments without structural version suffixes; `$version` is validated metadata; root hashes are the application default. Preserve shipped protocol hash contracts and do not let an unauthenticated BoundWitness version select consensus or signature rules.
+
 ## Critical: Never Issue Raw RPC Calls
 
 The XL1 gateway is reached exclusively through the SDK. Two rules apply to every piece of code that touches chain access — dApp, service, indexer, test, verification script:

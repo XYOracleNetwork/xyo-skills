@@ -21,6 +21,10 @@ These patterns compose primitives from the full skill stack:
 - **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest (canonical: ariestools-skills)
 - **[Development](../xy-development/SKILL.md)** — coding conventions, Git, testing, workflow (canonical: ariestools-skills)
 
+## Payload schema and hash prerequisites
+
+Before adapting a recipe, read [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md): stable ASCII schema names, explicit version/shape support, frozen definitions with deliberate closure, and root hashes for new application references/commitments. Existing protocol-specific data-hash algorithms remain contracts; their documented exceptions do not make data hashes the default for new applications.
+
 ## Table of Contents
 
 ### [Browser UX](browser-ux.md)

@@ -30,20 +30,26 @@ Each phase is represented by on-chain payloads. The chain becomes the single sou
 
 ## Schema Design
 
+These are illustrative **new application** contracts: open objects, supported
+effective version `1.0.0` through `PayloadZodLooseOfSchema`, and root hashes for
+references/commitments. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+Do not change a deployed application's preimages, names, or hash algorithm without
+an explicit migration. Preserve the agreed omission/metadata representation when
+recreating a commitment; do not hash a stripped or default-injected substitute.
+
 Define a schema for each phase of the lifecycle. Validity windows reuse `BlockDurationZod` from the protocol, matching the same `nbf`/`exp` convention used on `TransactionBoundWitness` itself — see [Commit-Reveal — Validity Windows](commit-reveal.md#validity-windows-nbf--exp).
 
 ```ts
-import { asSchema } from '@xyo-network/sdk'
+import { asSchema, PayloadZodLooseOfSchema } from '@xyo-network/sdk'
 import { BlockDurationZod } from '@xyo-network/xl1-sdk'
 import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
-import { z } from 'zod'
+import * as z from 'zod/mini'
 
 // --- Market Definition ---
 
 export const MarketSchema = asSchema('com.example.market', true)
 
-export const MarketPayloadZod = z.object({
-  schema: z.literal('com.example.market'),
+export const MarketPayloadZod = z.extend(PayloadZodLooseOfSchema(MarketSchema), {
   /** Unique market identifier */
   marketId: z.string(),
   /** The question or contest being predicted */
@@ -55,7 +61,7 @@ export const MarketPayloadZod = z.object({
   /** Block window in which reveals are accepted; reveal.nbf must be >= commit.exp */
   reveal: BlockDurationZod,
   /** Minimum number of participants to proceed */
-  minParticipants: z.number().int().min(2),
+  minParticipants: z.number().check(z.int(), z.minimum(2)),
   /**
    * Addresses authorized to sign the settlement outcome.
    * For computable outcomes (e.g. RPS), this can be the market creator —
@@ -63,7 +69,7 @@ export const MarketPayloadZod = z.object({
    * For observed outcomes (sports, real-world events), one of these addresses
    * must sign the outcome value.
    */
-  outcomeAuthorities: z.array(z.string()).min(1),
+  outcomeAuthorities: z.array(z.string()).check(z.minLength(1)),
 })
 
 export type MarketPayload = z.infer<typeof MarketPayloadZod>
@@ -73,8 +79,7 @@ export const isMarketPayload = zodIsFactory(MarketPayloadZod)
 
 export const MarketCommitSchema = asSchema('com.example.market.commit', true)
 
-export const MarketCommitPayloadZod = z.object({
-  schema: z.literal('com.example.market.commit'),
+export const MarketCommitPayloadZod = z.extend(PayloadZodLooseOfSchema(MarketCommitSchema), {
   /** References the market this commit belongs to */
   marketId: z.string(),
   /** hash(prediction + salt) */
@@ -88,8 +93,7 @@ export const isMarketCommitPayload = zodIsFactory(MarketCommitPayloadZod)
 
 export const MarketRevealSchema = asSchema('com.example.market.reveal', true)
 
-export const MarketRevealPayloadZod = z.object({
-  schema: z.literal('com.example.market.reveal'),
+export const MarketRevealPayloadZod = z.extend(PayloadZodLooseOfSchema(MarketRevealSchema), {
   marketId: z.string(),
   /** The actual prediction */
   prediction: z.string(),
@@ -104,8 +108,7 @@ export const isMarketRevealPayload = zodIsFactory(MarketRevealPayloadZod)
 
 export const MarketSettlementSchema = asSchema('com.example.market.settlement', true)
 
-export const MarketSettlementPayloadZod = z.object({
-  schema: z.literal('com.example.market.settlement'),
+export const MarketSettlementPayloadZod = z.extend(PayloadZodLooseOfSchema(MarketSettlementSchema), {
   marketId: z.string(),
   /** The declared outcome — must be one of MarketPayload.options */
   outcome: z.string(),
@@ -120,10 +123,9 @@ export const isMarketSettlementPayload = zodIsFactory(MarketSettlementPayloadZod
 // It is a derived view, not the source of truth — winners/losers are
 // computable from the settlement BW + verified reveals at any time.
 
-export const MarketResultsViewSchema = asSchema('com.example.market.results-view', true)
+export const MarketResultsViewSchema = asSchema('com.example.market.results', true)
 
-export const MarketResultsViewPayloadZod = z.object({
-  schema: z.literal('com.example.market.results-view'),
+export const MarketResultsViewPayloadZod = z.extend(PayloadZodLooseOfSchema(MarketResultsViewSchema), {
   marketId: z.string(),
   /** Hash of the authoritative settlement payload this view derives from */
   settlement: z.string(),
@@ -244,7 +246,7 @@ async function commitPrediction(
 ): Promise<{ txHash: Hash; salt: string }> {
   const salt = generateSalt()
   const commitment = await createCommitment(prediction, salt)
-  const marketHash = await PayloadBuilder.dataHash(market)
+  const marketHash = await PayloadBuilder.hash(market)
 
   const commitPayload: MarketCommitPayload = asMarketCommitPayload(
     new PayloadBuilder({ schema: MarketCommitSchema })
@@ -278,7 +280,7 @@ async function revealPrediction(
   prediction: string,
   salt: string,
 ): Promise<Hash> {
-  const commitHash = await PayloadBuilder.dataHash(commit)
+  const commitHash = await PayloadBuilder.hash(commit)
 
   const revealPayload: MarketRevealPayload = asMarketRevealPayload(
     new PayloadBuilder({ schema: MarketRevealSchema })
@@ -322,7 +324,7 @@ async function settleMarket(
     if (expected === commit.commitment) verifiedReveals.push(reveal)
   }
 
-  const marketHash = await PayloadBuilder.dataHash(market)
+  const marketHash = await PayloadBuilder.hash(market)
 
   // The authoritative outcome payload — small, signed, references the market by hash.
   const settlementPayload: MarketSettlementPayload = asMarketSettlementPayload(
@@ -387,7 +389,7 @@ async function publishResultsView(
   settlementBw: BoundWitness,
   payloads: Payload[],
 ): Promise<Hash> {
-  const settlementHash = await PayloadBuilder.dataHash(settlement)
+  const settlementHash = await PayloadBuilder.hash(settlement)
   const { winners, losers } = deriveWinners(settlement, settlementBw, payloads)
 
   const view: MarketResultsViewPayload = asMarketResultsViewPayload(

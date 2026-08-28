@@ -11,6 +11,8 @@ This pattern is a direct application layer on top of the [Inscription Substrate]
 
 ---
 
+XRC-20 builds on ordinal IDs and burn derivation, which retain their prescribed **data-hash** contract. Preserve those algorithms and shipped schema names. New unrelated application references default to root hashes. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+
 ## The Problem
 
 BRC-20 is a fungible-token convention layered on Bitcoin Ordinals. It works by inscribing JSON of three shapes — `deploy`, `mint`, `transfer` — and letting off-chain indexers derive ticker definitions and balances from those inscriptions in canonical order. The Bitcoin chain orders the inscriptions; it does not interpret them.
@@ -260,7 +262,7 @@ function applyTokenDeploy(
 
   state.tickers.set(tick, {
     tick,
-    deployInscriptionId: payload._hash,
+    deployInscriptionId: payload._dataHash, // the ordinal data-hash identity
     max,
     lim,
     decimals: payload.decimals ?? 0,
