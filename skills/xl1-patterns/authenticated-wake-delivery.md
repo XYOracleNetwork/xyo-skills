@@ -9,7 +9,7 @@ Event Kit delivers **wakes** (scheduling hints). It does **not** replace chain t
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — finalized head for grant lag checks
 - [XL1 dApp Kit — Events](../xl1-dapp-kit/events-and-wakes.md) — how hosts turn admitted wakes into durable application events
 
-**Maturity:** `@xyo-network/event-kit-*` at **0.0.x**, restricted npm. Papers and D-002 through D-005 are accepted; the encrypted handshake, resident publisher, partner, network, multi-node, and `v0.1.0` publish gates remain open. Teach the architecture; do not claim production multi-host conformance yet.
+**Maturity:** `@xyo-network/event-kit-*` **0.1.0** is published, restricted npm. Papers and D-002 through D-005 are accepted. Package publication does not establish encrypted-handshake, resident-publisher, partner, network, or multi-node qualification. Teach the architecture; do not claim production multi-host conformance from publication alone.
 
 ---
 
