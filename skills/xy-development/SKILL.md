@@ -6,7 +6,7 @@ description: >-
   Git workflow, testing principles, and the definition of done. This xyo-skills
   copy is a temporary redirect stub — do not use it as documentation.
 metadata:
-  version: 1.1.31 # x-release-please-version
+  version: 1.1.32 # x-release-please-version
   status: redirect
   canonical: ariestools/ariestools-skills
 ---
