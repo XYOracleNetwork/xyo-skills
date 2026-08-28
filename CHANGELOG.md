@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.32](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.31...v1.1.32) (2026-08-28)
+
+
+### Features
+
+* release payload schema revision guidance ([54f7ec2](https://github.com/XYOracleNetwork/xyo-skills/commit/54f7ec229ea1a8c71bdc69b6ff54b2311eaf3d1d))
+* **skills:** codify payload schema revision rules ([#77](https://github.com/XYOracleNetwork/xyo-skills/issues/77)) ([d2d7113](https://github.com/XYOracleNetwork/xyo-skills/commit/d2d7113d8b704e2a789a66cfb7c38443b2a773ee))
+
 ## [1.1.31](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.30...v1.1.31) (2026-08-25)
 
 
