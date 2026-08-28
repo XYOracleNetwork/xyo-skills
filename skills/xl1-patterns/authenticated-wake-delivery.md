@@ -9,7 +9,7 @@ Event Kit delivers **wakes** (scheduling hints). It does **not** replace chain t
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — finalized head for grant lag checks
 - [XL1 dApp Kit — Events](../xl1-dapp-kit/events-and-wakes.md) — how hosts turn admitted wakes into durable application events
 
-**Maturity:** `@xyo-network/event-kit-*` at **0.0.x**, restricted npm. Papers + D-002/D-003 accepted; partner / multi-node / `v0.1.0` publish gates still open. Teach the architecture; do not claim production multi-host conformance yet.
+**Maturity:** `@xyo-network/event-kit-*` **0.1.0** is published, restricted npm. Papers and D-002 through D-005 are accepted. Package publication does not establish encrypted-handshake, resident-publisher, partner, network, or multi-node qualification. Teach the architecture; do not claim production multi-host conformance from publication alone.
 
 ---
 
@@ -52,12 +52,14 @@ Namespace `network.xyo.event.wake`:
 
 | Schema | Role |
 |--------|------|
-| `network.xyo.event.wake.envelope.v1` | Wake payload body |
-| `network.xyo.event.wake.jwt.v1` | JWT `schema` claim (`typ` remains `JWT`) |
-| `network.xyo.event.wake.grant.v1` | `{ deploymentId, publisher, queueId?, permissions: ['enqueue'] }` |
-| `network.xyo.event.wake.grant.revocation.v1` | `{ grant: <grant objectHash> }` — claimed by pinned controller only |
+| `network.xyo.event.wake.envelope` | Wake payload body |
+| `network.xyo.event.wake.jwt` | JWT `schema` claim (`typ` remains `JWT`) |
+| `network.xyo.event.wake.grant` | `{ grantId, deploymentId, publisher, queueId?, permissions: ['enqueue'] }` |
+| `network.xyo.event.wake.grant.revocation` | `{ grant: <grant objectHash> }` — claimed by pinned controller only |
 
-Grants are ordinary SG objects: **claim** to publish; **claim a revocation object** to negate (no SG revoke verb). Re-enable = new grant object.
+Event Kit schema names remain unversioned. Do not propose `.v2` or other structural suffixes for successors: new structure revisions follow [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md). Existing Event Kit JWT/envelope/hash contracts still require their own coordinated version-support migration; adding `$version` to a strict legacy envelope is not automatically supported. `grantId` is 16 cryptographically random bytes encoded as 32 lowercase hexadecimal characters. It stays stable when retrying or republishing the same logical grant; re-enabling after revocation creates a new grant object with a fresh `grantId`.
+
+Grants are ordinary SG objects: **claim** to publish; **claim a revocation object** to negate (no SG revoke verb).
 
 ---
 
@@ -75,6 +77,15 @@ Grants are ordinary SG objects: **claim** to publish; **claim a revocation objec
 | `@xyo-network/event-kit-testing` | WakeQueue conformance harness |
 
 ---
+
+## Hash and version boundary
+
+Use the shipped Event Kit helpers for `eventHash`, grant hashes, and JWT binding.
+Do not replace their prescribed hash algorithm because new applications default
+to root hashes. If a contract uses a data hash, that hash excludes `$version`;
+select its allowed grammar/authentication policy independently and never let an
+unbound revision choose weaker admission rules. Envelope version support, hash
+bindings, issuer/receiver rollout, and historical grants must be migrated together.
 
 ## Admission flow (receiver)
 
@@ -97,7 +108,7 @@ Lease port: `append` / `claim` / `ack` / `release` / `recoverInflight` (+ `pendi
 | HMAC / shared-secret “webhook secret” | Wallet JWT + SG grant |
 | Treat wakes as chain finality | Fold/index from finalized XL1; wakes only schedule work |
 | Run heavy reducers on the admit URL | Enqueue, then drain via `WakeQueue` |
-| Invent grant revoke RPCs | Claim `grant.revocation.v1` via Statement Graph |
+| Invent grant revoke RPCs | Claim `grant.revocation` via Statement Graph |
 | Reuse JWT `jti` across retries | Fresh `jti`; stable `wakeId` |
 
 ---
@@ -106,4 +117,4 @@ Lease port: `append` / `claim` / `ack` / `release` / `recoverInflight` (+ `pendi
 
 - [Statement Graph](statement-graph.md)
 - [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md) / [Events and wakes](../xl1-dapp-kit/events-and-wakes.md)
-- Upstream: `XYOracleNetwork/event-kit` papers (`EVENT_KIT_WHITE_PAPER.md`, Yellow Paper, D-002/D-003)
+- Upstream: `XYOracleNetwork/event-kit` papers (`EVENT_KIT_WHITE_PAPER.md`, Yellow Paper, D-002 through D-005, and `ON_CHAIN_PUBLISHER_ROADMAP.md`)

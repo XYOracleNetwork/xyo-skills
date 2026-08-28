@@ -10,6 +10,12 @@ Read this pattern when your React dApp needs to access chain data or the datalak
 
 ---
 
+**Versioned identity:** existing archivist deduplication/lookup behavior must be
+checked before storing variants that share a data hash. New application identity
+and validation caches should use root hashes and applicable policy; do not assume
+the store preserves every `$version`/metadata representation. See [Payload Schema
+Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+
 ## The Problem
 
 The standard XL1 React setup routes all chain access through the wallet gateway — which requires the browser wallet extension to be installed and the user to approve a connection. This creates a chicken-and-egg problem for many UIs:

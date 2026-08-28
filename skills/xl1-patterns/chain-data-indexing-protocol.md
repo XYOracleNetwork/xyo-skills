@@ -45,6 +45,11 @@ tx recorded on chain ──────────► schema-filtered retrieval
 
 ## Step 1: Define Application Schemas
 
+New application names are stable ASCII type-family identifiers, without structural
+version suffixes. Use root hashes for new application references/commitments;
+ordinal sentinel derivation examples later in this document retain that shipped
+protocol's prescribed data hash. Root/data hash substitution is not a migration.
+
 Follow the schema naming conventions from [XYO Best Practices](../xyo-knowledge/best-practices.md). Use a shared namespace for your app:
 
 ```ts
@@ -61,10 +66,11 @@ Define payload types using the [Zod-first pattern](../xl1-knowledge/development.
 
 ```ts
 import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
-import { z } from 'zod'
+import * as z from 'zod/mini'
+import { PayloadZodLooseOfSchema } from '@xyo-network/sdk'
 
-export const MovePayloadZod = z.object({
-  schema: z.literal('com.example.rps.move'),
+// Open object; support only effective 1.0.0 by default.
+export const MovePayloadZod = z.extend(PayloadZodLooseOfSchema(MoveSchema), {
   gameId: z.string(),
   move: z.enum(['rock', 'paper', 'scissors']),
 })
@@ -160,7 +166,8 @@ const burn     = sentinelAddressFromSchema('network.xyo.ordinal', await PayloadB
 > `PayloadBuilder.build()` — and the helper silently returns the *static*
 > schema sentinel instead of a per-payload address, with no error. Always
 > derive the hash with `await PayloadBuilder.dataHash(payload)`, or read
-> `_hash` only from payloads returned by `payloadsByHash`.
+> the verified `_dataHash` from hydrated payloads. `_hash` is the root hash and
+> must not be substituted into this data-hash-based ordinal derivation.
 
 The helper centralizes encoding, prefix, and casing conventions so future tweaks propagate uniformly. Reaching for `keccak256` from ethers directly is an anti-pattern — the spec is published so independent implementations and out-of-band auditors can verify the helper's output, not so that callers re-implement it.
 
@@ -256,7 +263,7 @@ A commit-then-reveal-style anchor. Submit a `HashPayload` (already on `AllowedBl
 
 ```ts
 const hashCommit = new PayloadBuilder({ schema: 'network.xyo.hash' })
-  .fields({ hash: await PayloadBuilder.dataHash(payload), schema: payload.schema })
+  .fields({ hash: await PayloadBuilder.hash(payload), schema: payload.schema })
   .build()
 await datalakeRunner.insert([payload])
 const [txHash] = await gateway.addPayloadsToChain([hashCommit], [payload])
@@ -367,7 +374,7 @@ const payloads = await gateway.connection.viewer?.block.payloadsByHash(hashes)
 
 ## Step 4: Build an Application Read Model
 
-Transform raw chain payloads into your application's domain model. Filter and narrow with the **Zod-factory guards from Step 1** — `isMovePayload`, `isResultPayload`, etc. — never `isPayloadOfSchemaType`. The Zod factories validate schema name *and* payload shape in one step; `isPayloadOfSchemaType` checks only the schema string and would let a malformed payload (right schema name, wrong fields) slip through.
+Transform raw chain payloads into your application's domain model. Filter and narrow with the **Zod-factory guards from Step 1** — `isMovePayload`, `isResultPayload`, etc. — never `isPayloadOfSchemaType`. These version-aware Zod factories validate schema name, supported effective version, and shape together; `isPayloadOfSchemaType` checks only tag/version and would let the wrong custom fields slip through.
 
 ```ts
 // `isMovePayload` and `isResultPayload` are exported from Step 1 — Zod-factory
@@ -405,7 +412,7 @@ The chain accepts arbitrary bytes for any schema, including before your applicat
 
 **Heuristic.** If your dApp invented the schema, data older than your dApp can't be your dApp's data. Whatever those bytes are — random collisions, independent dApps that picked the same schema name, accidental writes — they're not part of your application's state. Ignore them.
 
-**The schema name is a tag, not a validator.** The `schema` field is a string the chain doesn't interpret. Older versions of your dApp can publish payloads that no longer match the current shape; malformed bytes can carry the right schema with the wrong fields; another party can independently use the same schema string. The structural discriminator is your dApp's Zod-factory guard — `isMovePayload` derived from `MovePayloadZod` validates name *and* shape in one step, and a well-defined Zod schema is usually sufficient on its own.
+**The schema name is a tag, not a complete validator.** Another party can use the same name with the wrong fields or an unsupported revision. Use a Zod-factory guard derived from a version-aware definition (`PayloadZodLooseOfSchema` / `PayloadZodStrictOfSchema` plus fields) to check identifier, supported effective `$version`, and shape. Validate original version metadata before projection; never retry an unsupported shape as an older revision. Cache by root hash and applicable policy, not data hash alone. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
 
 **Beyond shape: referential integrity.** Some checks Zod can't see — *"this payload references hash H — does H actually exist on chain?"*, *"this transfer claims a previous owner — does the ownership ledger agree?"* — belong in a sanity-check pass after Zod. Treat referential integrity as part of the read pipeline, not as ad-hoc assertions sprinkled into business logic.
 

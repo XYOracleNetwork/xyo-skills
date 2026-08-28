@@ -6,6 +6,12 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 
 ---
 
+**Versioned identity:** existing archivist deduplication/lookup behavior must be
+checked before storing variants that share a data hash. New application identity
+and validation caches should use root hashes and applicable policy; do not assume
+the store preserves every `$version`/metadata representation. See [Payload Schema
+Evolution and Identity](payload-schema-evolution.md).
+
 ## The Module Abstraction
 
 Every component in XYO implements the `QueryableModule` interface. This is the universal contract:

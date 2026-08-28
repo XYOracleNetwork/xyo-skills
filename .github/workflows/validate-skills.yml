@@ -1,4 +1,4 @@
-# Validate skill frontmatter on every PR that touches the skills tree.
+# Validate skill frontmatter and concrete schema examples on relevant PRs.
 # Catches malformed SKILL.md before merge so sync-skills.yml doesn't fail
 # after the change has already landed in `develop`.
 
@@ -9,6 +9,8 @@ on:
     paths:
       - 'skills/**'
       - 'scripts/validate-skills.mjs'
+      - 'scripts/schema-literals.mjs'
+      - 'scripts/schema-literals.test.mjs'
       - '.github/workflows/validate-skills.yml'
 
 permissions:
@@ -16,10 +18,11 @@ permissions:
 
 jobs:
   validate:
-    name: Validate SKILL.md frontmatter
+    name: Validate skills and schema examples
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - run: node --test scripts/schema-literals.test.mjs
       - run: node scripts/validate-skills.mjs skills
