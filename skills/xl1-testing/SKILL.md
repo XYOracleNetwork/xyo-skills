@@ -14,7 +14,7 @@ description: >
   change, run on-chain tests against a local chain or Sequence, run headless
   browser tests, or set up unattended / CI testing.
 metadata:
-  version: 1.1.32 # x-release-please-version
+  version: 1.1.33 # x-release-please-version
 ---
 
 # XL1 Testing

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.33](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.32...v1.1.33) (2026-08-31)
+
+
+### Features
+
+* release canonical payload type authoring pattern ([e69d199](https://github.com/XYOracleNetwork/xyo-skills/commit/e69d1991fade90039a157f9c479bac33238637c6))
+
 ## [1.1.32](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.31...v1.1.32) (2026-08-28)
 
 
