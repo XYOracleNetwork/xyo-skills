@@ -10,7 +10,7 @@ description: >-
   the protocol application. Complements xl1-patterns domain recipes and
   xl1-scaffold React+service apps — does not replace gateway/chain knowledge.
 metadata:
-  version: 1.1.32 # x-release-please-version
+  version: 1.1.33 # x-release-please-version
 ---
 
 # XL1 dApp Kit
