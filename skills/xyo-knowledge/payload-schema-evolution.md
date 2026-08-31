@@ -90,34 +90,33 @@ or effects also change semantics even if JSON shapes are unchanged.
 
 ## Validate identifier, supported version, and shape together
 
+Author the type as in [Authoring a payload type](primitives.md#authoring-a-payload-type).
+The envelope factory is what binds schema name and `$version` to the field shape:
+
 ```ts
 import * as z from 'zod/mini'
-import { zodIsFactory } from '@ariestools/sdk'
-import {
-  asSchema, DefaultPayloadVersion, PayloadZodLooseOfSchema,
-} from '@xyo-network/sdk'
+import { asSchema, PayloadZodOfSchema } from '@xyo-network/sdk'
 
 const ReadingSchema = asSchema('com.example.sensor.reading', true)
-const ReadingPayloadZod = z.extend(
-  PayloadZodLooseOfSchema(ReadingSchema, DefaultPayloadVersion),
-  { temperatureCelsius: z.number() },
-)
-const isReadingPayload = zodIsFactory(ReadingPayloadZod)
+const ReadingFieldsZod = z.object({ temperatureCelsius: z.number() })
+const ReadingZod = z.extend(PayloadZodOfSchema(ReadingSchema), ReadingFieldsZod.shape)
 ```
 
-Use `PayloadZodStrictOfSchema` when the definition is closed. All three typed
-factories (`PayloadZodOfSchema`, `PayloadZodStrictOfSchema`,
-`PayloadZodLooseOfSchema`) default to supporting only effective `1.0.0`; the second
+That uses the default envelope (`PayloadZodOfSchema`, extra keys stripped,
+effective `$version` `1.0.0`). Swap in `PayloadZodStrictOfSchema` when the
+definition is closed, or `PayloadZodLooseOfSchema` when extra keys must
+round-trip. All three default to supporting only effective `1.0.0`; the second
 argument accepts a version or a version array. A shared validator may list several
 revisions only if its full shape/semantics apply to all of them. Otherwise select
 the exact definition explicitly. `PayloadVersionZodForVersions` supports a custom
 shape, and `isPayloadVersionSupported` supports a separate version gate.
 
-A bare `schema === X` or `z.literal(X)` does not check version or shape.
-`isPayloadOfSchemaType` checks the tag and supported version but not the custom
-fields. Use the complete typed guard on chain/datalake reads. Do not retry failed
-parsing with an older version, infer the revision from whatever shape passes, or
-accept unsupported versions merely because an object is open.
+A bare `schema === X` or `z.literal(X)` does not check version or shape — and it
+does not produce a payload envelope. `isPayloadOfSchemaType` checks the tag and
+supported version but not the custom fields. Use the complete typed guard on
+chain/datalake reads. Do not retry failed parsing with an older version, infer
+the revision from whatever shape passes, or accept unsupported versions merely
+because an object is open.
 
 Verify the original object's hash before projection. **Preserve `$version` before
 validation**: `omitMeta` and `omitClientMeta` delete it. If a shipped parser needs

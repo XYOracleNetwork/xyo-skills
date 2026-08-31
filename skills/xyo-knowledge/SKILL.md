@@ -18,7 +18,7 @@ This builds on the [Development Skill](../xy-development/SKILL.md) for coding pr
 ## Table of Contents
 
 ### [Protocol Primitives](primitives.md)
-Read when working with XYO data structures — payloads, schemas, bound witnesses, payload builders, or hashing. Covers the core data model and how to construct and validate protocol objects.
+Read when working with XYO data structures — payloads, schemas, bound witnesses, payload builders, or hashing. Covers the core data model, how to construct and validate protocol objects, and the mandatory Zod authoring pattern for a new payload type.
 
 ### [Payload Schema Evolution and Identity](payload-schema-evolution.md)
 Read before naming or revising schemas, choosing open/closed fields, using `$version`, selecting root versus data hashes, or validating/caching payloads. New schema names stay unversioned; root hashes are the application default. Preserve explicitly prescribed legacy protocol contracts.

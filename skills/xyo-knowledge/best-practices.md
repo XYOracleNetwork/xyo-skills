@@ -133,10 +133,9 @@ When you need a new schema:
 
 ### Schema as Type Identity
 
-The canonical guard is the **Zod-factory pair** generated from each version-aware payload definition. `zodIsFactory(MovePayloadZod)` must validate schema name, supported effective `$version`, and shape together. Start from `PayloadZodLooseOfSchema` / `PayloadZodStrictOfSchema`; a bare `z.literal(schema)` does not check a revision. Use the complete guard whenever you read payloads from the chain or datalake.
+The canonical guard is the **Zod-factory pair** generated from each version-aware payload definition, as in [Authoring a payload type](primitives.md#authoring-a-payload-type). `zodIsFactory(MoveZod)` must validate schema name, supported effective `$version`, and shape together. Start from `PayloadZodOfSchema` (or `PayloadZodLooseOfSchema` / `PayloadZodStrictOfSchema` when the unknown-field policy requires it); a bare `z.literal(schema)` is not a payload envelope and does not check a revision. Use the complete guard whenever you read payloads from the chain or datalake.
 
 ```ts
-const isMovePayload = zodIsFactory(MovePayloadZod)
 const moves = allPayloads.filter(isMovePayload)
 ```
 

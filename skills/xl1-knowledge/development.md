@@ -70,13 +70,15 @@ This pattern is **mandatory** for all new types. Define the Zod schema first, de
 
 ## Payload contracts are version-aware
 
-The generic `FooZod` example above is not a complete payload definition. For a
-payload, extend SDK `PayloadZodLooseOfSchema(schema, supportedVersions)` or
-`PayloadZodStrictOfSchema` with its fields, then generate the guards. Choose
-unknown-field policy explicitly; default `z.object` strips fields. These factories
-default to supporting only effective `1.0.0`, not every structurally plausible
-version. A receiver validates the original schema, `$version`, and shape before
-making projections; never strip metadata then retry as version 1.
+The generic `FooZod` example above is not a complete payload definition. Author
+an XYO payload as in [Authoring a payload type](../xyo-knowledge/primitives.md#authoring-a-payload-type):
+`import * as z from 'zod/mini'`, a `FieldsZod`, `z.extend(PayloadZodOfSchema(Schema), FieldsZod.shape)`,
+`z.infer`, and the `zodIsFactory` / `zodAsFactory` / `zodToFactory` trio. Swap
+`PayloadZodOfSchema` for `PayloadZodLooseOfSchema` or `PayloadZodStrictOfSchema`
+only when the unknown-field policy requires it. Those factories default to
+supporting only effective `1.0.0`, not every structurally plausible version. A
+receiver validates the original schema, `$version`, and shape before making
+projections; never strip metadata then retry as version 1.
 
 Follow [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md)
 for ASCII naming, immutable definitions, compatibility, root-hash references, and
