@@ -10,20 +10,94 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 
 The **payload** is the fundamental data unit in XYO. It's a JSON object with a required `schema` field that identifies its type.
 
-### Identifier and Type Definition
+### Authoring a payload type
 
-The `schema` field is a validated branded string. Use its branded literal type,
-not an unvalidated raw string, in the `Payload` generic:
+The Zod schema is the source of truth for a payload. Derive the TypeScript type
+and the `is` / `as` / `to` factories from it. Do not author a new payload as
+`type Foo = Payload<Fields, Schema>` without a matching Zod definition.
 
-```ts
-import { asSchema, type Payload } from '@xyo-network/sdk'
+Canonical in-tree example:
+`plugins/packages/payload/src/modules/evm-nft-id/Payload/NftId/`. Copy that
+shape, not a `Payload<Fields, Schema>` interface. Application schemas use a
+namespace you control — see [Schema Naming](best-practices.md#schema-naming).
 
-const MoveSchema = asSchema('com.example.rps.move', true)
-type MovePayload = Payload<{ move: 'rock' | 'paper' | 'scissors' }, typeof MoveSchema>
+```text
+Move/
+  Schema.ts    // asSchema(...)
+  Payload.ts   // FieldsZod + payload Zod + factories
+  index.ts     // re-exports
 ```
 
-For a runtime contract, derive the type from a version-aware Zod definition as
-shown in [Payload Schema Evolution and Identity](payload-schema-evolution.md).
+Tiny payloads may colocate schema and payload in one file. Nested field objects
+(`NftAttributeZod`, mime types, and similar) are **not** payloads — they stay
+plain `z.object` / `z.enum` helpers and are composed into `FieldsZod`.
+
+```ts
+import { zodAsFactory, zodIsFactory, zodToFactory } from '@ariestools/sdk'
+import { asSchema, PayloadZodOfSchema } from '@xyo-network/sdk'
+import * as z from 'zod/mini'
+
+export const MoveSchema = asSchema('com.example.rps.move', true)
+export type MoveSchema = typeof MoveSchema
+
+export const MoveFieldsZod = z.object({
+  move: z.enum(['rock', 'paper', 'scissors']),
+})
+export type MoveFields = z.infer<typeof MoveFieldsZod>
+
+export const MoveZod = z.extend(PayloadZodOfSchema(MoveSchema), MoveFieldsZod.shape)
+export type MovePayload = z.infer<typeof MoveZod>
+
+export const isMovePayload = zodIsFactory(MoveZod)
+export const asMovePayload = zodAsFactory(MoveZod, 'asMovePayload')
+export const toMovePayload = zodToFactory(MoveZod, 'toMovePayload')
+```
+
+Required pieces:
+
+| Piece | Rule |
+|---|---|
+| Schema name | `asSchema('…', true)` — never a raw string or a cast |
+| Zod import | `import * as z from 'zod/mini'` — not `zod` |
+| Envelope | `z.extend(PayloadZodOfSchema(Schema), FieldsZod.shape)` |
+| Type | `z.infer<typeof FooZod>` |
+| Guards | `zodIsFactory` / `zodAsFactory` / `zodToFactory` from `@ariestools/sdk` |
+| Imports | `@xyo-network/sdk` and `@ariestools/sdk` — not deprecated payload-model packages |
+
+`PayloadZodOfSchema` is what binds the branded `schema` literal **and** the
+supported `$version` (default effective `1.0.0`). A hand-written
+`schema: z.literal(Schema)` skips that envelope. Choose the envelope factory
+from unknown-field policy:
+
+| Factory | Extra keys | When |
+|---|---|---|
+| `PayloadZodOfSchema` | stripped (same as `z.object`) | **Default** for new payloads |
+| `PayloadZodStrictOfSchema` | rejected | Closed published definition |
+| `PayloadZodLooseOfSchema` | preserved | Open definition that must round-trip extras |
+
+Pass a version or version array as the second argument when the validator
+accepts more than default `1.0.0`. Version, freeze, and hash rules:
+[Payload Schema Evolution and Identity](payload-schema-evolution.md).
+
+A one-field payload may inline the field object in `z.extend` instead of a
+separate `FieldsZod`. Still use `PayloadZodOfSchema` and the factory trio.
+
+**Module configs** are payloads too, but they extend an existing config Zod
+(`WitnessConfigZod`, `ModuleConfigZod`, `DivinerConfigZod`) that already includes
+the envelope, then override `schema` with `z.literal(ConfigSchema)`. Still emit
+`is` / `as` / `to` from that result.
+
+Do not:
+
+- Write `z.object({ schema: z.literal(Schema), …fields })` or `z.strictObject({ schema: z.literal(Schema), … })`
+- Use `isPayloadOfSchemaType` / `isPayloadOfZodType` / `AsObjectFactory` as the primary guard
+- Import `z` from `'zod'` (full Zod) for payload definitions
+- Hand-write `isFoo` via `.safeParse` instead of the factories
+
+### Identifier
+
+The `schema` field is a validated branded string. Use `asSchema(name, true)`;
+never brand an invalid string with a cast.
 
 Schema format: the entire string is nonempty ASCII lowercase letter/digit segments separated by single dots — `/^(?:[a-z0-9]+\.)*[a-z0-9]+$/`. Hyphens, underscores, Unicode, uppercase, whitespace, and empty segments are invalid. New schema names identify a stable type family: no structural `.v1`, `.1`, or similar suffix. Namespace ownership is separate from syntax. Read [Payload Schema Evolution and Identity](payload-schema-evolution.md) before creating or changing a contract.
 
@@ -61,8 +135,7 @@ const payload = new PayloadBuilder({ schema: MoveSchema })
 A TypeScript annotation, generic argument, or `as` cast does not validate custom
 fields at runtime. Do not use `as unknown as MovePayload` to bypass the branded
 schema or supported-version contract. Pair `PayloadBuilder.build()` with the
-asserting parser generated from the complete version-aware definition (see
-[Zod-First Type Pattern](../xl1-knowledge/development.md)):
+asserting parser from [Authoring a payload type](#authoring-a-payload-type):
 
 ```ts
 const move: MovePayload = asMovePayload(
@@ -91,15 +164,11 @@ Static meta manipulation:
 
 ### Schema-Based Type Discrimination
 
-Schemas identify a type family, not a complete revision. The canonical guard is the **Zod-factory** generated from a version-aware payload definition — it checks schema name, supported effective `$version`, and shape together. Build that definition with `PayloadZodLooseOfSchema` or `PayloadZodStrictOfSchema` plus explicit custom fields; see the [complete pattern](payload-schema-evolution.md#validate-identifier-supported-version-and-shape-together).
+Schemas identify a type family, not a complete revision. The canonical guard is the **Zod-factory** generated alongside the payload type in [Authoring a payload type](#authoring-a-payload-type) — it checks schema name, supported effective `$version`, and shape together.
 
 ```ts
-import { zodIsFactory } from '@ariestools/sdk'
-
-const isMove = zodIsFactory(MovePayloadZod)
-
 // Filter a mixed payload array — typed as MovePayload[] AND validated
-const moves = allPayloads.filter(isMove)
+const moves = allPayloads.filter(isMovePayload)
 ```
 
 The SDK also exports `isPayloadOfSchemaType<T>(schema, supportedVersions?)` and `isPayloadOfZodType<T>(zod, schema?, supportedVersions?)`. The first checks the tag and supported version but trusts custom fields. The second also runs the supplied shape validator. Prefer a Zod-factory around a complete version-aware definition; never treat a tag/version check as full payload validation.
