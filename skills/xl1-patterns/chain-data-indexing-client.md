@@ -189,7 +189,7 @@ function SubmitMoveButton({ payloads }: { payloads: Payload[] }) {
 }
 ```
 
-This split makes the read view available pre-wallet (in a hybrid `GatewayProvider` + `InPageGatewaysProvider` setup) and gates writes on the wallet.
+This split makes the read view available pre-wallet (in a hybrid `GatewayProvider` + `InPageGatewaysProvider transport="rest"` setup) and gates writes on the wallet.
 
 ---
 

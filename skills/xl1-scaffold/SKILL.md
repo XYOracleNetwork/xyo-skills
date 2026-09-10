@@ -181,6 +181,8 @@ The scaffold (per single-template invocation, when NOT in workspace-member mode)
 
 In `--workspace-member` mode, steps 1–2 still run (with the workspace-aware tweaks); step 3 is skipped (the root install handles all linking + verification).
 
+The `react` template's `App.tsx` ships the XL1 provider stack already wired: `InPageGatewaysProvider transport="rest"` wrapping `GatewayProvider`, so the app reads chain data for anonymous visitors and gates only writes on the wallet. **Keep `transport="rest"`** — the prop defaults to `'rpc'`, and REST reads come from the network's cacheable static bucket layout rather than one live gateway call per read. See [Browser Gateway — REST over RPC](../xl1-knowledge/gateway-browser.md#rest-over-rpc). Non-React browser targets (workers, service workers, extensions) integrate through `@xyo-network/xl1-browser-system` instead.
+
 If any step fails, the scaffold exits non-zero. Relay the failing output to the user verbatim before attempting a fix.
 
 ### Working with the shared package
@@ -197,6 +199,7 @@ If any step fails, the scaffold exits non-zero. Relay the failing output to the 
 - React components, hooks, browser globals → `packages/app/src/`
 - Express handlers, Node-only globals (`fs`, `child_process`) → `packages/service/src/`
 - `@xyo-network/xl1-react-client-sdk` — browser-only, lives in `app`
+- `@xyo-network/xl1-browser-system` — browser-only; only needed when a non-React realm (worker, service worker, extension) integrates XL1 directly. The React app reaches it through `xl1-react-client-sdk`
 - `@xyo-network/xl1-sdk` — typically lives in `service` (or both if app needs read-only chain queries; either way, don't re-export it through shared)
 
 **Adding cross-package imports:**

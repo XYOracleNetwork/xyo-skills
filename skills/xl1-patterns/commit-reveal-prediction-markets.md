@@ -465,7 +465,7 @@ The `pending` phase covers the (usually short) window before `commit.nbf` — th
 
 ## React Integration
 
-Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets without connecting a wallet. Gate commit/reveal actions behind wallet connection. The parent app must use `GatewayProvider` (with `InPageGatewaysProvider` ancestor) — not `WalletGatewayProvider` — for read-only browsing to work without a wallet:
+Use [In-Page Data Lakes](in-page-datalakes.md) so visitors can browse markets without connecting a wallet. Gate commit/reveal actions behind wallet connection. The parent app must use `GatewayProvider` (with an `InPageGatewaysProvider transport="rest"` ancestor) — not `WalletGatewayProvider` — for read-only browsing to work without a wallet:
 
 ```tsx
 import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
