@@ -7,7 +7,9 @@
 
 Some XL1 code only exists — or only behaves correctly — in a real browser:
 
-- the in-page gateway (`InPageGatewaysProvider` / `buildGateway`, `transport: 'rpc' | 'rest'`),
+- the in-page gateway (`InPageGatewaysProvider` in React, `launchXl1BrowserGatewaySystem`
+  from `@xyo-network/xl1-browser-system` elsewhere, `transport: 'rest' | 'rpc'` — specs
+  should exercise the `'rest'` path the app actually ships),
 - the `IndexedDbArchivist` in-page datalake,
 - `PostMessageRpcTransport` wallet ↔ dApp wiring,
 - the browser conditional builds of `@xyo-network/xl1-sdk/gateway` and `/providers`,

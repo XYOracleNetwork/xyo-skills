@@ -1,6 +1,6 @@
 ---
 name: xl1-knowledge
-description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
+description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), website integration via @xyo-network/xl1-browser-system and the REST-over-RPC transport rule, identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, integrating XL1 into a website, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
 metadata:
   version: 1.1.33 # x-release-please-version
 ---
@@ -52,7 +52,7 @@ Read when working with XL1 chain data storage — archiving, querying, or config
 Read when connecting to the XL1 chain — generic gateway concepts, viewer API, networks, transports, and how to run a gateway node. Environment-specific construction lives in two sibling files.
 
 ### [Browser Gateway](gateway-browser.md)
-Read when constructing a gateway in a React dApp — the Chrome wallet extension, `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, and `useProvidedGateway`. UX patterns built on top of the gateway live in [Browser UX](../xl1-patterns/browser-ux.md).
+Read when integrating XL1 into any website — React dApps, plain pages, workers, service workers, and browser extensions. `@xyo-network/xl1-browser-system` is the preferred integration substrate and **REST is the preferred transport**; React dApps reach it through `InPageGatewaysProvider` with `transport="rest"` rather than launching a browser system directly. Also covers the Chrome wallet extension, `WalletGatewayProvider` / `GatewayProvider`, and `useProvidedGateway`. UX patterns built on top of the gateway live in [Browser UX](../xl1-patterns/browser-ux.md).
 
 ### [Node Gateway](gateway-node.md)
 Read when constructing a gateway in any non-browser context — backend services, indexers, CLIs, scheduled jobs, tests, and headless verification of dApps. Covers the canonical `GatewayBuilder` entry point (read-only and write-capable), the seed-phrase signer pattern, the lazy-promise caching pattern, and the `basicRemoteViewerLocator` escape hatch.

@@ -122,7 +122,8 @@ For dApp development, start with **Sequence** (beta) to test against a live chai
 
 The construction step is environment-specific. Pick the file that matches your runtime:
 
-- **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider`, then call `useProvidedGateway()` in components. See [Browser Gateway](gateway-browser.md).
+- **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider transport="rest"`, then call `useProvidedGateway()` in components. See [Browser Gateway](gateway-browser.md).
+- **Any other browser realm** — plain websites, web workers, service workers, and extension backgrounds launch `launchXl1BrowserGatewaySystem` from `@xyo-network/xl1-browser-system` with `transport: 'rest'`. See [Browser Gateway — Integrating XL1 Into a Website](gateway-browser.md#integrating-xl1-into-a-website).
 - **Node / server-side / headless** — use `GatewayBuilder` from `@xyo-network/xl1-sdk`. `.build()` for read-only, `.account(account).buildRunner()` for write-capable. See [Node Gateway](gateway-node.md).
 - **Tests** — use `MemoryRpcTransport` (see [Transports](#transports) below).
 
@@ -447,6 +448,19 @@ The wallet and dApp are independent datalake clients — they may point to diffe
 
 ## Transports
 
+Two different things are called "transport" around the gateway. Keep them apart.
+
+**Chain-read transport** — how a browser gateway reads chain data. `'rest'` or
+`'rpc'`, selected by the `transport` prop on `InPageGatewaysProvider` or the
+`transport` option on `launchXl1BrowserGatewaySystem`. **REST is the preferred
+choice**: reads come from the network's cacheable static bucket layout rather
+than a live gateway call per read, while mempool submission still uses the RPC
+URL. See [Browser Gateway — REST over RPC](gateway-browser.md#rest-over-rpc).
+
+**RPC transport classes** — how a JSON-RPC message physically travels. These are
+independent of the choice above; a REST-configured browser system still uses one
+for writes.
+
 | Transport | Use Case |
 |-----------|----------|
 | `HttpRpcTransport` | Network — connect to a remote gateway over HTTP |
@@ -480,7 +494,7 @@ variants for any new server code.
 `@xyo-network/xl1-sdk/providers` (subpath of the SDK monolith; also on the root
 barrel) offers environment-specific provider bundles via conditional exports:
 
-- **Browser provider** — for web dApps, uses PostMessage transport. See [Browser Gateway](gateway-browser.md).
+- **Browser provider** — for web dApps, uses PostMessage transport to reach the wallet. Page-owned gateways resolve through `@xyo-network/xl1-browser-system` instead. See [Browser Gateway](gateway-browser.md).
 - **Node provider** — for backend services, uses HTTP transport. See [Node Gateway](gateway-node.md).
 - **Neutral provider** — platform-agnostic primitives shared by both.
 

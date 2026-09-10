@@ -8,6 +8,7 @@
 | xl1-protocol | `@xyo-network/xl1-sdk` | XL1 protocol (blocks, transactions, viewers, RPC) |
 | xyo-chain | `@xyo-network/chain-sdk` | XL1 runtime (services, drivers, chain operations) |
 | xl1-protocol (`packages/react/`) | `@xyo-network/xl1-react-client-sdk` | React dApp integration (GatewayProvider, WalletGatewayProvider, wallet connection, hooks) |
+| xl1-protocol (`packages/browser-system/`) | `@xyo-network/xl1-browser-system` | Website integration for any browser realm — page, worker, service worker, extension background. The preferred substrate; React apps reach it through `xl1-react-client-sdk`. See [Browser Gateway](gateway-browser.md) |
 
 **Always import from the root barrel.** Tree shaking eliminates unused exports.
 
@@ -23,6 +24,9 @@ import { ... } from '@xyo-network/chain-sdk'
 
 // React dApp — gateway providers, wallet connection, and gateway access
 import { GatewayProvider, WalletGatewayProvider, ConnectAccountsStack, useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
+
+// Non-React website, worker, service worker, or extension — launch a browser system directly
+import { launchXl1BrowserGatewaySystem } from '@xyo-network/xl1-browser-system'
 
 // Avoid — sub-package / subpath imports when the root barrel suffices
 import { BlockBoundWitnessZod } from '@xyo-network/xl1-protocol/protocol-model'

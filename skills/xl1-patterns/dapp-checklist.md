@@ -15,6 +15,8 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Gateway & Chain Access
 
 - [ ] A gateway provider wraps the app — either `WalletGatewayProvider` (wallet-required) or `GatewayProvider` + `InPageGatewaysProvider` (read-only fallback)
+- [ ] **In-page gateways are configured for REST.** `InPageGatewaysProvider` carries `transport="rest"` — the prop defaults to `'rpc'`, so omitting it silently puts every anonymous read on a live gateway node. `grep -n 'InPageGatewaysProvider' src/` shows `transport="rest"` on every occurrence. Reaching for `'rpc'` is allowed only with a stated reason (no published static layout, or a read that must observe unfinalized state)
+- [ ] Non-React browser targets (plain pages, workers, service workers, extensions) integrate through `@xyo-network/xl1-browser-system` — not a hand-rolled gateway — and retain the session so the owning realm can stop it
 - [ ] `gatewayName` is set on the provider (e.g., `MainNetwork.id`) — without it, `defaultGateway` is always `undefined`
 - [ ] Chain state is read through `connection.viewer` sub-viewers — no raw HTTP calls to the gateway endpoint
 - [ ] `connection.viewer` is guarded before use (`?.` or null check) — it is `XyoViewer | undefined`
@@ -99,6 +101,8 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Provider Architecture
 
 - [ ] App needs read-only access without wallet? Uses `GatewayProvider` + `InPageGatewaysProvider` — not `WalletGatewayProvider`
+- [ ] `InPageGatewaysProvider` sets `transport="rest"` — not left to the `'rpc'` default
+- [ ] Only one browser system per network — a React app does not launch `launchXl1BrowserGatewaySystem` alongside `InPageGatewaysProvider`
 - [ ] App strictly requires wallet? Uses `WalletGatewayProvider`
 - [ ] Read-only components (history, leaderboards, explorers) are placed outside the wallet connection gate — they work with just the in-page gateway
 - [ ] Wallet-gated components (submit move, create game) check write capability before rendering action controls
