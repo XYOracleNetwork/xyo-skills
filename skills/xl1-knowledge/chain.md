@@ -43,10 +43,12 @@ interface BlockBoundWitness extends BoundWitness {
   protocol?: number            // Protocol version
   step_hashes?: Hash[]         // Step checkpoint hashes
 
-  // Block metadata ($ prefix, excluded from _dataHash):
-  $epoch: number               // Epoch timestamp (milliseconds)
+  // Optional unsigned client meta ($ prefix, excluded from _dataHash). Not the clock.
+  $epoch?: number
 }
 ```
+
+The block clock is the signed `network.xyo.time` payload elevated into the block (`epoch` in milliseconds). Read it with `timePayloadOfBlock` / `epochOfBlock` from `@xyo-network/xl1-sdk`. `$epoch` is leftover client meta: producers no longer write it, and nothing that gates (qualification, finality, head selection) should accept it. `epochOfBlock` falls back to `$epoch` only so reads over pre-time-payload history keep working.
 
 ### Hydrated Blocks
 
