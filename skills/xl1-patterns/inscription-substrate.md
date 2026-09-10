@@ -436,7 +436,7 @@ Anyone can run this against the chain — it's a chain-native query, no diviner 
 
 ### Read-only without a wallet
 
-Wrap the dApp in `InPageGatewaysProvider` + `GatewayProvider` ([In-Page Data Lakes](in-page-datalakes.md)). The indexer reads chain state through `useProvidedGateway()`'s `defaultGateway`, which works without a wallet connection. Inscriptions, transfers, and ownership are all browsable for unauthenticated visitors.
+Wrap the dApp in `InPageGatewaysProvider transport="rest"` + `GatewayProvider` ([In-Page Data Lakes](in-page-datalakes.md)). The indexer reads chain state through `useProvidedGateway()`'s `defaultGateway`, which works without a wallet connection. Inscriptions, transfers, and ownership are all browsable for unauthenticated visitors.
 
 ---
 

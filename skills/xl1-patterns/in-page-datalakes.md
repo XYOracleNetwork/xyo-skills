@@ -3,7 +3,7 @@
 Read this pattern when your React dApp needs to access chain data or the datalake without requiring the user to connect their wallet first. This is the foundation for building explorer views, leaderboards, game history, and any UI that reads chain data or writes to the datalake without a wallet connection.
 
 **Builds on:**
-- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `InPageGatewaysProvider`, `WalletGatewayProvider`, `GatewayProvider`, `useProvidedGateway()`, and the REST-over-RPC transport rule
 - [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, REST datalake endpoints
 - [Gateway](../xl1-knowledge/gateway.md) — networks, viewer API, transports
 - [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based querying and polling patterns
@@ -24,15 +24,15 @@ The standard XL1 React setup routes all chain access through the wallet gateway 
 - A leaderboard should load immediately, not after a wallet prompt
 - A market listing should be browsable before a user decides to participate
 
-**In-page gateways** solve this by providing a read-only gateway that connects directly to the XL1 network over HTTP, independent of the wallet extension.
+**In-page gateways** solve this by providing a read-only gateway that connects directly to the XL1 network, independent of the wallet extension. Each one is an `@xyo-network/xl1-browser-system` session that `InPageGatewaysProvider` launches and owns — you configure it through provider props rather than launching it yourself.
 
 ---
 
 ## Architecture
 
 ```
-┌─ InPageGatewaysProvider ──────────────────────────────────┐
-│  (creates HTTP-based gateways for each network)           │
+┌─ InPageGatewaysProvider transport="rest" ─────────────────┐
+│  (one browser-system gateway per network, REST reads)     │
 │                                                           │
 │  ┌─ GatewayProvider ───────────────────────────────────┐  │
 │  │  (merges wallet + in-page into single context)      │  │
@@ -75,7 +75,7 @@ function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
+    <InPageGatewaysProvider transport="rest">
       <GatewayProvider gatewayName={MainNetwork.id}>
         {/* These components can read chain data immediately — no wallet needed */}
         <GameHistory />
@@ -89,6 +89,24 @@ function App() {
   )
 }
 ```
+
+### Set `transport="rest"`
+
+`InPageGatewaysProvider` still defaults to `transport="rpc"` for backward
+compatibility, so REST is opt-in. Pass it explicitly on every in-page setup.
+
+REST reads come from the network's static bucket layout — cacheable index and
+step-summary files behind a CDN — instead of a live gateway call per read. That
+matters most here: the whole point of this pattern is a page that loads chain
+data for every anonymous visitor, which is exactly the read volume you do not
+want landing on a gateway node. Writes are unaffected, since mempool submission
+goes over the RPC URL either way.
+
+For the local network, REST reads a path-based layout served by the
+`localEndpoint` prop (default `https://chain.aries.test:8791`); every other
+network reads the `<gatewayName>.xyo.space` subdomain layout. See
+[Browser Gateway — REST over RPC](../xl1-knowledge/gateway-browser.md#rest-over-rpc)
+for the transport rule and the non-React equivalents.
 
 ---
 
@@ -281,7 +299,7 @@ function App() {
   const [address, setAddress] = useState<string>()
 
   return (
-    <InPageGatewaysProvider>
+    <InPageGatewaysProvider transport="rest">
       <GatewayProvider gatewayName={MainNetwork.id}>
         {/* Always visible — chain reads + datalake reads/writes, no wallet */}
         <Header />
@@ -443,3 +461,4 @@ Hashes and addresses surface throughout in-page datalake views (game IDs, player
 | Display data to unauthenticated users? | Place read components outside the wallet connection gate |
 | Need to poll for updates? | Use the polling pattern from [Chain Data Indexing](chain-data-indexing-protocol.md) — works with in-page gateway |
 | Which network for development? | Use Sequence (beta) — live chain, no real tokens. See [Gateway](../xl1-knowledge/gateway.md) |
+| Which in-page transport? | `transport="rest"`. It is not the prop's default, so pass it explicitly. Reach for `'rpc'` only when the deployment publishes no static layout, or a read must observe unfinalized state |

@@ -5,7 +5,7 @@ How to build user-facing dApp UIs idiomatically — wallet connection, display c
 **Scope:** browser-side UX patterns only. For browser-side gateway *construction* (the wallet extension, providers, hooks), see [Browser Gateway](../xl1-knowledge/gateway-browser.md). For the env-agnostic gateway API surface, see [Gateway](../xl1-knowledge/gateway.md).
 
 **Builds on:**
-- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, `useProvidedGateway`
+- [Browser Gateway](../xl1-knowledge/gateway-browser.md) — `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider`, `useProvidedGateway`, and the REST-over-RPC transport rule
 - [Gateway](../xl1-knowledge/gateway.md) — capability detection, transaction submission, viewer API
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browsing patterns
 - [Wallet](wallet.md) — the wallet's permission surface (what `ConnectAccountsStack` is requesting under the hood, and what is off-limits)
@@ -76,7 +76,7 @@ function App() {
 - The connected `address` is lifted to app state and passed as a prop to consumers.
 - Child components call `useProvidedGateway()` for chain operations.
 
-For apps that need to work *before* a wallet is connected (history pages, leaderboards, public browse views), wrap the app in `GatewayProvider` + `InPageGatewaysProvider` instead — see [In-Page Data Lakes](in-page-datalakes.md).
+For apps that need to work *before* a wallet is connected (history pages, leaderboards, public browse views), wrap the app in `GatewayProvider` + `InPageGatewaysProvider transport="rest"` instead — see [In-Page Data Lakes](in-page-datalakes.md). The `transport` prop is not optional in practice: it still defaults to `'rpc'`, and REST is the best practice for in-page reads.
 
 ---
 
@@ -181,3 +181,4 @@ Linking, clamping, and copy-to-clipboard compose — a single component should c
 | Surfacing an address, block, transaction, or payload with no link to the Explorer | Users have no path to inspect the primitive in context | Wrap the value in a link built via `ExplorerLinks` from `@xyo-network/xl1-sdk` |
 | Hand-rolling Explorer URLs (`` `${explorerUrl}/xl1/${networkId}/transaction/${hash}` ``) | Drifts from the canonical path shape; breaks silently when the Explorer route changes | Build URLs through `ExplorerLinks` methods (`address`, `block`, `transaction`, `transactionPayload`, …) |
 | Gating reads behind wallet connection | Visitors can't browse without committing to a wallet popup | Use `GatewayProvider` + `InPageGatewaysProvider` for read-only access; gate only writes on wallet |
+| Mounting `InPageGatewaysProvider` without `transport` | Silently falls back to `'rpc'`, so every anonymous visitor's reads hit a live gateway node instead of cacheable static buckets | Pass `transport="rest"` explicitly |
