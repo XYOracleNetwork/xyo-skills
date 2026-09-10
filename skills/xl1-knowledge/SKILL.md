@@ -2,7 +2,7 @@
 name: xl1-knowledge
 description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), website integration via @xyo-network/xl1-browser-system and the REST-over-RPC transport rule, identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, integrating XL1 into a website, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
 metadata:
-  version: 1.1.33 # x-release-please-version
+  version: 1.1.34 # x-release-please-version
 ---
 
 # XL1 Blockchain Knowledge
