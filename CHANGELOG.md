@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.34](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.33...v1.1.34) (2026-09-10)
+
+
+### Features
+
+* prefer browser-system and REST for XL1 website integration ([999fe14](https://github.com/XYOracleNetwork/xyo-skills/commit/999fe148630cfa2292a303f5dd03ae54ef2f2d39))
+* prefer browser-system and REST for XL1 website integration ([c5d5aeb](https://github.com/XYOracleNetwork/xyo-skills/commit/c5d5aeb736f6a72eb9f8755128b5e633586bddbc))
+
 ## [1.1.33](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.32...v1.1.33) (2026-08-31)
 
 
