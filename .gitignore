@@ -151,3 +151,6 @@ vite.config.ts.timestamp-*
 
 # Testing Prompts
 Prompts.md
+
+# Eval harness output
+.eval-results/
