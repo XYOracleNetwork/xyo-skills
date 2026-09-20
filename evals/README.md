@@ -6,10 +6,26 @@ Behavioral tests for the skill stack, run with [`claude plugin eval`](https://co
 pnpm eval                          # whole suite
 pnpm eval --skill xl1-patterns     # one skill's cases
 pnpm eval:smoke                    # tagged smoke cases, one run each
-pnpm eval:ci                       # CI posture: trust asserted, JSON written
 ```
 
 `pnpm eval --help` lists the defaults and every passthrough flag.
+
+## Run this by hand
+
+The suite is **deliberately not wired into CI, and that is not a pending
+follow-up.** Every run spends real model budget, and gating it would mean
+keeping an `ANTHROPIC_API_KEY` secret in a repo whose PRs can arrive from forks.
+Please do not add a workflow that invokes `pnpm eval`.
+
+The point to run it is before shipping skill changes — ahead of a
+`develop` → `main` integration PR, since that is when edits actually reach
+users. `pnpm validate:skills` is the free, agent-neutral check that *is* safe to
+run anywhere, and CI already runs it on PRs touching `skills/**`.
+
+The one eval-related thing CI does assert is that no rendered marketplace tree
+contains an `evals/` directory (`.github/workflows/validate-plugins.yml`). That
+costs nothing and guards the exclusion property described below — it does not
+run any case.
 
 ## Why this directory is a sibling of `skills/`, not inside it
 
@@ -68,8 +84,11 @@ same suite against the last released tag and against `HEAD`, then diff
 
 ## Cost
 
-A case runs three times per arm by default. `pnpm eval` pins `--max-cost-usd`,
-runs a single arm, and pins both models so a model rollout is not mistaken for a
-skill regression. Exit 2 means the run was partial (cost ceiling or rejected
-credential) — a budget signal, not a quality one; the harness reports it without
-failing.
+A case runs three times per arm by default, so the bill scales with
+cases x runs x arms. `pnpm eval` pins `--max-cost-usd`, runs a single arm, and
+pins both models so a model rollout is not mistaken for a skill regression.
+Exit 2 means the run was partial (cost ceiling or rejected credential) — a
+budget signal rather than a quality one; the harness reports it without calling
+the suite failed.
+
+Keeping this out of CI is what keeps that cost predictable and deliberate.

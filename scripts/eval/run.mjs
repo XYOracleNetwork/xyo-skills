@@ -9,6 +9,12 @@
 // Rendering into .preview/ keeps every Claude-specific artifact downstream of
 // the render boundary, exactly like the marketplace mirrors.
 //
+// RUN THIS BY HAND. The eval suite is deliberately not wired into CI and is not
+// planned to be: it spends real model budget per run, and gating it would mean
+// keeping an ANTHROPIC_API_KEY secret in a repo whose PRs can come from forks.
+// Run it yourself before shipping skill changes — see evals/README.md. Do not
+// add a workflow that invokes it.
+//
 // WHY evals/ IS A SIBLING OF skills/: the renderers copy a path allowlist
 // (skills, assets, LICENSE), so anything outside that list cannot be published
 // by any code path — exclusion by location, not by a filter someone has to
@@ -46,7 +52,6 @@ Usage: pnpm eval [options] [-- <claude plugin eval flags>]
 
 Options:
   --skill <name>   Run only evals/<name> (e.g. --skill xl1-patterns).
-  --ci             CI posture: assert trust, pin models, write JSON, keep local.
   --publish        Publish the HTML report (default: keep it local).
   --no-render      Reuse the existing .preview/claude tree.
   -h, --help       Show this message.
@@ -66,12 +71,11 @@ the no-plugin delta sits near 1.0 on every domain case and carries no regression
 signal. Pass --ablation with-without when you specifically want that number.`
 
 function parseArgs(args) {
-  const opts = { skill: null, ci: false, publish: false, render: true, passthrough: [] }
+  const opts = { skill: null, publish: false, render: true, passthrough: [] }
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
     switch (arg) {
       case '--skill': opts.skill = args[++i]; break
-      case '--ci': opts.ci = true; break
       case '--publish': opts.publish = true; break
       case '--no-render': opts.render = false; break
       case '--': opts.passthrough.push(...args.slice(i + 1)); return opts
@@ -116,10 +120,10 @@ function warnStaleClaude() {
   }
 }
 
-// The flag set moves between Claude Code builds — `-j/--concurrency` and
-// `--trust-plugin` are documented but absent from older ones, and passing an
-// unknown flag aborts the run before any case executes. Read what this build
-// actually accepts instead of hardcoding the documented set.
+// The flag set moves between Claude Code builds — `-j/--concurrency` is
+// documented but absent from older ones, and passing an unknown flag aborts the
+// run before any case executes. Read what this build actually accepts instead of
+// hardcoding the documented set.
 function supportedFlags() {
   const help = spawnSync('claude', ['plugin', 'eval', '--help'], { encoding: 'utf8' })
   if (help.error || !help.stdout) return null // can't tell; add nothing conditional
@@ -194,25 +198,14 @@ async function main() {
   // Reports leave the machine when published, so that is opt-in.
   if (!opts.publish && !has('--publish-report')) addDefault('--no-publish')
 
-  if (opts.ci) {
-    // A CI job has no terminal to answer the first-run trust prompt with.
-    if (!addDefault('--trust-plugin') && !has('--trust-plugin')) {
-      console.warn(
-        '⚠ this claude build has no --trust-plugin; a CI job will be refused on an\n' +
-        '  untrusted checkout. Upgrade Claude Code on the runner.\n',
-      )
-    }
-    if (!has('--json')) addDefault('--json', path.join(outputDir, 'results.json'))
-  }
-
   flags.push(...passthrough)
 
   console.log(`\n▶ claude ${flags.join(' ')}\n`)
   const status = run('claude', flags, 'claude plugin eval')
 
   // 0 = every case met the threshold. 1 = a real failure. 2 = partial run
-  // (cost ceiling or rejected credential), which is a budget signal, not a
-  // quality signal — surface it without turning CI red.
+  // (cost ceiling or rejected credential), which is a budget signal rather than
+  // a quality one — report it without calling the suite failed.
   if (status === 2) {
     console.warn(`\n⚠ partial run (exit 2): cost ceiling hit or credentials rejected. Results: ${outputDir}`)
     exit(0)

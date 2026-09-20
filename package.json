@@ -8,7 +8,6 @@
     "build": "pnpm -r build",
     "eval": "node scripts/eval/run.mjs",
     "eval:smoke": "node scripts/eval/run.mjs --tag smoke --runs 1",
-    "eval:ci": "node scripts/eval/run.mjs --ci",
     "lint": "pnpm -r lint",
     "validate:skills": "node scripts/validate-skills.mjs skills",
     "typecheck": "pnpm -r typecheck",
