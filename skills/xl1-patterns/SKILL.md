@@ -16,7 +16,7 @@ This skill provides prescriptive, recipe-style patterns for building common appl
 These patterns compose primitives from the full skill stack:
 
 - **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway (generic, browser, and Node)
-- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — headless application contracts, ports, recovery (when adopting `@xyo-network/dapp-kit*`)
+- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — headless application contracts, ports, recovery (when adopting `@xyo-network/dapp-kit*`), and the [architecture principles](../xl1-dapp-kit/architecture-principles.md) every multi-party dApp design should satisfy
 - **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — payloads, bound witnesses, modules, identity
 - **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest (canonical: ariestools-skills)
 - **[Development](../xy-development/SKILL.md)** — coding conventions, Git, testing, workflow (canonical: ariestools-skills)
