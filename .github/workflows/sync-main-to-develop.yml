@@ -12,6 +12,7 @@ jobs:
   sync:
     name: Open and merge sync PR
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -50,5 +51,30 @@ jobs:
             exit 1
           fi
 
-          echo "Merging $pr_url with merge-commit method..."
-          gh pr merge "$pr_url" --merge
+          # develop's branch protection requires status checks, so merging right after
+          # creation is rejected ("base branch policy prohibits the merge"). Repo-level
+          # auto-merge is disabled, so wait for the checks here before merging.
+          # Checks take a few seconds to register on a new PR, and `gh pr checks` exits
+          # non-zero while none are reported, so wait for them to appear first.
+          echo "Waiting for checks to register on $pr_url..."
+          for _ in $(seq 1 30); do
+            count=$(gh pr view "$pr_url" --json statusCheckRollup --jq '.statusCheckRollup | length')
+            [[ "$count" -gt 0 ]] && break
+            sleep 10
+          done
+
+          # A required check can register after `--watch` returns, so re-watch and retry
+          # the merge a few times before giving up. `--fail-fast` aborts on a failed check.
+          for attempt in $(seq 1 5); do
+            echo "Watching checks (attempt $attempt)..."
+            gh pr checks "$pr_url" --watch --fail-fast --interval 15
+
+            echo "Merging $pr_url with merge-commit method..."
+            if gh pr merge "$pr_url" --merge; then
+              exit 0
+            fi
+            sleep 20
+          done
+
+          echo "ERROR: $pr_url could not be merged after its checks passed." >&2
+          exit 1
