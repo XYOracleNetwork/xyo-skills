@@ -5,7 +5,10 @@ description: >-
   definition/config/plan/incarnation, xl1.dapp.json, application ports, effect
   journals and crash recovery, durable events vs Event Kit wakes, Node/browser
   hosts, Vercel/Cloudflare target composition, and conformance evidence.
-  Activates when building or migrating an XL1 dApp toward dapp-kit, writing
+  Also holds the architecture principles for any multi-party XL1 dApp (engine
+  vs clients, evidence-derived state, written protocol, house role, constant-cost
+  indexed loads, verifiable indexes). Activates when designing or reviewing an
+  XL1 dApp's architecture, building or migrating toward dapp-kit, writing
   xl1.dapp.json, hosting a headless runtime, or distinguishing UI clients from
   the protocol application. Complements xl1-patterns domain recipes and
   xl1-scaffold React+service apps — does not replace gateway/chain knowledge.
@@ -31,6 +34,9 @@ This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It s
 - **[xy-toolchain](../xy-toolchain/SKILL.md)** / **[xy-development](../xy-development/SKILL.md)** — from **ariestools-skills** (redirect stubs may appear in this pack)
 
 ## Table of Contents
+
+### [Architecture principles](architecture-principles.md)
+**Read first when designing or reviewing any XL1 dApp whose state matters to more than one party**, with or without dapp-kit. Seven principles (the dApp is an engine and every interface a client; state is anchored evidence; a written protocol; the house as a bound protocol role; load from indexes, not replay; constant-cost indexes; cheaply verifiable index answers), cross-cutting rules, a trust table and ten review questions.
 
 ### [Vocabulary](vocabulary.md)
 Definition, configuration, plan, incarnation, host, status dimensions, durability classes — the words agents must not collapse.
