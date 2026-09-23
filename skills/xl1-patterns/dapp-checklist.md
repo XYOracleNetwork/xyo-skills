@@ -144,6 +144,16 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 
 ---
 
+## Architecture principles (if state matters to more than one party)
+
+- [ ] The [review questions](../xl1-dapp-kit/architecture-principles.md#review-questions) are answered in the design or completion summary — in particular: one engine drives every interface; state recomputes from chain + datalakes alone; cold-load reads do not grow with history; every "first" / "latest" / completeness rule has a bound
+- [ ] No payload declares its own author or time; the signer is the author and the block is the clock
+- [ ] Index output never grants authority (signing, sponsorship, settlement) without a source check
+
+**Source:** [dApp Architecture Principles](../xl1-dapp-kit/architecture-principles.md)
+
+---
+
 ## dApp Kit (if using `@xyo-network/dapp-kit*` / `xl1.dapp.json`)
 
 - [ ] `xl1-dapp validate` (and `plan` for the deployment under test) succeeds
