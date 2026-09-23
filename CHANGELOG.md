@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.35](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.34...v1.1.35) (2026-09-23)
+
+
+### Features
+
+* add XL1 dApp architecture principles to xl1-dapp-kit ([b0666be](https://github.com/XYOracleNetwork/xyo-skills/commit/b0666be725bb852f9e3c2d928f1a88a39ddeb0af))
+* add XL1 dApp architecture principles to xl1-dapp-kit ([#89](https://github.com/XYOracleNetwork/xyo-skills/issues/89)) ([c7e2d41](https://github.com/XYOracleNetwork/xyo-skills/commit/c7e2d414a31cc0cbd0b17c6b3c94a56cc92496c2))
+
 ## [1.1.34](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.33...v1.1.34) (2026-09-10)
 
 
