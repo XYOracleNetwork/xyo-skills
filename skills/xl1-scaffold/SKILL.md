@@ -1,6 +1,6 @@
 ---
 name: xl1-scaffold
-description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project. Do NOT activate for work in an existing project.
+description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project — including when the spec is already concrete (archetype, patterns, network named) and the user wants the scaffold plan laid out before anything runs. Do NOT activate for work in an existing project.
 metadata:
   version: 1.1.35 # x-release-please-version
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Use this skill **only** when the user is starting a **new** XL1 project. For work in an existing repo — adding features, fixing bugs, or answering questions about XL1 concepts — use the appropriate lower-layer skill instead ([xl1-knowledge](../xl1-knowledge/SKILL.md) for the chain, [xl1-patterns](../xl1-patterns/SKILL.md) for design patterns).
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-scaffold v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xl1-scaffold v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## How to recognize the trigger
 
@@ -28,6 +28,8 @@ Do **not** activate when:
 - The user is asking how something works (that's reference, not scaffolding)
 
 If ambiguous, ask one question: *"Are you starting a new project, or adding to an existing one?"*
+
+A request to *plan* or *lay out* the scaffold for a new project whose spec is already concrete is scaffolding work, not reference — this skill owns it. Do not hand a concrete spec to [xl1-build](../xl1-build/SKILL.md) because the user said "plan"; the wizard is for under-specified requests.
 
 If the user wants a new project but the request is **vague or exploratory** — they haven't named the archetype, the patterns, or the multi-party shape — defer to [xl1-build](../xl1-build/SKILL.md) **first**. That skill runs a short planning wizard and hands a refined prompt back here. Concrete prompts (the archetype is named, the patterns are implied, the network is specified) skip the wizard and come straight to this skill.
 
@@ -225,6 +227,8 @@ import type { SubmitCommitRequest, GameStateResponse } from '@<scope>/shared'
 When you add new exports to `shared/`, run `pnpm --filter @<scope>/shared run build` (or `pnpm -r run build` from root) so consumers see the updated `dist/`.
 
 ## Hand-off behavior
+
+**Execution guard.** Everything below assumes you can run commands and write files. If the session lacks a shell or file-write tool, do not search for one, delegate the work to subagents, or loop — lay out the exact scaffold commands, the implementation plan, and the completion gate you would walk, then stop and hand back to the user. A plan delivered is complete for that session; a tool hunt is not progress.
 
 After the scaffold reports success:
 
