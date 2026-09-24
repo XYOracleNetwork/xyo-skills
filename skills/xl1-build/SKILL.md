@@ -11,7 +11,7 @@ This skill is the **planning front-end** to the scaffold. It runs a short, struc
 
 Run this skill **before** the scaffold, not in parallel with it. The deliverable of this skill is a *refined prompt*, not a scaffolded project.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xl1-build v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
 ## When this skill activates
 

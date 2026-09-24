@@ -9,7 +9,7 @@ metadata:
 
 Use this skill **only** when the user is starting a **new** XL1 project. For work in an existing repo — adding features, fixing bugs, or answering questions about XL1 concepts — use the appropriate lower-layer skill instead ([xl1-knowledge](../xl1-knowledge/SKILL.md) for the chain, [xl1-patterns](../xl1-patterns/SKILL.md) for design patterns).
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xl1-scaffold v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
 ## How to recognize the trigger
 
@@ -41,7 +41,7 @@ Before invoking the scaffold, scan the prompt and the working directory for conv
 - **Prompt names which accounts hold funds** (e.g. "accounts 0 and 1"). Tells you how many signers to derive and how to assign roles in multi-party flows.
 - **Prompt names a network** (mainnet / sequence / local). Determines the `DefaultNetworks` entry the scaffold's gateway points at and which `INDEXER_FLOOR_BLOCK` is captured.
 
-Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread.
+Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread, and open that acknowledgement with the skill identity line (`xl1-scaffold v<version>`, plus the skills it draws on).
 
 ### PRD.md fallback (read)
 
@@ -228,7 +228,7 @@ When you add new exports to `shared/`, run `pnpm --filter @<scope>/shared run bu
 
 ## Hand-off behavior
 
-**Execution guard.** Everything below assumes you can run commands and write files. If the session lacks a shell or file-write tool, do not search for one, delegate the work to subagents, or loop — lay out the exact scaffold commands, the implementation plan, and the completion gate you would walk, then stop and hand back to the user. A plan delivered is complete for that session; a tool hunt is not progress.
+**Execution guard.** Everything below assumes you can run commands and write files. If the session lacks a shell or file-write tool, do not search for one, delegate the work to subagents, or loop — lay out the exact scaffold commands, the implementation plan, and the completion gate you would walk, then stop and hand back to the user. Open that plan with its skill identity line — `xl1-scaffold v<version>` plus the other skills it draws on (e.g. `xl1-patterns`, `xl1-testing`) — exactly as a completion summary would. A plan delivered is complete for that session; a tool hunt is not progress.
 
 After the scaffold reports success:
 

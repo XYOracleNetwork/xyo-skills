@@ -9,7 +9,7 @@ metadata:
 
 This skill provides prescriptive, recipe-style patterns for building common application features on XL1. Where the lower layers document *what XL1 is*, this layer documents *how to build things on it*.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xl1-patterns v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
 **Rule ownership.** Entries below summarize rules that are stated in full in the linked file. The linked file is canonical: if a summary here and its file ever disagree, follow the file and flag the drift rather than reconciling silently.
 
