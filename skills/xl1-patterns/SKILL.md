@@ -1,6 +1,6 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
+description: Prescriptive design patterns for XL1 dApps. Covers browser UX, wallet connection and permission requests, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, wallet permissions, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
 metadata:
   version: 1.1.35 # x-release-please-version
 ---
@@ -9,7 +9,9 @@ metadata:
 
 This skill provides prescriptive, recipe-style patterns for building common application features on XL1. Where the lower layers document *what XL1 is*, this layer documents *how to build things on it*.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-patterns v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xl1-patterns v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+
+**Rule ownership.** Entries below summarize rules that are stated in full in the linked file. The linked file is canonical: if a summary here and its file ever disagree, follow the file and flag the drift rather than reconciling silently.
 
 ## Lower Layer Skills
 
