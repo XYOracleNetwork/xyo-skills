@@ -13,7 +13,7 @@ When you need to look up exact type definitions or API details beyond what this 
 
 This builds on the [Development Skill](../xy-development/SKILL.md) for coding principles and the [XY Toolchain Skill](../xy-toolchain/SKILL.md) for build/lint/test tooling.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xyo-knowledge v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xyo-knowledge v1.1.19`). When multiple skills from this plugin are active, each may be listed.
 
 ## Table of Contents
 

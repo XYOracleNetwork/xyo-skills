@@ -23,7 +23,7 @@ The hub for testing and verifying XL1 work. It routes to the right verification
 approach and documents each one. Read this SKILL to choose an approach, then open
 the linked sub-doc for the full procedure.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-testing v1.1.25`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` (e.g. `xl1-testing v1.1.25`). When multiple skills from this plugin are active, each may be listed.
 
 ## Lower-layer skills
 
