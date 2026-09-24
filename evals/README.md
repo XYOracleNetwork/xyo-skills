@@ -186,6 +186,15 @@ reason. Check a new case against them before spending a judge call.
     `com.rps-game.*` — a hyphen and no org tier. The grader now requires
     three or more `[a-z0-9]` or placeholder segments: the rule, not the case.
 
+14. **Identifiers belong in regex graders; judges check structure.** Two
+    checklist rubrics that demanded API names "by name" were failed 3–0 by the
+    Haiku judge on answers that contained every name — once on a 4k-character
+    indexer plan with `finalizedBlockStreamFromGateway` sitting in a code
+    block. Long text degrades a small judge exactly as the eval docs warn.
+    `names-finalized-stream` and `names-checkpoint` are now free regex
+    graders; the judge asks only whether the floor / checkpoint-resume /
+    finalized structure is present in any wording.
+
 ## Skill findings
 
 Failures that pointed at skill text rather than graders. Per CLAUDE.md the fix

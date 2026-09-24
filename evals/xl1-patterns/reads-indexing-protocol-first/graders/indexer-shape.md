@@ -3,17 +3,18 @@ type: llm
 weight: 2
 ---
 
-The user wants a long-running XL1 indexer service for a leaderboard.
+The user wants a long-running XL1 indexer service for a leaderboard. The exact
+API and variable names are checked by other graders; judge the structure only.
 
-PASS only if the answer covers all of:
-  - a floor block: scanning starts from a captured block recorded as
-    `INDEXER_FLOOR_BLOCK` (per chain), not from genesis;
-  - a persisted checkpoint holding the last processed block (hash and/or
-    number), written atomically, with restart resuming from the checkpoint
-    rather than from the floor;
-  - finalized delivery — consuming finalized blocks (e.g. `FinalizedBlockStream`
-    / `finalizedBlockStreamFromGateway`) rather than the latest head.
+  [1] FLOOR — scanning starts from a captured floor block (an application-
+      specific start height recorded in configuration), not from genesis.
+  [2] CHECKPOINT-RESUME — progress (the last processed block) is persisted
+      durably and written atomically, and after a restart the indexer resumes
+      from that checkpoint rather than from the floor.
+  [3] FINALIZED — the indexer consumes finalized blocks rather than the latest
+      head.
 
-FAIL if it scans from block 0, has no durable checkpoint / resume story, or
-processes the latest head without distinguishing finality. Generic "use a
-database and poll for new blocks" advice without these specifics FAILS.
+PASS if all three are present in substance, in any wording.
+FAIL if it scans from block 0, has no durable progress record or resumes from
+the floor on every restart, or processes the latest head without regard to
+finality.

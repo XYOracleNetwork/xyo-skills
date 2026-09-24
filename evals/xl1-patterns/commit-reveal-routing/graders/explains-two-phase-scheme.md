@@ -4,18 +4,20 @@ weight: 2
 ---
 
 The answer is about hiding simultaneous moves in a two-player on-chain game.
+Check the three items below against the whole answer. Wording may vary; code
+may or may not be present; each item counts if its substance appears anywhere.
 
-PASS only if all three hold:
-  1. the commitment is a hash of the move plus a secret salt, and the salt is
-     generated with a cryptographic RNG (e.g. `crypto.getRandomValues`) at 32+
-     bytes — not a timestamp, counter, or short value;
-  2. reveals are not accepted until the commit phase has closed (a commit
-     deadline or "all commits in" gate), so a late committer cannot see an early
-     reveal;
-  3. each reveal is verified by recomputing the hash and comparing to the
-     stored commit.
+  [1] SALT — the commitment is a hash of the move plus a secret salt, and the
+      salt comes from a cryptographic RNG (`crypto.getRandomValues`, `randomBytes`,
+      or equivalent) at 32 or more bytes. An answer that says the salt must not
+      be a timestamp or counter satisfies this.
+  [2] REVEAL GATE — reveals are not accepted until every commit is in or a
+      commit deadline has passed. Phrases such as "once all commits are in",
+      "after the commit deadline", "commit phase closes before reveals open" all
+      satisfy this.
+  [3] VERIFY — a reveal is checked by recomputing the hash from the revealed
+      move and salt and comparing it to the stored commitment.
 
-FAIL if the salt is omitted or predictable, if reveals may open before all
-commits are in, if the raw move is recorded at selection time, or if fairness
-relies on submission ordering or timestamps. Wording and code presence do not
-affect the verdict.
+PASS if all three items are present.
+FAIL if any item is absent, or if the answer records the raw move at selection
+time or relies on submission ordering or timestamps for fairness.
