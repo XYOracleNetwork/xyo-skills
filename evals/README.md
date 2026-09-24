@@ -54,6 +54,11 @@ body: the prompt) and a `graders/` directory with one grader per file. One level
 of grouping — `evals/<skill-name>/<case-name>/` — keeps `--eval-dir evals/<skill>`
 working as the per-skill runner.
 
+Case names are the bare directory name — the report shows `commit-reveal-routing`,
+not `xl1-patterns/commit-reveal-routing`. The report keys on them and `--case`
+globs match them, so two skills must not reuse a case directory name; make each
+specific enough to stand alone.
+
 ## Writing cases
 
 Give each case one grader on **the result** and one on **how Claude got there**:
@@ -72,15 +77,27 @@ excluded from the verdict.
 Two scoring notes from the docs: a `tool_used: Skill` grader is excluded from
 scoring in a two-arm run, since it can never pass without the plugin — set
 `arm: both` when the check is "this skill must *not* fire". And `--ablation`
-defaults to `none` here because baseline Claude knows nothing about XL1, so the
-no-plugin delta is near 1.0 on every domain case and carries no regression signal.
+defaults to `none` here because the baseline arm doubles the cost to answer a
+question — "does the plugin help at all?" — that is stable across edits and
+worth measuring once per case rather than every run.
+
+Measured once on `commit-reveal-routing` (Claude Code 2.1.273): **with 1.00,
+without 0.75, Δ +0.25**. Baseline Claude explains commit-reveal correctly on its
+own — it is generic computer science — and the *only* grader separating the arms
+was `opens-commit-reveal-recipe`. Two lessons follow. A small Δ on a generic-CS
+prompt does not mean the skill is weak; it means the plugin's contribution is
+steering to the canonical recipe rather than supplying the concept. And the
+"how Claude got there" grader is often the entire plugin signal, so never write
+a case without one.
 
 ## Regression signal
 
 Compare **version over version**, not against the no-plugin baseline: run the
 same suite against the last released tag and against `HEAD`, then diff
 `aggregates.overallScore` from the two `--json` documents. That is what catches
-"this skill edit made routing worse".
+"this skill edit made routing worse". The baseline delta cannot — it compares
+the plugin to nothing, so it moves when the *concept* leaves baseline Claude's
+reach, not when a skill edit degrades routing.
 
 ## Cost
 

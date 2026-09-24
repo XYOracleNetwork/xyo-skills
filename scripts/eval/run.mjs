@@ -66,9 +66,10 @@ Defaults applied unless you override them:
 
 Defaults the installed claude build does not accept are dropped automatically.
 
-Ablation defaults to none because baseline Claude knows nothing about XL1, so
-the no-plugin delta sits near 1.0 on every domain case and carries no regression
-signal. Pass --ablation with-without when you specifically want that number.`
+Ablation defaults to none. The no-plugin baseline answers "does the plugin help
+at all?" — worth measuring once per case rather than on every run, and it doubles
+the cost. For regression detection compare version over version instead (see
+evals/README.md). Pass --ablation with-without when you want the delta.`
 
 function parseArgs(args) {
   const opts = { skill: null, publish: false, render: true, passthrough: [] }
