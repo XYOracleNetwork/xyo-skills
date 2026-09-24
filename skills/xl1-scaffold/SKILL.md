@@ -193,7 +193,7 @@ If any step fails, the scaffold exits non-zero. Relay the failing output to the 
 
 **Belongs in `shared/`:**
 - API request/response types between app and service (e.g. `interface SubmitCommitRequest`, `interface GameStateResponse`)
-- Zod schemas validated on both sides
+- Zod schemas validated on both sides — named under `com.<your-org>.<app>.*` with **lowercase `[a-z0-9]` dot-segments only**. The workspace scope (`@rps-game/...`) and the directory name (`rps-game`) are package identifiers, not schema segments: a hyphen is legal in a package name and illegal in a schema name, so `@rps-game/shared` holds `com.acme.rpsgame.move`, never `com.rps-game.move`. When the user has not named an org, write the placeholder `com.<org>.<app>.*` rather than inventing a segment. See [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)
 - Game/business enums and constants used in both UI and backend (e.g. `enum Move { Rock, Paper, Scissors }`)
 - Branded ID types (`type GameId = Brand<string, 'GameId'>`)
 
