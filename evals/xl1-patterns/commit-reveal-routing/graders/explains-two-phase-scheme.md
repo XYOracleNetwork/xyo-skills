@@ -5,16 +5,17 @@ weight: 2
 
 The answer is about hiding simultaneous moves in a two-player on-chain game.
 
-PASS if it describes a two-phase commit-reveal scheme in which:
-  - phase one publishes a hash of the choice combined with a secret salt, and
-  - phase two publishes the choice and salt, which are checked against the hash.
-A correct answer may use different wording ("commitment", "nonce", "blinding
-factor") and may or may not include code.
+PASS only if all three hold:
+  1. the commitment is a hash of the move plus a secret salt, and the salt is
+     generated with a cryptographic RNG (e.g. `crypto.getRandomValues`) at 32+
+     bytes — not a timestamp, counter, or short value;
+  2. reveals are not accepted until the commit phase has closed (a commit
+     deadline or "all commits in" gate), so a late committer cannot see an early
+     reveal;
+  3. each reveal is verified by recomputing the hash and comparing to the
+     stored commit.
 
-FAIL if it proposes recording the raw move on-chain at selection time, relies on
-submission ordering or timestamps for fairness, suggests encrypting to the other
-player without a reveal step, or omits the salt so the hash can be brute-forced
-over the three possible moves.
-
-Judge only the scheme. Formatting, length, and whether code is included do not
+FAIL if the salt is omitted or predictable, if reveals may open before all
+commits are in, if the raw move is recorded at selection time, or if fairness
+relies on submission ordering or timestamps. Wording and code presence do not
 affect the verdict.

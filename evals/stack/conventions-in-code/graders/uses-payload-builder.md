@@ -1,6 +1,5 @@
 ---
 type: regex
-pattern: 'root hash'
-flags: i
+pattern: 'PayloadBuilder'
 target: last_message
 ---

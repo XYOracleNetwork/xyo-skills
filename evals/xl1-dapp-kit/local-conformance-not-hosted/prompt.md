@@ -7,6 +7,5 @@ allowed_tools: [Read, Glob, Grep, Skill]
 
 My dapp-kit app passes every local conformance test with
 `@xyo-network/dapp-kit-vitest-config`. Can I mark it as qualified for hosted
-and Sequence deployment now? Be specific: which evidence label does the skill
-stack say I'm entitled to attach at this point, and what exactly do the local
-tests not prove?
+and Sequence deployment now? Be specific: which evidence label am I actually entitled to attach at this
+point, and what exactly do the local tests not prove?

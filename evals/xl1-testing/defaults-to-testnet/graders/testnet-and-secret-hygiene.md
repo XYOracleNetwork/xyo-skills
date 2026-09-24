@@ -3,13 +3,17 @@ type: llm
 weight: 2
 ---
 
-The user asked for a Node verification script for an XL1 dApp that will run in
-CI on every merge.
+The user asked for an inline Node verification script for an XL1 dApp that CI
+will run on every merge.
 
-PASS if the script or accompanying guidance targets a testnet (sequence) or a
-local dev chain rather than mainnet, and treats the seed phrase as a secret —
-read from the environment or a `.env` that is not committed, never hardcoded
-into the script and never printed or logged.
+PASS only if the script: targets a testnet (sequence) or local chain, never
+mainnet for a routine run; loads the seed phrase from the environment or an
+uncommitted `.env` and never hardcodes, logs, or echoes it; derives the signer
+with `generateXyoBaseWalletFromPhrase` and `derivePath('<index>')` using a bare
+account index; builds a write-capable runner with `.account(...).buildRunner()`
+(not `.build()`, which is read-only); and passes explicit
+`confirmSubmittedTransaction` options (attempts/delay) when targeting Sequence.
 
-FAIL if it targets `xl1-mainnet` or real XL1 for a routine CI run, hardcodes a
-seed phrase in the script, or logs/echoes the seed or derived private key.
+FAIL if it targets mainnet, hardcodes or logs the seed, uses `Account.create`
+for the signer, tries to submit through `.build()`, or relies on default
+confirmation timing on Sequence.

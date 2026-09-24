@@ -1,6 +1,6 @@
 ---
 type: llm
-weight: 3
+weight: 1
 ---
 
 The user asked for a plan for a two-player rock-paper-scissors dApp on XL1 with
