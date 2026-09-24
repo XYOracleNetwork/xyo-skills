@@ -35,11 +35,13 @@ const EVAL_SRC = path.join(REPO_ROOT, 'evals')
 const PLUGIN_DIR = path.join(REPO_ROOT, '.preview', 'claude')
 const RESULTS_ROOT = path.join(REPO_ROOT, '.eval-results')
 
-// Pinned so a model rollout is not mistaken for a skill regression.
+// Pinned so a model rollout is not mistaken for a skill regression. The cost
+// ceiling is sized so a full 3-run pass of the suite (~$11 list price at 23
+// cases) completes; a ceiling hit skips judge graders and reports partial.
 const AGENT_MODEL = 'claude-sonnet-5'
 const JUDGE_MODEL = 'claude-haiku-4-5'
 const THRESHOLD = '0.8'
-const MAX_COST_USD = '10'
+const MAX_COST_USD = '20'
 const CONCURRENCY = '4'
 
 // The version `claude plugin eval` reached general availability. Older builds
