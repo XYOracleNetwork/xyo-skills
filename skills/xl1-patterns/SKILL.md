@@ -2,7 +2,7 @@
 name: xl1-patterns
 description: Prescriptive design patterns for XL1 dApps. Covers browser UX, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
 metadata:
-  version: 1.1.34 # x-release-please-version
+  version: 1.1.35 # x-release-please-version
 ---
 
 # XL1 Design Patterns
@@ -16,7 +16,7 @@ This skill provides prescriptive, recipe-style patterns for building common appl
 These patterns compose primitives from the full skill stack:
 
 - **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway (generic, browser, and Node)
-- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — headless application contracts, ports, recovery (when adopting `@xyo-network/dapp-kit*`)
+- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — headless application contracts, ports, recovery (when adopting `@xyo-network/dapp-kit*`), and the [architecture principles](../xl1-dapp-kit/architecture-principles.md) every multi-party dApp design should satisfy
 - **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — payloads, bound witnesses, modules, identity
 - **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest (canonical: ariestools-skills)
 - **[Development](../xy-development/SKILL.md)** — coding conventions, Git, testing, workflow (canonical: ariestools-skills)
