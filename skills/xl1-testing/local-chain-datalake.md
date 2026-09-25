@@ -78,8 +78,8 @@ default change from silently altering the test topology:
     },
     "actors": [
       { "name": "api", "host": "127.0.0.1", "port": 8080 },
-      { "name": "producer", "heartbeatInterval": 250 },
-      { "name": "finalizer" }
+      { "name": "producer", "blockProductionCheckInterval": 500, "heartbeatInterval": 5000 },
+      { "name": "finalizer", "finalizationCheckInterval": 200, "heartbeatInterval": 5000 }
     ],
     "telemetry": { "metrics": { "scrape": { "port": 0 } } }
   }
@@ -88,6 +88,24 @@ default change from silently altering the test topology:
 
 The example uses the standard insecure local mnemonic and its account-zero
 address. Never reuse it on a network carrying value.
+
+Set the block cadence on both actors, as the example does. `xl1` applies its
+fast dev preset only when it runs without a config file; with `-c`, every
+interval the file leaves unset falls back to the schema default — a 10 s
+producer check and 5-minute heartbeats — so an idle chain sits at block 2 and
+each transaction waits up to 10 s. The example's values are the dev preset's:
+an empty heartbeat block about every 5 s, and a submitted transaction finalized
+in under a second.
+
+Keep the two `heartbeatInterval`s equal. The finalizer accepts an empty block
+only once its own `heartbeatInterval` has passed since the head, so it refuses
+a faster producer's heartbeats. While a refused heartbeat is pending, the
+producer builds nothing else on that head, transactions included, until it
+retries the stale head after 30 s. A producer-only override such as
+`"heartbeatInterval": 250` therefore makes transactions slower, not faster. An
+idle chain that stays at block 2 while the log repeats `findBestHead: candidates
+have failed uncle qualification …` has unset or mismatched intervals. See
+[Block cadence](local-chain.md#block-cadence).
 
 Before starting actors, inspect what the installed CLI actually resolves:
 
@@ -198,8 +216,8 @@ transaction logic inside the test.
 
 Require all of these before calling the fixture healthy:
 
-1. The resolved XL1 config contains the intended actors, connection, bindings,
-   chain id, and `strictDependencies: true`.
+1. The resolved XL1 config contains the intended actors and their block-cadence
+   intervals, connection, bindings, chain id, and `strictDependencies: true`.
 2. XL1 produces a finalized head readable through `GatewayBuilder`.
 3. The test writes an object through S3 and reads identical bytes anonymously.
 4. If the test claims chain/body integration, the finalized chain reference
