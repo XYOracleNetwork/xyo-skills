@@ -22,7 +22,7 @@ An XL1 dApp is a **portable, headless protocol runtime**. UI, CLI, and HTTP surf
 
 This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It sits **above** [xl1-knowledge](../xl1-knowledge/SKILL.md) and **alongside** [xl1-patterns](../xl1-patterns/SKILL.md) (domain recipes still apply). Classic [xl1-scaffold](../xl1-scaffold/SKILL.md) React+Express apps remain valid; migrate to dapp-kit when you need definition/plan/ports/recovery/conformance — not merely a Vite UI.
 
-**Skill identity.** Report as `xl1-dapp-kit v<version>` from this file's `metadata.version`.
+**Skill identity.** Report as `xl1-dapp-kit v<version>` (from this file's `metadata.version`) in every plan, acknowledgement, and completion summary.
 
 **Maturity:** `@xyo-network/dapp-kit*` is **published on npm** (1.x line, public access; license may still be `UNLICENSED`). Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates can still be open** per consumer — check the deployment's evidence labels. Prefer local conformance via [`@xyo-network/dapp-kit-vitest-config`](../xl1-testing/local-chain-dapp-kit-vitest.md); do not claim hosted qualification from local tests.
 

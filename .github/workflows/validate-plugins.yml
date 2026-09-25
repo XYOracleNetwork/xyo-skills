@@ -44,6 +44,23 @@ jobs:
           done
           echo "✓ Codex manifests valid"
 
+      - name: Assert eval suite never reaches consumers
+        run: |
+          set -euo pipefail
+          # evals/ is a sibling of skills/, so the renderers' path allowlist
+          # (skills, assets, LICENSE) already excludes it — no filter involved.
+          # This pins that property so a future edit to `copies` in lib.mjs
+          # cannot quietly start publishing test fixtures, scaffold scripts, or
+          # captured transcripts to the mirrors and Skills.sh installs.
+          for tree in /tmp/render/claude /tmp/render/codex; do
+            if find "$tree" -type d -name evals -print -quit | grep -q .; then
+              echo "✗ $tree contains an evals/ directory - the eval suite must never ship"
+              find "$tree" -type d -name evals
+              exit 1
+            fi
+          done
+          echo "✓ No eval artifacts in either rendered tree"
+
       - name: Validate rendered tree shape
         run: |
           set -euo pipefail
