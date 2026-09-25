@@ -198,6 +198,11 @@ async function main() {
   addDefault('--max-cost-usd', MAX_COST_USD)
   if (!has('-j') && !has('--concurrency')) addDefault('--concurrency', CONCURRENCY)
 
+  // Every case here is first-party, so run each case's scaffold_script (fixture
+  // setup) by default; pass --no-scaffold to skip. The docs gate this behind a
+  // flag because a suite can ship author-supplied bash — ours is ours.
+  if (!has('--scaffold') && !has('--no-scaffold')) addDefault('--scaffold')
+
   // Reports leave the machine when published, so that is opt-in.
   if (!opts.publish && !has('--publish-report')) addDefault('--no-publish')
 
