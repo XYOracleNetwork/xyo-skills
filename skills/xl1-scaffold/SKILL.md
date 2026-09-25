@@ -1,15 +1,15 @@
 ---
 name: xl1-scaffold
-description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project. Do NOT activate for work in an existing project.
+description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project — including when the spec is already concrete (archetype, patterns, network named) and the user wants the scaffold plan laid out before anything runs. Do NOT activate for work in an existing project.
 metadata:
-  version: 1.1.35 # x-release-please-version
+  version: 1.1.36 # x-release-please-version
 ---
 
 # XL1 Scaffold
 
 Use this skill **only** when the user is starting a **new** XL1 project. For work in an existing repo — adding features, fixing bugs, or answering questions about XL1 concepts — use the appropriate lower-layer skill instead ([xl1-knowledge](../xl1-knowledge/SKILL.md) for the chain, [xl1-patterns](../xl1-patterns/SKILL.md) for design patterns).
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. When reporting which skills informed your work, format as `<skill-name> v<version>` (e.g. `xl1-scaffold v1.1.19`). When multiple skills from this plugin are active, each may be listed.
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
 ## How to recognize the trigger
 
@@ -29,6 +29,8 @@ Do **not** activate when:
 
 If ambiguous, ask one question: *"Are you starting a new project, or adding to an existing one?"*
 
+A request to *plan* or *lay out* the scaffold for a new project whose spec is already concrete is scaffolding work, not reference — this skill owns it. Do not hand a concrete spec to [xl1-build](../xl1-build/SKILL.md) because the user said "plan"; the wizard is for under-specified requests.
+
 If the user wants a new project but the request is **vague or exploratory** — they haven't named the archetype, the patterns, or the multi-party shape — defer to [xl1-build](../xl1-build/SKILL.md) **first**. That skill runs a short planning wizard and hands a refined prompt back here. Concrete prompts (the archetype is named, the patterns are implied, the network is specified) skip the wizard and come straight to this skill.
 
 ## Interpreting the prompt
@@ -39,7 +41,7 @@ Before invoking the scaffold, scan the prompt and the working directory for conv
 - **Prompt names which accounts hold funds** (e.g. "accounts 0 and 1"). Tells you how many signers to derive and how to assign roles in multi-party flows.
 - **Prompt names a network** (mainnet / sequence / local). Determines the `DefaultNetworks` entry the scaffold's gateway points at and which `INDEXER_FLOOR_BLOCK` is captured.
 
-Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread.
+Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread, and open that acknowledgement with the skill identity line (`xl1-scaffold v<version>`, plus the skills it draws on).
 
 ### PRD.md fallback (read)
 
@@ -191,7 +193,7 @@ If any step fails, the scaffold exits non-zero. Relay the failing output to the 
 
 **Belongs in `shared/`:**
 - API request/response types between app and service (e.g. `interface SubmitCommitRequest`, `interface GameStateResponse`)
-- Zod schemas validated on both sides
+- Zod schemas validated on both sides — named under `com.<your-org>.<app>.*` with **lowercase `[a-z0-9]` dot-segments only**. The workspace scope (`@rps-game/...`) and the directory name (`rps-game`) are package identifiers, not schema segments: a hyphen is legal in a package name and illegal in a schema name, so `@rps-game/shared` holds `com.acme.rpsgame.move`, never `com.rps-game.move`. When the user has not named an org, write the placeholder `com.<org>.<app>.*` rather than inventing a segment. See [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)
 - Game/business enums and constants used in both UI and backend (e.g. `enum Move { Rock, Paper, Scissors }`)
 - Branded ID types (`type GameId = Brand<string, 'GameId'>`)
 
@@ -225,6 +227,8 @@ import type { SubmitCommitRequest, GameStateResponse } from '@<scope>/shared'
 When you add new exports to `shared/`, run `pnpm --filter @<scope>/shared run build` (or `pnpm -r run build` from root) so consumers see the updated `dist/`.
 
 ## Hand-off behavior
+
+**Execution guard.** Everything below assumes you can run commands and write files. If the session lacks a shell or file-write tool, do not search for one, delegate the work to subagents, or loop — lay out the exact scaffold commands, the implementation plan, and the completion gate you would walk, then stop and hand back to the user. Open that plan with its skill identity line — `xl1-scaffold v<version>` plus the other skills it draws on (e.g. `xl1-patterns`, `xl1-testing`) — exactly as a completion summary would. A plan delivered is complete for that session; a tool hunt is not progress.
 
 After the scaffold reports success:
 

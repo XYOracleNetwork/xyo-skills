@@ -6,7 +6,10 @@
   "packageManager": "pnpm@10.33.2",
   "scripts": {
     "build": "pnpm -r build",
+    "eval": "node scripts/eval/run.mjs",
+    "eval:smoke": "node scripts/eval/run.mjs --tag smoke --runs 1",
     "lint": "pnpm -r lint",
+    "validate:skills": "node scripts/validate-skills.mjs skills",
     "typecheck": "pnpm -r typecheck",
     "scaffold": "pnpm --filter @xyo-network/xl1-scaffold run scaffold",
     "scaffold:dev": "pnpm --filter @xyo-network/xl1-scaffold run scaffold:dev",
