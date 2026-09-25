@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.37](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.36...v1.1.37) (2026-09-25)
+
+
+### Bug Fixes
+
+* correct block cadence in the xl1-testing chain + Aries fixture config ([7da171c](https://github.com/XYOracleNetwork/xyo-skills/commit/7da171c07d949fbc613526239c2b547f29d030cb))
+
 ## [1.1.36](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.35...v1.1.36) (2026-09-25)
 
 
