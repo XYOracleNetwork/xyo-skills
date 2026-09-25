@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.1.36](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.35...v1.1.36) (2026-09-25)
+
+
+### Features
+
+* add plugin eval harness for skill fidelity benchmarking ([189d3bb](https://github.com/XYOracleNetwork/xyo-skills/commit/189d3bbbd0eb84c8779358e72686432d082ceccd))
+* **evals:** composite — the repo's evaluation prompt as a scaffold-phase plan ([4f725d7](https://github.com/XYOracleNetwork/xyo-skills/commit/4f725d7d3dd53f9246e1854a5526338898ac950f))
+* **evals:** L1–2 — xy-development redirect twin ([4c4491b](https://github.com/XYOracleNetwork/xyo-skills/commit/4c4491b199bd2dc0cf57bf05a804cad808b96db8))
+* **evals:** L3 xyo-knowledge — schema naming and root-hash default ([8a6fdac](https://github.com/XYOracleNetwork/xyo-skills/commit/8a6fdac8518c0ae73580f1a0a21bc2feeda19569))
+* **evals:** L4 xl1-knowledge — raw-RPC ban, EVM refusal, finalized stream ([dd3713c](https://github.com/XYOracleNetwork/xyo-skills/commit/dd3713c3b669123b6e7bd763c5b0d257cbde3bce))
+* **evals:** L5 xl1-patterns — indexing read order, wiring, permissions, exchange ([05c56d6](https://github.com/XYOracleNetwork/xyo-skills/commit/05c56d693ed300eaf81bc2eba9af81b856883cc1))
+* **evals:** L6 xl1-dapp-kit — vocabulary, ports, conformance claims ([b03612f](https://github.com/XYOracleNetwork/xyo-skills/commit/b03612f63af7686d83a215a8e0b9e57698a75148))
+* **evals:** L7 xl1-testing — testnet default, browser-mode routing, service round-trip ([1025090](https://github.com/XYOracleNetwork/xyo-skills/commit/102509074b3e0aa11822c48252d2ef5af18fb627))
+* **evals:** L9/L8 — the xl1-build ↔ xl1-scaffold hand-off seam ([919c1e9](https://github.com/XYOracleNetwork/xyo-skills/commit/919c1e9c3b966e729e4a395fd88e151318af8109))
+* **evals:** rewrite twelve cases to demand pack facts; add eight cases ([6f96be6](https://github.com/XYOracleNetwork/xyo-skills/commit/6f96be6653fbe5174f159cdcc05098998dccdef3))
+* increase skill and eval efficacy from the suite audit ([1b259ac](https://github.com/XYOracleNetwork/xyo-skills/commit/1b259ac30d8862c7e554eea98da057e51fb6b947))
+* plugin eval harness, eval-driven skill fixes, and xl1-testing local-chain corrections ([e92ded5](https://github.com/XYOracleNetwork/xyo-skills/commit/e92ded59b7ad42fc4a3bed37a73ee0864d241e65))
+
+
+### Bug Fixes
+
+* **evals:** checklist rubrics; API names move from judge to regex ([c58bf95](https://github.com/XYOracleNetwork/xyo-skills/commit/c58bf950bc4cf607f041cde5db11170c15244309))
+* **skills:** skill-identity stamp applies to plans and acknowledgements ([451de9d](https://github.com/XYOracleNetwork/xyo-skills/commit/451de9dc41aae7b467cd90109a74323a65f64ffe))
+* **skills:** stamp slot in the scaffold plan path; drop stale example versions ([42cf31d](https://github.com/XYOracleNetwork/xyo-skills/commit/42cf31d0079d7f25a04a7bc08034c405d48e1039))
+* **xl1-patterns:** advertise wallet permissions; declare rule ownership ([8bf0c79](https://github.com/XYOracleNetwork/xyo-skills/commit/8bf0c79d188e42c915bdcfeca04f0c038c029369))
+* **xl1-scaffold:** execution guard; own planning from a concrete spec ([9463131](https://github.com/XYOracleNetwork/xyo-skills/commit/94631312f2ea603409eadca67a0ec4ea69e3f209))
+* **xl1-scaffold:** schema segments are not package scopes ([883d9f8](https://github.com/XYOracleNetwork/xyo-skills/commit/883d9f8dab39c4d9fe1ac88dce72d4260277d63a))
+
 ## [1.1.35](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.34...v1.1.35) (2026-09-23)
 
 
