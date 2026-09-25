@@ -2,7 +2,7 @@
 name: xl1-patterns
 description: Prescriptive design patterns for XL1 dApps. Covers browser UX, wallet connection and permission requests, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, wallet permissions, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
 metadata:
-  version: 1.1.36 # x-release-please-version
+  version: 1.1.37 # x-release-please-version
 ---
 
 # XL1 Design Patterns
