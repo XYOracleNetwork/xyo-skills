@@ -117,7 +117,9 @@ XL1_MNEMONIC='test test test test test test test test test test test junk' \
 
 Use `--dump-providers` when diagnosing a missing or unexpected binding. Treat
 the installed package README and `xl1 --help` as authoritative if the schema
-has changed.
+has changed. A `"provider"` pin that matches no candidate fails with
+`UnknownProviderError`; on `@xyo-network/xl1-sdk` after 5.7.1 the message ends
+with `(candidates that do: …)`, the valid ids for that moniker.
 
 ## Start the two services
 

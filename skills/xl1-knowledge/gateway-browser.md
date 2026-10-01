@@ -98,7 +98,8 @@ Always retain the session and stop it when the owning realm goes away. Dropping 
 | Defaulting a browser system to `transport: 'rpc'` | Every read hits a live gateway node instead of cacheable static buckets, for no gain in a normal read path | `transport: 'rest'`, with `rpcUrl` supplied for writes |
 | Launching a browser system next to `InPageGatewaysProvider` in a React app | Two provider systems for the same network, two lifecycles, and gateways that disagree | Use the React providers alone; they already own a browser system per network |
 | Building a signed REST system without `rpcUrl` | Throws — REST carries reads, not mempool submission | Pass both `endpoint` and `rpcUrl` |
-| Deriving a provider identifier from a class name via `providerCandidateFromClass(MyProvider)` | Production minifiers rewrite constructor names, so the config identifier changes between builds | Pass an explicit stable id: `providerCandidateFromClass(MyProvider, 'com.example.my-provider')` |
+| Identifying a custom provider by its class name | Bundlers and minifiers rename constructors (`MyProvider$1`), so the config identifier changes between builds and pins stop matching | Declare `static readonly providerId: string = 'com.example.my-provider'` on the class; `providerCandidateFromClass(MyProvider)` then uses it, and throws `MissingProviderIdError` for a class without one. On `@xyo-network/xl1-sdk` 5.7.1 and earlier it silently takes the constructor name, so pass the id as the second argument there. See [Provider identity](development.md#provider-identity) |
+| A `signerFactory` whose signer class declares no `providerId` | After 5.7.1 the launch throws `MissingProviderIdError`; on 5.7.1 and earlier the signer id silently becomes the minifiable constructor name | Declare `static readonly providerId` on the signer class, or pass `signerProviderId` |
 | Letting a page drop the session object | The provider system is never stopped | Retain the session; bind the realm's lifecycle helper |
 
 ---
@@ -175,7 +176,10 @@ and must be passed explicitly:
 Omitting the prop silently gives you `'rpc'` — this is the single most common
 way a dApp ends up on the wrong transport. Related props: `localEndpoint`
 (REST root for the local network), `signerFactory`, `signerAccount`, and
-`signerTransport` (for in-page or remote signing).
+`signerTransport` (for in-page or remote signing). After 5.7.1 a custom
+`signerFactory` is keyed by its signer class's `providerId` (before, by its
+minifiable constructor name); pass `signerProviderId` when the class declares
+none.
 
 The provider launches every network in `DefaultNetworks` in parallel and keys
 successes into `gateways[id]` and failures into `errors[id]`, so one unreachable
