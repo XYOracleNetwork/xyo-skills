@@ -157,10 +157,50 @@ const viewer = await locator.getInstance<BlockViewer>(BlockViewerMoniker)
 **`CreatableProvider`** is the base abstraction:
 - `static defaultMoniker` — service identifier
 - `static dependencies` — required sibling monikers
+- `static providerId` — stable implementation id that config pins match (see [Provider identity](#provider-identity))
 - `static factory()` — creates a factory for registration
 - `createHandler()` — post-creation async initialization
 
 For the common case of getting a working gateway, you almost never construct a locator yourself — use `GatewayBuilder` from `@xyo-network/xl1-sdk` (see [Node Gateway](gateway-node.md)). The locator pattern shown here is the layer underneath; reach for it directly only when the builder cannot express what you need (custom provider graphs, instrumented transports, test harnesses).
+
+### Provider identity
+
+A provider implementation is identified by its class's own `static providerId`, never by its class name. That id is the candidate id a config pin (`providerBindings.<moniker>.provider`) matches. Bundlers rename classes: the `@xyo-network/xl1-cli` 5.5.0 bundle emits `SimpleChainContractViewer$1 = class …`, so a name-derived id broke the `"SimpleChainContractViewer"` pin with `UnknownProviderError`.
+
+> **Changed after `@xyo-network/xl1-sdk` 5.7.1.** Every SDK provider declares `static readonly providerId: string = '<ClassName>'`, so pins written against class names keep working. `providerCandidateFromClass(cls)` and `providerCandidatesFromClasses(classes)` take each class's `providerId` and throw `MissingProviderIdError` when a class declares none. They never fall back to the constructor name. On 5.7.1 and earlier they silently use the constructor name, so pass an explicit id there.
+
+Declare an id on every provider class you write:
+
+```ts
+export class SimpleMyIndexViewer extends AbstractCreatableProvider implements MyIndexViewer {
+  static readonly defaultMoniker = MyIndexViewerMoniker
+  static readonly monikers = [MyIndexViewerMoniker]
+  static readonly providerId: string = 'com.example.my-index-viewer'
+  // …
+}
+
+const candidate = providerCandidateFromClass(SimpleMyIndexViewer)
+// For a class you do not own, pass the id explicitly:
+const pinned = providerCandidateFromClass(TheirViewer, 'com.example.their-viewer')
+```
+
+- Only a class's **own** id counts. An id inherited from a base provider is ignored, because it would collide with the base. A subclass declares its own: `static override readonly providerId: string = '…'`. Type the id `string`, not a literal, so subclasses can override it.
+- `ProviderFactory.providerName` (factory descriptions, registry entries, `--dump-providers`) reports the `providerId`. For a class without one it falls back to the constructor name, but only as a diagnostic label, never as a candidate id.
+- When a pin matches no candidate, `UnknownProviderError` names the ids that do satisfy the moniker: `… does not satisfy capability "ChainContractViewer" (candidates that do: A, B)`, also exposed as `error.candidates`. Copy the pin from that list.
+
+**Guard it in a spec.** `@xyo-network/xl1-sdk/protocol-sdk/test` (also on the root barrel) exports `providerIdIssues(namespaces)`, `exportedProviderClasses(namespaces)`, and `isCreatableProviderClass(value)`. `providerIdIssues` reports every exported provider class that has no id of its own, whose id differs from its export name, or whose id another class already uses:
+
+```ts
+expect(providerIdIssues([await import('../../index.ts')])).toEqual([])
+```
+
+The name-match rule is the SDK's own convention. If your ids are namespaced (`com.example.…`), assert own ids and uniqueness directly instead:
+
+```ts
+const classes = exportedProviderClasses([await import('../../index.ts')]).keys()
+const ids = [...classes].map(cls => providerIdOf(cls)) // throws MissingProviderIdError
+expect(new Set(ids).size).toBe(ids.length)
+```
 
 ---
 

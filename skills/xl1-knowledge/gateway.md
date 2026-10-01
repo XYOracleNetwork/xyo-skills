@@ -534,6 +534,16 @@ Backing stores, RPC endpoints, EVM RPC, and S3 buckets are all declared as
 remote API is reached with a `default-rpc` connection of `type: "rpc"`, not the
 old `remote.rpc`. Run `xl1 start --dump-config` to see the resolved shape.
 
+A binding can also pin an implementation by provider id, for example
+`"ChainContractViewer": { "provider": "SimpleChainContractViewer" }`. SDK
+provider ids equal their source class names (see
+[Provider identity](development.md#provider-identity)). A pin that matches
+nothing fails startup with `UnknownProviderError`. From the
+`@xyo-network/xl1-sdk` release after 5.7.1 its message lists the ids that do
+satisfy the moniker. A CLI built on 5.7.1 or earlier takes ids from bundled
+class names, which the bundler can rename (`SimpleChainContractViewer$1`), so
+drop the pin there instead of chasing the renamed id.
+
 ---
 
 ## Anti-Patterns
