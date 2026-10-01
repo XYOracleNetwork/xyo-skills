@@ -289,7 +289,12 @@ Two traps:
 - Do **not** bind `"ChainContractViewer": { "provider": "SimpleChainContractViewer" }`,
   as ariestools' `chain-serve-local-s3` `buildXl1Config` does. 5.4.1 exits at
   startup with `UnknownProviderError: Provider "SimpleChainContractViewer" does
-  not satisfy capability "ChainContractViewer"`. Omit the binding.
+  not satisfy capability "ChainContractViewer"`. Omit the binding. The CLI
+  bundle renames the class (5.5.0 emits `SimpleChainContractViewer$1 = class …`)
+  and SDKs up to 5.7.1 take the id from that name, so the pin matches nothing.
+  A CLI built on `@xyo-network/xl1-sdk` after 5.7.1 matches it through the
+  declared `providerId` (see
+  [Provider identity](../xl1-knowledge/development.md#provider-identity)).
 - Restart chain-serve with every `xl1` boot. Its memory buckets outlive the
   chain, so a new chain publishing over the old objects serves a stale head,
   and the indexer fails with `Ceiling N exceeds source head M`.

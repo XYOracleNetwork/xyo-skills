@@ -40,7 +40,7 @@ See [Gateway — Never Issue Raw RPC Calls](gateway.md#never-issue-raw-rpc-calls
 Read when working with XL1 blockchain concepts — blocks, transactions, fees, rewards, node types, or consensus. Covers the chain data model and how XL1 extends XYO's BoundWitness/Payload primitives.
 
 ### [Development on XL1](development.md)
-Read when building applications or services on XL1. Covers the Zod-first type pattern, Viewer/Runner architecture, providers, validation, and the SDK package structure.
+Read when building applications or services on XL1. Covers the Zod-first type pattern, Viewer/Runner architecture, providers (including `providerId` identity, `MissingProviderIdError`, and `UnknownProviderError` pins), validation, and the SDK package structure.
 
 ### [Identity & Wallets](identity.md)
 Read when creating a wallet or signer in XL1 backend code (Node services, indexers, CLIs, tests). Covers the canonical `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` pattern, the cross-environment compatibility guarantee with MetaMask and the XYO browser extension, and the rule that the result is an `AccountInstance`, which goes directly to `GatewayBuilder.account(...)` when a write-capable runner is needed.
