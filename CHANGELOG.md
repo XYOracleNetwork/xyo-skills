@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.38](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.37...v1.1.38) (2026-10-01)
+
+
+### Bug Fixes
+
+* key custom XL1 providers by a declared providerId ([9f713e2](https://github.com/XYOracleNetwork/xyo-skills/commit/9f713e225b02e67ca2c88901ec148fe317ac69f4))
+
 ## [1.1.37](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.36...v1.1.37) (2026-09-25)
 
 
