@@ -4,7 +4,7 @@
 
 Canonical content: `skills/xy-development/workflow.md` in [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills).
 
-1. Install/load `xy-development` from **ariestools-skills** (`xy skills defaults`, or see [SKILL.md](SKILL.md)).
+1. Install/load `xy-development` from **ariestools-skills** (`pnpm xy skills defaults`, or see [SKILL.md](SKILL.md)).
 2. Read that pack's `workflow.md` for native-toolchain discovery, the Definition of Done, and project-specific acceptance criteria.
 
 ## Heading anchors (compatibility)

@@ -21,7 +21,8 @@ metadata:
 ## Required action
 
 1. Install the Aries Skills pack if it is missing:
-   - Preferred in XY/XYO repos: `xy skills defaults`
+   - Preferred in XY/XYO repos: `pnpm xy skills defaults`
+   - If an earlier whole-pack install replaced the canonical skill with this stub, repair it with `pnpm xy skills lint --fix` (toolchain ≥ 10.1.2); `npx skills update` re-fetches the stub
    - Or: `npx skills add ariestools/ariestools-skills --skill xy-toolchain`
    - Claude: install `ariestools-skills` from `ariestools/ariestools-claude-plugin`
    - Codex: `codex plugin add ariestools-skills@ariestools-skills` after adding `ariestools/ariestools-codex-plugin`

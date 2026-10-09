@@ -36,11 +36,7 @@ const reactTemplateOverrides: Override = {
       'vite-plugin-checker',
       'vite-plugin-svgr',
     ],
-    versions: {
-      '@mui/material': '^9',
-      '@mui/icons-material': '^9',
-      '@react-spring/web': '~10.0',
-    },
+    versions: { '@mui/material': '^9' },
   },
   tsconfig: {
     extends: '@ariestools/tsconfig-react',

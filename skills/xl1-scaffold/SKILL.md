@@ -237,7 +237,7 @@ If any step fails, the scaffold exits non-zero. Relay the failing output to the 
   } as const
   export type Move = typeof Move[keyof typeof Move] // 'rock' | 'paper' | 'scissors'
   ```
-- Branded ID types (`type GameId = Brand<string, 'GameId'>`)
+- Branded ID types (`type GameId = Brand<string, { __gameId: true }>` with `Brand` from `@ariestools/sdk` — add it to shared's dependencies; `Brand<string, 'GameId'>` adds no brand, because `Brand` maps the keys of its second argument)
 
 **Does NOT belong in `shared/`:**
 - React components, hooks, browser globals → `packages/app/src/`
@@ -283,7 +283,7 @@ After the scaffold reports success:
    With `Runtime: dapp-kit`, step 2 is the engine in the runtime package (effects, ports — per [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md)) and step 3 consumes its application ports. Consult [xl1-patterns](../xl1-patterns/SKILL.md) for the canonical recipe (commit-reveal, indexing, etc.); for a multi-party dApp, also answer any `TBD` in the PRD's Architecture review ([review questions](../xl1-patterns/architecture-principles.md#review-questions)).
 4. Only pause if you need a clarifying decision that can't be inferred from the original request (e.g. "should players be able to rematch without re-committing stakes?").
 5. **Before reporting the work complete, walk all three completion gates** (see [xy-development/workflow.md § Applying the Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#applying-the-definition-of-done), which numbers them Layer 1–3):
-   - **Gate 1 — Generic DoD** ([xy-development/workflow.md § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done)): builds, lints, tests, dev server, no placeholders, no regressions
+   - **Gate 1 — Generic DoD** ([xy-development/workflow.md § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done)): builds, lints, tests, dependencies correct (`pnpm xy deplint`), dev server runs with a clean console, no placeholders, no regressions
    - **Gate 2 — [dApp Definition of Done](../xl1-testing/dapp-checklist.md)**: XL1/browser-specific checks; with `Runtime: dapp-kit`, also [dapp-kit conformance](../xl1-dapp-kit/conformance.md#minimum-agent-completion-expectations), including the evidence label you actually produced
    - **Gate 3 — `PRD.md` acceptance criteria** (in the cwd, if present): project-specific positive and negative assertions
 
