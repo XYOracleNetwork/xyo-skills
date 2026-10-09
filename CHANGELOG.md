@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.39](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.38...v1.1.39) (2026-10-09)
+
+
+### Bug Fixes
+
+* integrate develop (Statement Graph 0.7.0 skill rewrite, redirect stubs out of installs) ([f42cc21](https://github.com/XYOracleNetwork/xyo-skills/commit/f42cc21d9a4a169aa00790969627b2ccf17a376b))
+* keep redirect stubs out of installs and re-point full-app e2e ([#110](https://github.com/XYOracleNetwork/xyo-skills/issues/110)) ([ad32c87](https://github.com/XYOracleNetwork/xyo-skills/commit/ad32c873507c762f5868d3ed72a7eb6f27059604))
+
 ## [1.1.38](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.37...v1.1.38) (2026-10-01)
 
 
