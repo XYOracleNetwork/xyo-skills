@@ -168,8 +168,12 @@ node "$SKILL" <root>/packages/service --template=xl1-service  --workspace-member
 # 3. Single install at the workspace root — links all members + installs deps for all.
 cd <root> && pnpm install
 
-# 4. Verify across the workspace.
-pnpm -r run typecheck && pnpm -r run lint && pnpm -r run build
+# 4. Verify across the workspace. Build shared FIRST: app and service resolve
+#    `@<scope>/shared` through its package.json `exports` to the emitted dist/*.d.ts
+#    + dist/*.js, so their typecheck and lint fail until shared has been built.
+#    (The root's `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm dev` scripts
+#    run `pnpm build:shared` first for you.)
+pnpm --filter @<scope>/shared run build && pnpm -r run typecheck && pnpm -r run lint && pnpm -r run build
 # For xl1-service specifically, also smoke-test the server boot:
 pnpm --filter @<scope>/service run smoke
 ```
@@ -194,7 +198,15 @@ If any step fails, the scaffold exits non-zero. Relay the failing output to the 
 **Belongs in `shared/`:**
 - API request/response types between app and service (e.g. `interface SubmitCommitRequest`, `interface GameStateResponse`)
 - Zod schemas validated on both sides — named under `com.<your-org>.<app>.*` with **lowercase `[a-z0-9]` dot-segments only**. The workspace scope (`@rps-game/...`) and the directory name (`rps-game`) are package identifiers, not schema segments: a hyphen is legal in a package name and illegal in a schema name, so `@rps-game/shared` holds `com.acme.rpsgame.move`, never `com.rps-game.move`. When the user has not named an org, write the placeholder `com.<org>.<app>.*` rather than inventing a segment. See [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)
-- Game/business enums and constants used in both UI and backend (e.g. `enum Move { Rock, Paper, Scissors }`)
+- Game/business constants used in both UI and backend, as an `as const` object plus a derived union type — **never a TS `enum`**: `@ariestools/tsconfig` sets `erasableSyntaxOnly` (an enum fails typecheck with TS1294) and the ESLint config flags enums via `no-restricted-syntax`:
+  ```ts
+  export const Move = {
+    Rock: 'rock',
+    Paper: 'paper',
+    Scissors: 'scissors',
+  } as const
+  export type Move = typeof Move[keyof typeof Move] // 'rock' | 'paper' | 'scissors'
+  ```
 - Branded ID types (`type GameId = Brand<string, 'GameId'>`)
 
 **Does NOT belong in `shared/`:**
@@ -224,7 +236,7 @@ Then `pnpm install` at the workspace root re-links. Imports work via the package
 import type { SubmitCommitRequest, GameStateResponse } from '@<scope>/shared'
 ```
 
-When you add new exports to `shared/`, run `pnpm --filter @<scope>/shared run build` (or `pnpm -r run build` from root) so consumers see the updated `dist/`.
+The import resolves through shared's `package.json` `exports` map (`types` → `./dist/index.d.ts`, `default` → `./dist/index.js`), i.e. the **compiled** output — not `src/`. So shared must be built before app/service typecheck, lint, test or run, and rebuilt whenever you add or change its exports: run `pnpm build:shared` (or `pnpm --filter @<scope>/shared run build`, or `pnpm -r run build`, which builds shared first) from the root so consumers see the updated `dist/`.
 
 ## Hand-off behavior
 
@@ -245,7 +257,7 @@ After the scaffold reports success:
    - **Layer 2 — [dApp Definition of Done](../xl1-patterns/dapp-checklist.md)**: XL1/browser-specific gates
    - **Layer 3 — `PRD.md` acceptance criteria** (in the cwd, if present): project-specific positive and negative assertions
 
-   This is mandatory, not optional, and it is an **agent-facing completion gate** — it gates whether you stop and report done, independent of any later deploy or release. **If any item across any layer fails, keep iterating until it passes** — do not stop and report partial completion. Fix the failing item, re-walk the relevant layer, and only stop when every applicable layer is fully green. The Layer 2 checklist enumerates exactly the rules and anti-patterns the rest of the skill stack documents, and an unwalked DoD is the most common cause of completed dApps that violate them. In your completion summary, call out each relevant section across all three layers with explicit pass/fail and a one-line note on why. Sections marked "(if applicable)" can be skipped only when truly out of scope (e.g. no commit-reveal in a read-only dashboard); state that they were skipped and why. If the prompt included a seed-phrase `.env` (see "Interpreting the prompt"), the **Headless Verification** section is mandatory — you must have run the verification script and report its outcome, not just check the boxes. **The completion summary must distinguish "chain interactions verified" from "service-derived state verified" as separate facts.** If the dApp exposes derived state through a service (indexer REST API, GraphQL, etc.), the verify run must have round-tripped through that service surface — never via direct `viewer.block.payloadsByHash` synthesis — and gated on both `viewer.finalization.headNumber()` and the indexer's `lastIndexedBlock` watermark. Reporting "verified" when only the chain edge was exercised, or rationalizing an empty indexer as "Sequence is slow" without checking the watermark, is the failure mode the [service round-trip](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service) exists to prevent.
+   This is mandatory, not optional, and it is an **agent-facing completion gate** — it gates whether you stop and report done, independent of any later deploy or release. **If any item across any layer fails, keep iterating until it passes** — do not stop and report partial completion. Fix the failing item, re-walk the relevant layer, and only stop when every applicable layer is fully green. The Layer 2 checklist enumerates exactly the rules and anti-patterns the rest of the skill stack documents, and an unwalked DoD is the most common cause of completed dApps that violate them. In your completion summary, call out each relevant section across all three layers with explicit pass/fail and a one-line note on why. Sections marked "(if applicable)" can be skipped only when truly out of scope (e.g. no commit-reveal in a read-only dashboard); state that they were skipped and why. If the prompt included a seed-phrase `.env` (see "Interpreting the prompt"), the **Headless Verification** section is mandatory — you must have run the verification script and report its outcome, not just check the boxes. **The completion summary must distinguish "chain interactions verified" from "service-derived state verified" as separate facts.** If the dApp exposes derived state through a service (indexer REST API, GraphQL, etc.), the verify run must have round-tripped through that service surface — never via direct hash-lookup synthesis (datalake `get(hashes)`, `viewer.block.payloadsByHash`) — and gated on both `viewer.finalization.headNumber()` and the indexer's `lastIndexedBlock` watermark. Reporting "verified" when only the chain edge was exercised, or rationalizing an empty indexer as "Sequence is slow" without checking the watermark, is the failure mode the [service round-trip](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service) exists to prevent.
 
 ## Capture the indexer floor block
 

@@ -20,16 +20,19 @@ To consume `shared` from `app` or `service`, add to that package's `package.json
 
 Then `pnpm install` at the workspace root links it.
 
+Consumers import shared's **compiled** output — its `package.json` `exports` map points at `dist/index.js` + `dist/index.d.ts` — so `shared` must be built before `app` or `service` can typecheck, lint, test or run against it. The root scripts below do that for you; if you run `pnpm -r run …` or `pnpm --filter …` directly, run `pnpm build:shared` first, and again whenever you change shared's exports.
+
 ## Common commands (run from this root)
 
 ```shell
 pnpm install                  # install + link all workspace packages
-pnpm dev                      # run app + service concurrently
-pnpm -r run typecheck         # tsc --noEmit across all packages
-pnpm -r run lint              # eslint across all packages
-pnpm -r run build             # build all packages
-pnpm -r run test              # vitest across all packages
-pnpm --filter app run dev     # run only one package's dev server
+pnpm build:shared             # build packages/shared (dist/) — consumers resolve it from there
+pnpm dev                      # build shared, then run app + service concurrently
+pnpm typecheck                # build shared, then tsc --noEmit across all packages
+pnpm lint                     # build shared, then eslint across all packages
+pnpm build                    # build all packages (topological: shared first)
+pnpm test                     # build shared, then vitest across all packages
+pnpm --filter app run dev     # run only one package's dev server (build shared first)
 ```
 
 ## Browser ↔ service wiring

@@ -15,12 +15,19 @@ const xl1MonorepoTemplateOverrides = {
         // packages without a dev script (e.g. xl1-shared) are skipped automatically.
         // The default port pair is :3000 (app, Vite) and :3001 (service, Express),
         // wired same-origin via Vite's /api/* proxy — see browser-service-wiring.md.
-        'dev': 'pnpm -r --parallel run dev',
+        //
+        // app and service resolve `@<scope>/shared` through its `exports` map to the
+        // emitted dist/ (.js + .d.ts), so every script that compiles, lints, tests or
+        // runs a consumer builds shared first. `build` needs no pre-step: `pnpm -r`
+        // runs in topological order, so shared builds before its dependents. The path
+        // filter matches nothing (exit 0) when the workspace has no packages/shared.
+        'build:shared': 'pnpm --filter ./packages/shared run build',
+        'dev': 'pnpm run build:shared && pnpm -r --parallel run dev',
         'build': 'pnpm -r run build',
-        'typecheck': 'pnpm -r run typecheck',
-        'lint': 'pnpm -r run lint',
-        'lint:fix': 'pnpm -r run lint:fix',
-        'test': 'pnpm -r run test',
+        'typecheck': 'pnpm run build:shared && pnpm -r run typecheck',
+        'lint': 'pnpm run build:shared && pnpm -r run lint',
+        'lint:fix': 'pnpm run build:shared && pnpm -r run lint:fix',
+        'test': 'pnpm run build:shared && pnpm -r run test',
     },
     // The root only holds workspace orchestration — no source to compile, no
     // tsconfig.json needed. Each sub-package carries its own tsconfig.

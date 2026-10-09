@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs as parseNodeArgs } from 'node:util'
 
+import { buildPackageJson } from './package-json.js'
 import {
   nodeTemplate, reactTemplate, xl1MonorepoTemplate, xl1ServiceTemplate, xl1SharedTemplate,
 } from './presets/index.js'
@@ -140,28 +141,6 @@ function findSharedPackageName(wsRoot: string): string | undefined {
   if (!existsSync(sharedPkgPath)) return undefined
   const pkg = JSON.parse(readFileSync(sharedPkgPath, 'utf8')) as { name?: string }
   return pkg.name
-}
-
-function buildPackageJson(args: {
-  dependencies: Record<string, string>
-  devDependencies: Record<string, string>
-  name: string
-  packageManager: string
-  template: Template
-  workspaceMember: boolean
-}) {
-  // Workspace members inherit packageManager from the root — emitting it here
-  // would cause corepack-version drift between root and members.
-  return {
-    name: args.name,
-    version: '0.1.0',
-    private: true,
-    type: 'module',
-    ...(args.workspaceMember ? {} : { packageManager: args.packageManager }),
-    scripts: args.template.scripts,
-    dependencies: args.dependencies,
-    devDependencies: args.devDependencies,
-  }
 }
 
 async function resolveVersionsForTemplate(template: Template) {

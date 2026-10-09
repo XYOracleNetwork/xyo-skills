@@ -17,17 +17,27 @@ describe('xl1-monorepo preset specifics', () => {
   })
 
   it('uses workspace orchestration scripts (pnpm -r)', () => {
+    // `build` relies on pnpm -r's topological order to build shared first.
     expect(xl1MonorepoTemplate.scripts.build).toBe('pnpm -r run build')
-    expect(xl1MonorepoTemplate.scripts.lint).toBe('pnpm -r run lint')
-    expect(xl1MonorepoTemplate.scripts.typecheck).toBe('pnpm -r run typecheck')
-    expect(xl1MonorepoTemplate.scripts.test).toBe('pnpm -r run test')
+    expect(xl1MonorepoTemplate.scripts.lint).toBe('pnpm run build:shared && pnpm -r run lint')
+    expect(xl1MonorepoTemplate.scripts.typecheck).toBe('pnpm run build:shared && pnpm -r run typecheck')
+    expect(xl1MonorepoTemplate.scripts.test).toBe('pnpm run build:shared && pnpm -r run test')
+  })
+
+  it('builds shared before any script that consumes its dist/', () => {
+    // Regression: app/service resolve @<scope>/shared through its exports map
+    // to dist/*.d.ts + dist/*.js, which only exist after shared's build.
+    expect(xl1MonorepoTemplate.scripts['build:shared']).toBe('pnpm --filter ./packages/shared run build')
+    for (const script of ['dev', 'typecheck', 'lint', 'lint:fix', 'test']) {
+      expect(xl1MonorepoTemplate.scripts[script]).toMatch(/^pnpm run build:shared && /)
+    }
   })
 
   it('declares a parallel `dev` script so app + service run concurrently', () => {
     // Locks in the browser-service-wiring prescription: one command at the
     // workspace root brings up both processes. --parallel is required so they
     // run concurrently (default `pnpm -r run` is sequential).
-    expect(xl1MonorepoTemplate.scripts.dev).toBe('pnpm -r --parallel run dev')
+    expect(xl1MonorepoTemplate.scripts.dev).toBe('pnpm run build:shared && pnpm -r --parallel run dev')
   })
 
   it('skips emitting tsconfig.json (workspace root has no source)', () => {
