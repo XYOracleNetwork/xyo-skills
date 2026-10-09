@@ -5,12 +5,12 @@ The env-agnostic gateway file — what the gateway is, the JSON-RPC surface, net
 Environment-specific construction lives in sibling files:
 
 - [Browser Gateway](gateway-browser.md) — React providers, the wallet extension, `useProvidedGateway`
-- [Node Gateway](gateway-node.md) — server-side construction via `GatewayBuilder` (`.build()` for read-only, `.account(account).buildRunner()` for write-capable)
+- [Node Gateway](gateway-node.md) — server-side construction via `GatewayBuilder` (`.build()` for read-only, `.account(account).buildRunner()` for write-capable, `*Session()` variants for an owned, stoppable gateway)
 
 **Key npm packages** (subpaths of the `@xyo-network/xl1-sdk` monolith; all
 re-exported from its root barrel):
-- `@xyo-network/xl1-sdk/providers` — Browser, Node, and Neutral provider implementations (browser/node/neutral conditional exports)
-- `@xyo-network/xl1-sdk` — `createRestDataLakeRunner`, `createRestDataLakeViewer`, network constants, and the composed RPC engine helpers
+- `@xyo-network/xl1-sdk/providers` — provider implementations and the locator helpers the builders compose (one platform-neutral build; see [Providers](#providers))
+- `@xyo-network/xl1-sdk` — `createRestDataLakeRunner`, `createRestDataLakeViewer`, network constants, the phased transaction functions, and the composed RPC engine helpers
 
 Note: The gateway API server itself is part of the `xyo-chain` runtime repo (not published as a standalone npm package). The packages above cover the client-side provider interfaces needed for dApp development.
 
@@ -44,7 +44,7 @@ The datalake is a **separate service** on its own host (see
 
 ### 1. Raw XL1 JSON-RPC method names
 
-The gateway speaks JSON-RPC 2.0 under the hood and exposes method names like `blockViewer_blocksByNumber`, `blockViewer_currentBlockNumber`, `transactionViewer_byHash`, `accountBalanceViewer_accountBalance`, etc. **Never call these directly** — not via `fetch('/rpc', { body: '{"method":"blockViewer_..."}' })`, not via a hand-rolled JSON-RPC client, not by importing internal transport classes.
+The gateway speaks JSON-RPC 2.0 under the hood and exposes method names like `blockViewer_blocksByNumber`, `blockViewer_currentBlock`, `transactionViewer_byHash`, `accountBalanceViewer_qualifiedAccountBalances`, etc. **Never call these directly** — not via `fetch('/rpc', { body: '{"method":"blockViewer_..."}' })`, not via a hand-rolled JSON-RPC client, not by importing internal transport classes.
 
 Calling them directly:
 - Loses the SDK's type definitions for params and return shapes
@@ -93,19 +93,35 @@ A clean grep is part of the Definition of Done — see [dApp Checklist — Gatew
 
 ## Networks
 
-XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is the network identifier — pass it to the React providers in browser dApps (see [Browser Gateway](gateway-browser.md)) or to `GatewayBuilder().name(id).rpcUrl(...)` in Node services (see [Node Gateway](gateway-node.md)). The SDK's `DefaultNetworks` maps these to the correct URLs automatically.
+XL1 has three networks. The gateway name (`'mainnet'`, `'sequence'`, `'local'`) is the network identifier — pass it to the React providers in browser dApps (see [Browser Gateway](gateway-browser.md)). In Node services, resolve it to URLs with `DefaultNetworks` / `NetworkDataLakeUrls` and pass those to the builder (see [Node Gateway](gateway-node.md)): the network is whatever `.rpcUrl(...)` points at, and `GatewayBuilder().name(...)` is only a diagnostic label.
 
-| Network | Gateway Name | Gateway RPC | Datalake | Explorer |
-|---------|-------------|-------------|----------|----------|
-| **Mainnet** | `'mainnet'` | `https://api.chain.xyo.network/rpc` | `https://api.archivist.xyo.network/dataLake` | `https://explore.xyo.network` |
-| **Sequence** (beta) | `'sequence'` | `https://beta.api.chain.xyo.network/rpc` | `https://beta.api.archivist.xyo.network/dataLake` | `https://beta.explore.xyo.network` |
-| **Local** | `'local'` | `http://localhost:8080/rpc` | `http://localhost:8080/dataLake` † | `http://localhost:3000` |
+| Network | Gateway Name | REST root | Gateway RPC | Datalake | Explorer |
+|---------|-------------|-----------|-------------|----------|----------|
+| **Mainnet** | `'mainnet'` | `https://mainnet.xyo.space` | `https://api.chain.xyo.network/rpc` | `https://api.archivist.xyo.network/dataLake` | `https://explore.xyo.network` |
+| **Sequence** (beta) | `'sequence'` | `https://sequence.xyo.space` | `https://beta.api.chain.xyo.network/rpc` | `https://beta.api.archivist.xyo.network/dataLake` | `https://beta.explore.xyo.network` |
+| **Local** | `'local'` | `https://chain.aries.test:8791` (`layout: 'path'`) ‡ | `http://localhost:8080/rpc` | `http://localhost:8080/dataLake` † | `http://localhost:3000` |
+
+**REST is the preferred read transport.** The REST root serves the published
+static layout (finalized blocks, index, chain state). For the public networks
+the in-page gateway reads `https://<gateway name>.xyo.space` with the default
+`subdomain` layout, which derives the `blocks.`, `state.`, and `indexes.`
+buckets from that root (`restGatewayConfigFromEndpoint`); mempool submission
+still goes to the Gateway RPC URL. See
+[Browser Gateway — REST over RPC](gateway-browser.md#rest-over-rpc) and, for
+Node, [Node Gateway — REST/S3 gateway](gateway-node.md#rests3-gateway--reading-from-the-static-layout).
 
 † The local datalake URL is what the SDK's `NetworkDataLakeUrls` constant
 carries, but a plain `xl1 start` **does not serve it** — the local `api` actor
 mounts only `/rpc`, `/rpc/indexed`, and probe routes. For local datalake-backed
 reads, run the composed stack in
 [xl1-testing — local chain + Aries data store](../xl1-testing/local-chain-datalake.md).
+
+‡ The local REST root is not a `DefaultNetworks` field. It is the
+`InPageGatewaysProvider` default (override with its `localEndpoint` prop), read
+with `layout: 'path'` (`<root>/blocks`, `/state`, `/indexes`) instead of
+per-bucket subdomains. A plain `xl1 start` publishes nothing there: REST
+readers see a local chain only after its blocks and state are published to
+that root.
 
 The Explorer URL and `NetworkId` for each network are also exposed on `MainNetwork` / `SequenceNetwork` / `LocalNetwork` (and via `DefaultNetworks`) from `@xyo-network/xl1-sdk`. Pair them with `ExplorerLinks` from the same barrel to build canonical Explorer URLs for addresses, blocks, transactions, and payloads — never hand-concatenate explorer paths. UI conventions for *when* to render those links live in [Browser UX — Display Conventions](../xl1-patterns/browser-ux.md#display-conventions).
 
@@ -124,13 +140,13 @@ The construction step is environment-specific. Pick the file that matches your r
 
 - **Browser / React dApp** — wrap the app in `WalletGatewayProvider` or `GatewayProvider` + `InPageGatewaysProvider transport="rest"`, then call `useProvidedGateway()` in components. See [Browser Gateway](gateway-browser.md).
 - **Any other browser realm** — plain websites, web workers, service workers, and extension backgrounds launch `launchXl1BrowserGatewaySystem` from `@xyo-network/xl1-browser-system` with `transport: 'rest'`. See [Browser Gateway — Integrating XL1 Into a Website](gateway-browser.md#integrating-xl1-into-a-website).
-- **Node / server-side / headless** — use `GatewayBuilder` from `@xyo-network/xl1-sdk`. `.build()` for read-only, `.account(account).buildRunner()` for write-capable. See [Node Gateway](gateway-node.md).
+- **Node / server-side / headless** — use `GatewayBuilder` from `@xyo-network/xl1-sdk`. `.build()` for read-only, `.account(account).buildRunner()` for write-capable, or the `.buildSession()` / `.buildRunnerSession()` variants when the process must release the gateway with `stop()`. See [Node Gateway](gateway-node.md).
 - **Tests** — use `MemoryRpcTransport` (see [Transports](#transports) below).
 
-The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `new GatewayBuilder().rpcUrl(...).build()` (or `.account(account).buildRunner()`). Both expose the same method surface.
+The variable named `gateway` in the recipes below stands for whatever you got back from your environment's construction. In React it is typically `defaultGateway` from `useProvidedGateway()`; in Node it is the result of `new GatewayBuilder().rpcUrl(...).build()` (or `.account(account).buildRunner()`, or a session's `session.gateway`). Both expose the same method surface.
 
 The type is a union:
-- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when a wallet is connected (browser) or a signer is wired in (Node, via `GatewayBuilder.buildRunner()`).
+- **`XyoGatewayRunner`** — write-capable (has `addPayloadsToChain`, `send`, etc.). Available when the wallet extension is installed (browser — installed, not necessarily connected, so also require a granted account before writing; see [Browser Gateway](gateway-browser.md)) or a signer is wired in (Node, via `GatewayBuilder.buildRunner()`).
 - **`XyoGateway`** — read-only (has `connection.viewer` but no write methods). Available from the in-page gateway (browser) or `GatewayBuilder.build()` (Node).
 - **`undefined` / `null`** — loading or no gateway available (React context only).
 
@@ -180,10 +196,12 @@ For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
 | Get the latest block hash | `.block.currentBlockHash()` |
 | Look up a specific block you already have a hash for | `.block.blockByHash(hash)` |
 | Look up a specific block by its number | `.block.blockByNumber(n)` |
+| Find the finalized block that includes a transaction (`null` until it is indexed) | `.block.blockByTransactionHash(txHash)` |
 | Scan a window of blocks ending at a hash or number (descending, newest-first) | `.block.blocksByHash(hash, limit?)` / `.block.blocksByNumber(n, limit?)` |
 | Fetch a published step-summary batch of blocks | `.block.blocksByStep(stepLevel, stepIndex)` |
-| Resolve payloads by hash from the gateway's own store (on-chain payloads — off-chain bodies come from your datalake) | `.block.payloadsByHash(hashes)` |
+| Resolve payloads by hash from the gateway's own store (on-chain payloads — off-chain bodies come from your datalake) | `.block.payloadsByHash(hashes)` / `.block.payloadByHash(hash)` (single, `null` when unresolved) |
 | Get the chain id in force at a block height (varies across forks — see [Chain Forks](chain.md#chain-forks)) | `.block.chainId(blockNumber?)` |
+| Measure block production rate (`BlockRate`) over a block range, a run of fixed-size steps, or a time window | `.block.rate(range, timeUnit?)` / `.block.stepSizeRate(start, stepIndex, count?, timeUnit?)` / `.block.timeDurationRate(timeConfig, …)` |
 
 `blocksByStep` returns a whole step-aligned batch as a single index/summary
 fetch. Large `blocksByNumber` / `blocksByHash` walks delegate to it internally
@@ -373,11 +391,12 @@ Transaction submission is done through high-level methods on the gateway itself 
 
 | When you need to... | Use |
 |---------------------|-----|
-| Record application data on-chain (game moves, attestations) | `gateway.addPayloadsToChain(onChain, offChain)` |
+| Record application data on-chain (game moves, attestations) | `gateway.addPayloadsToChain(onChain, offChain, options?)` |
 | Submit a transaction you built manually | `gateway.addTransactionToChain(tx, offChain?)` |
-| Send XL1 tokens to one address | `gateway.send(to, amount)` |
-| Send XL1 tokens to multiple addresses | `gateway.sendMany(transfers)` |
-| Wait for a submitted transaction to be included in a block | `gateway.confirmSubmittedTransaction(txHash)` |
+| Send XL1 tokens to one address | `gateway.send(to, amount, options?)` |
+| Send XL1 tokens to multiple addresses | `gateway.sendMany(transfers, options?)` |
+| Wait for a submitted transaction to be included in a block | `gateway.confirmSubmittedTransaction(txHash, options?)` |
+| Submit so a crash cannot strand the transaction (effect journals, services that resume) | The phased functions — see [Durable submission](#durable-submission) |
 
 ### Adding application data to the chain
 
@@ -389,7 +408,33 @@ if (gateway && 'addPayloadsToChain' in gateway) {
 }
 ```
 
-This single call builds a `TransactionBoundWitness`, signs it (in the browser this triggers the wallet popup; in Node the in-memory signer signs directly), and broadcasts to the network.
+This single call builds a `TransactionBoundWitness`, signs it (in the browser this triggers the wallet popup; in Node the in-memory signer signs directly), and broadcasts to the network. It returns after broadcast, not after inclusion or finality, and it is not a crash-safe boundary: nothing signed is kept if the process dies mid-call, and calling it again signs a new transaction. When that matters, use [Durable submission](#durable-submission).
+
+### Transaction options
+
+`addPayloadsToChain`, `send`, and `sendMany` take an optional `TransactionOptions` as their last argument:
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `chain` | the viewer's `chainId()` | Assertion only — building throws if it differs from the gateway's chain |
+| `from` | the signer's address | Assertion only — an explicit `from` must equal the signer's address; it never selects another signer |
+| `nbf` | the viewer's `currentBlockNumber()` | First block the transaction may be included in |
+| `exp` | `nbf + 10` | Exclusive expiration block |
+| `fees` | `defaultTransactionFees` | `TransactionFeesBigInt` (`base`, `gasLimit`, `gasPrice`, `priority`) |
+
+```ts
+import { asXL1BlockNumber } from '@xyo-network/xl1-sdk'
+
+const viewer = gateway.connection.viewer
+if (!viewer) throw new Error('Gateway has no viewer')
+
+// Allow 100 blocks instead of the default 10 (slow wallet approval, congested network)
+const nbf = await viewer.currentBlockNumber()
+const [txHash, signedTx] = await gateway.addPayloadsToChain([], appPayloads, {
+  exp: asXL1BlockNumber(nbf + 100, true),
+  nbf,
+})
+```
 
 ### Token transfers
 
@@ -403,6 +448,8 @@ const txHash = await gateway.sendMany({ [addr1]: amount1, [addr2]: amount2 })
 ```ts
 const [txHash, signedTx] = await gateway.addTransactionToChain(unsignedTx, offChainPayloads)
 ```
+
+The transaction may be unsigned (the gateway signs it) or already signed. Every `offChainPayloads` entry must be referenced by the transaction's `payload_hashes`; unreferenced content is rejected before anything is written or broadcast.
 
 ### Transaction confirmation
 
@@ -419,6 +466,64 @@ await gateway.confirmSubmittedTransaction(txHash, { attempts: 30, delay: 10_000 
 
 The 30 × 10s budget is the verified-working baseline for Sequence. Tune downward for local devnets (`{ attempts: 10, delay: 500 }` is plenty), upward for archival jobs or congested-network conditions. Mainnet block cadence is similar to Sequence — start with 30 × 10s and adjust if you observe systematic timeouts.
 
+Also pass the transaction's own `exp`. Between attempts the poll then checks the chain head and throws an expired error once the head moves past `exp`, instead of spending the whole budget on a transaction that can no longer be included:
+
+```ts
+const [txHash, signedTx] = await gateway.addPayloadsToChain([], appPayloads)
+await gateway.confirmSubmittedTransaction(txHash, { attempts: 30, delay: 10_000, exp: signedTx[0].exp })
+```
+
+Running out of attempts throws `TransactionConfirmationTimeoutError` (`inconclusive: true`). The poll reads only finalized transactions, so a timeout does not prove the transaction was dropped — it may still be pending or be included later. Recheck with `viewer.block.blockByTransactionHash(txHash)` (or keep polling) before treating it as failed.
+
+### Durable submission
+
+`addPayloadsToChain` is a convenience path that the SDK documents as not a crash-safe effect-journal boundary, and `addTransactionToChain` with an unsigned transaction has the same shape. Build, sign, content write, and broadcast happen inside one call, so a crash leaves no signed transaction to resume, and retrying signs a different one. When a submission must survive restarts (services with an effect journal, settlement jobs, anything that resumes), drive the phases yourself with these functions from `@xyo-network/xl1-sdk` and **persist the signed evidence before any write or broadcast**:
+
+| Phase | Function | Result |
+|-------|----------|--------|
+| Build | `buildXl1Transaction(viewer, signer, onChain, offChain, options?)` | Unsigned hydrated transaction, with `chain` / `from` / `nbf` / `exp` / `fees` resolved as in [Transaction options](#transaction-options) |
+| Sign | `signXl1Transaction(signer, unsigned)` | `SignedXl1TransactionEvidence`: the exact signed `transaction`, `transactionHash`, `content` / `contentHashes`, `chainId`, `from`, `nbf`, `exp`. Persist `evidence.transaction` now |
+| Rebuild | `createSignedXl1TransactionEvidence(signedTx, additionalContent?)` | Re-validated evidence after loading it back (or for a transaction signed elsewhere); additional content must be referenced by the transaction |
+| Write content | `writeXl1TransactionContent(dataLakeRunner, evidence)` | Inserts every content payload and checks the acknowledged hashes |
+| Verify content | `verifyXl1TransactionContent(dataLakeViewer, evidence)` | Reads the content back and recomputes every hash |
+| Broadcast | `broadcastXl1Transaction(gateway.connection.runner, evidence)` | Broadcasts the exact signed transaction and rejects a mismatched returned hash. Re-broadcasting persisted evidence after a crash resends the same transaction, not a new one |
+| Inclusion | `observeXl1TransactionInclusion(viewer.block, transactionHash)` | `TransactionInclusion` (`blockHash`, `blockNumber`, `transactionHash`, `transactionIndex`), or `null` |
+| Finality | `observeXl1TransactionFinality(viewer.block, inclusion)` | The same inclusion if it is still in finalized history, or `null` — record inclusion first, recheck finality across a later restart |
+
+```ts
+import {
+  broadcastXl1Transaction,
+  buildXl1Transaction,
+  createRestDataLakeRunner,
+  createRestDataLakeViewer,
+  createSignedXl1TransactionEvidence,
+  observeXl1TransactionInclusion,
+  signXl1Transaction,
+  verifyXl1TransactionContent,
+  writeXl1TransactionContent,
+} from '@xyo-network/xl1-sdk'
+
+const viewer = gateway.connection.viewer
+const chainRunner = gateway.connection.runner
+if (!viewer || !chainRunner) throw new Error('Gateway has no viewer or runner')
+
+// journal: your own durable store (database row, file, effect journal)
+const unsigned = await buildXl1Transaction(viewer, gateway.signer, [], appPayloads)
+const evidence = await signXl1Transaction(gateway.signer, unsigned)
+await journal.saveSigned(evidence.transactionHash, evidence.transaction)
+
+await writeXl1TransactionContent(await createRestDataLakeRunner(dataLakeUrl), evidence)
+await verifyXl1TransactionContent(await createRestDataLakeViewer(dataLakeUrl), evidence)
+await broadcastXl1Transaction(chainRunner, evidence)
+await journal.markBroadcast(evidence.transactionHash)
+
+// After a restart: rebuild the evidence from the journal, re-broadcast if needed, then observe
+const resumed = await createSignedXl1TransactionEvidence(await journal.loadSigned(pendingTxHash))
+const inclusion = await observeXl1TransactionInclusion(viewer.block, resumed.transactionHash)
+```
+
+The content write is the same one a datalake-configured runner gateway performs inside `addTransactionToChain`; skip it (and the verify) when no datalake should hold the content. dapp-kit's effect journals build their staged-receipt model on these same phases.
+
 ---
 
 ## Detecting Capabilities
@@ -431,7 +536,8 @@ const canRead = !!gateway
 
 // Chain reads: work for any gateway (read-only or write-capable)
 // Datalake reads/writes: work via the dApp's own HTTP client, independent of the gateway
-// Chain transactions: require an XyoGatewayRunner (wallet-connected in browser, signer-wired in Node)
+// Chain transactions: require an XyoGatewayRunner (signer-wired in Node; in a browser the
+// runner only means the wallet is installed — also require a granted account)
 ```
 
 ---
@@ -504,13 +610,17 @@ variants for any new server code.
 ## Providers
 
 `@xyo-network/xl1-sdk/providers` (subpath of the SDK monolith; also on the root
-barrel) offers environment-specific provider bundles via conditional exports:
+barrel) is a single platform-neutral build — there are no browser or node
+provider bundles. It holds the locator helpers (`basicRemoteViewerLocator`,
+`basicRemoteRunnerLocator`), `buildSimpleXyoSigner`, and the `Simple*` / `Rest*`
+connection and viewer providers the builders compose. The only SDK export with a
+`node` condition is `./protocol-sdk`, whose node build adds the file-based
+`getFileConfig`.
 
-- **Browser provider** — for web dApps, uses PostMessage transport to reach the wallet. Page-owned gateways resolve through `@xyo-network/xl1-browser-system` instead. See [Browser Gateway](gateway-browser.md).
-- **Node provider** — for backend services, uses HTTP transport. See [Node Gateway](gateway-node.md).
-- **Neutral provider** — platform-agnostic primitives shared by both.
+The environment difference lives in construction, not in the provider package:
 
-The construction helpers (`GatewayBuilder` for Node, with `basicRemoteViewerLocator` as an advanced escape hatch; `WalletGatewayProvider` / `GatewayProvider` / `InPageGatewaysProvider` for browser) live with their respective environment-specific files.
+- **Browser** — page-owned gateways come from `@xyo-network/xl1-browser-system` (React: `InPageGatewaysProvider`); wallet gateways reach the extension over PostMessage. See [Browser Gateway](gateway-browser.md).
+- **Node** — `GatewayBuilder` over HTTP JSON-RPC, or `getRestGateway` for REST reads, with `basicRemoteViewerLocator` as an advanced escape hatch. See [Node Gateway](gateway-node.md).
 
 ---
 
@@ -524,8 +634,13 @@ xl1 start api producer validator # Start multiple actors
 
 ### Via pnpm (from xyo-chain repo)
 ```bash
-pnpm run-api
+pnpm run-xl1 start api mempool finalizer   # the actor set the deprecated `xl1 api` booted
 ```
+
+The per-actor `run-*` scripts (`run-api`, `run-producer`, …) still call the
+per-actor commands (`xl1 api`, `xl1 producer`, …), which the CLI marks
+deprecated in favour of `xl1 start <actor>`. Use `xl1 start <actors..>` for new
+work.
 
 ### Configuration
 
@@ -550,15 +665,12 @@ A binding can also pin an implementation by provider id, for example
 `"ChainContractViewer": { "provider": "SimpleChainContractViewer" }`. SDK
 provider ids equal their source class names (see
 [Provider identity](development.md#provider-identity)). A pin that matches
-nothing fails startup with `UnknownProviderError`. From the
-`@xyo-network/xl1-sdk` release after 5.7.1 its message lists the ids that do
-satisfy the moniker. A CLI built on 5.7.1 or earlier takes ids from bundled
-class names, which the bundler can rename (`SimpleChainContractViewer$1`), so
-drop the pin there instead of chasing the renamed id. On `@xyo-network/xl1-cli`
-5.6.x the pin matches again and is **required** for a dev chain that publishes
-chain state to S3: without an `evm-rpc`-backed `ChainContractViewer`, startup
-refuses to plan `S3ChainStatePublishRunner` unless the binding explicitly pins
-`SimpleChainContractViewer` with no connection.
+nothing fails startup with `UnknownProviderError`, whose message lists the ids
+that do satisfy the moniker. On `@xyo-network/xl1-cli` 5.6.x (which bundles
+`@xyo-network/xl1-sdk` 5.8) the pin is **required** for a dev chain that
+publishes chain state to S3: without an `evm-rpc`-backed `ChainContractViewer`,
+startup refuses to plan `S3ChainStatePublishRunner` unless the binding
+explicitly pins `SimpleChainContractViewer` with no connection.
 
 ---
 

@@ -42,11 +42,16 @@ interface BlockBoundWitness extends BoundWitness {
   previous: Hash | null        // Previous block hash (null for genesis)
   protocol?: number            // Protocol version
   step_hashes?: Hash[]         // Step checkpoint hashes
+  supersedes?: Hash            // Signed hash of the same-height candidate this block replaces
 
   // Optional unsigned client meta ($ prefix, excluded from _dataHash). Not the clock.
   $epoch?: number
 }
 ```
+
+`supersedes` is a signed field on purpose: it is what separates an honest
+re-proposal at the same height from double-signing, so a producer cannot add or
+drop it after signing.
 
 The block clock is the signed `network.xyo.time` payload elevated into the block (`epoch` in milliseconds). Read it with `timePayloadOfBlock` / `epochOfBlock` from `@xyo-network/xl1-sdk`. `$epoch` is leftover client meta: producers no longer write it, and nothing that gates (qualification, finality, head selection) should accept it. `epochOfBlock` falls back to `$epoch` only so reads over pre-time-payload history keep working.
 
@@ -58,7 +63,7 @@ Blocks are tuples pairing the BoundWitness with its resolved payloads:
 type HydratedBlock = [BlockBoundWitness, Payload[]]
 ```
 
-9 type variants exist, combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta`. Hydration is shallow: a viewer fills `Payload[]` only from the gateway's own payload store — a block's transaction bound witnesses and on-chain payloads — never with the off-chain bodies those transactions reference, which come from a datalake by hash (see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
+7 type variants exist: `HydratedBlock` and `SignedHydratedBlock`, each plain or with `WithHashMeta` / `WithStorageMeta`, plus the JSON wire form `SignedHydratedBlockToJson`. There are no `Unsigned` block variants (transactions have them; see [Development — Hydrated Types](development.md#hydrated-types)). Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta`. Hydration is shallow: a viewer fills `Payload[]` only from the gateway's own payload store — a block's transaction bound witnesses and on-chain payloads — never with the off-chain bodies those transactions reference, which come from a datalake by hash (see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
 
 ---
 
@@ -115,9 +120,9 @@ XL1 uses **AttoXL1** as the base unit (like wei in Ethereum). All on-chain amoun
 | Blocks per step | 1,000,000 |
 | Step decay | 5% reduction per step (multiply by 95/100) |
 | Minimum reward | 10 XL1 (10 × 10^18 AttoXL1) |
-| Creator reward | 20,000,000,000 XL1 (20,000,000,000 × 10^18 AttoXL1) per block (fixed) |
+| Creator reward | 20,000,000,000 XL1 (20,000,000,000 × 10^18 AttoXL1), paid once — genesis block 0 only |
 
-Formula: `reward(step) = max(startingReward × (95/100)^step, minReward)` where `step = floor(blockNumber / 1,000,000)`
+Formula (every block after genesis): `reward(step) = max(startingReward × (95/100)^step, minReward)` where `step = floor(blockNumber / 1,000,000)`. `rewardFromBlockNumber(0)` returns the creator reward instead.
 
 Integer arithmetic only — numerator 95, denominator 100, no floating point.
 

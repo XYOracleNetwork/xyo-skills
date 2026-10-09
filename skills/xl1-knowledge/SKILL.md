@@ -46,19 +46,19 @@ Read when building applications or services on XL1. Covers the Zod-first type pa
 Read when creating a wallet or signer in XL1 backend code (Node services, indexers, CLIs, tests). Covers the canonical `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` pattern, the cross-environment compatibility guarantee with MetaMask and the XYO browser extension, and the rule that the result is an `AccountInstance`, which goes directly to `GatewayBuilder.account(...)` when a write-capable runner is needed.
 
 ### [Datalakes](datalakes.md)
-Read when working with XL1 chain data storage — archiving, querying, or configuring storage backends. Covers the DataLake abstraction and how it builds on XYO Archivists.
+Read when working with XL1 chain data storage — archiving, querying, or configuring storage backends. Covers the DataLake abstraction and how it builds on XYO Archivists, and indexes the operator-side driver and S3 provider packages.
 
 ### [Gateway](gateway.md)
-Read when connecting to the XL1 chain — generic gateway concepts, viewer API, networks, transports, and how to run a gateway node. Environment-specific construction lives in two sibling files.
+Read when connecting to the XL1 chain — generic gateway concepts, viewer API, networks (including REST roots), transaction submission (options, confirmation, and crash-safe **durable submission** with the phased `buildXl1Transaction` … `observeXl1TransactionFinality` functions), transports, and how to run a gateway node. Environment-specific construction lives in two sibling files.
 
 ### [Browser Gateway](gateway-browser.md)
 Read when integrating XL1 into any website — React dApps, plain pages, workers, service workers, and browser extensions. `@xyo-network/xl1-browser-system` is the preferred integration substrate and **REST is the preferred transport**; React dApps reach it through `InPageGatewaysProvider` with `transport="rest"` rather than launching a browser system directly. Also covers the Chrome wallet extension, `WalletGatewayProvider` / `GatewayProvider`, and `useProvidedGateway`. UX patterns built on top of the gateway live in [Browser UX](../xl1-patterns/browser-ux.md).
 
 ### [Node Gateway](gateway-node.md)
-Read when constructing a gateway in any non-browser context — backend services, indexers, CLIs, scheduled jobs, tests, and headless verification of dApps. Covers the canonical `GatewayBuilder` entry point (read-only and write-capable), the seed-phrase signer pattern, the lazy-promise caching pattern, and the `basicRemoteViewerLocator` escape hatch.
+Read when constructing a gateway in any non-browser context — backend services, indexers, CLIs, scheduled jobs, tests, and headless verification of dApps. Covers the canonical `GatewayBuilder` entry point (read-only and write-capable), owned gateway sessions (`buildSession()` / `buildRunnerSession()` and `stop()` for clean shutdown), the seed-phrase signer pattern, the lazy-promise caching pattern, and the `basicRemoteViewerLocator` escape hatch.
 
 ### Application substrates (not core chain)
 
-- **[Statement Graph](../xl1-patterns/statement-graph.md)** — append-only signed relationship claims (`network.xyo.statement.claim`); application-layer package family `@xyo-network/xl1-statement-graph-*`.
+- **[Statement Graph](../xl1-patterns/statement-graph.md)** — append-only signed relationship claims (`network.xyo.statement.claim` carrying `{ source, subject, hashes }`); application-layer package family `@xyo-network/xl1-statement-graph-*`.
 - **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — portable headless application contracts (`@xyo-network/dapp-kit*`).
 - **[Finalized block stream](gateway.md#finalized-block-stream)** — ordered finalized delivery for indexers (`FinalizedBlockStream` / `finalizedBlockStreamFromGateway`); prefer over deprecated `headUpdated`.

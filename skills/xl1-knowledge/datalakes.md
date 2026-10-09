@@ -2,12 +2,27 @@
 
 **Key npm packages:**
 - `@xyo-network/xl1-protocol/protocol-lib` — DataLakeViewer and DataLakeRunner interfaces (subpath of the `@xyo-network/xl1-protocol` monolith)
+- `@xyo-network/xl1-sdk` — `createRestDataLakeRunner` / `createRestDataLakeViewer` and the `ConfigZod` connection schema (root barrel; also re-exports the interfaces above)
 
-Note: Storage drivers are published as standalone packages from the
-`xl1-protocol` repo — `@xyo-network/xl1-driver-lmdb`, `@xyo-network/xl1-driver-mongodb`,
-and `@xyo-network/xl1-driver-s3` (S3/R2/MinIO; supersedes the deprecated
-`xl1-driver-cloudflare-r2`). The interfaces above are what dApp developers
-interact with; drivers back the datalake on the operator side.
+The interfaces and factories above are what dApp developers interact with. The
+operator side — the stores behind a node and the publishers behind the static
+REST layout — is a set of standalone packages published from the `xl1-protocol`
+repo:
+
+| Package | Role |
+|---------|------|
+| `@xyo-network/xl1-driver-lmdb` | LMDB backing store (`lmdb` connections) |
+| `@xyo-network/xl1-driver-mongodb` | MongoDB backing store (`mongo` connections) |
+| `@xyo-network/xl1-driver-s3` | S3-compatible object store — AWS S3, Cloudflare R2, MinIO (`s3` connections) |
+| `@xyo-network/xl1-s3-providers` | `S3*` providers that publish and read the static REST layout: finalized blocks, index, chain state, chain params, datalake content, EVM event index |
+| `@xyo-network/xl1-system-status` | System status publishers (console and HTTP health endpoints) |
+
+The in-process `memory` connection type needs nothing beyond `@xyo-network/xl1-sdk`
+(see [Memory](#memory-ephemeral)). Deprecated
+re-export shims — do not add them to new work: `@xyo-network/xl1-driver-cloudflare-r2`
+(→ `xl1-driver-s3`, with `R2Map` aliased to `S3Map`), and
+`@xyo-network/xl1-s3-publishers` / `@xyo-network/xl1-rest-block-publisher`
+(→ `xl1-s3-providers`).
 
 ---
 
@@ -61,7 +76,7 @@ These two configurations are **independent**. The relationship between them is a
 
 **Do not assume one covers the other.** The wallet may or may not write to a datalake the dApp can see, and vice versa. If the dApp needs payload data to be available for querying, it must write to its own datalake — regardless of what the wallet does.
 
-**There is no public wallet permission for datalake access.** A dApp that needs to read or write the datalake does it directly over HTTP via the factories below — it does not request a permission from the wallet. The wallet does register internal `xyoDataLakes_get` / `xyoDataLakes_insert` methods, but they are gated behind a debug flag and are not granted on standard wallet builds. See [Wallet — Permissions](../xl1-patterns/wallet.md#permissions) for the full rule.
+**There is no public wallet permission for datalake access.** A dApp that needs to read or write the datalake does it directly over HTTP via the factories below — it does not request a permission from the wallet. The wallet does have a typed, internal datalake surface: a `DataLakesClient` (`requestAccess` / `list` / `lakes` / `get` / `insert`) injected as `xyo.dataLakes`, whose `lakes()` hands back `DataLakePageViewer` / `DataLakePageRunner` providers over the wallet's `xyoDataLakes_get` / `xyoDataLakes_insert` methods. Lakes only exist there once the user adds them in the wallet's Data Lakes settings page, which appears only after the **Enable Data Lakes** debug setting is switched on — and the Debug page itself is only reachable in development or debug builds. It is not for dApps, whatever the types suggest. See [Wallet — Permissions](../xl1-patterns/wallet.md#permissions) for the full rule.
 
 ```ts
 import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
@@ -189,8 +204,13 @@ are gone — every backing store, RPC endpoint, EVM RPC, and S3 bucket lives und
 - Config: a named connection, e.g. `XL1_CONNECTIONS__CHAIN_MONGO__TYPE=mongo` plus `__CONNECTION_STRING` and `__DATABASE`
 
 ### S3 / object store
-- Standalone package: `@xyo-network/xl1-driver-s3` (a Cloudflare R2 driver, `@xyo-network/xl1-driver-cloudflare-r2`, is also still published)
-- Config: a named connection of the corresponding type
+- Standalone package: `@xyo-network/xl1-driver-s3` — covers AWS S3, Cloudflare R2, and MinIO. `@xyo-network/xl1-driver-cloudflare-r2` is only a deprecated re-export of it
+- Config: a named connection of type `s3`
+
+### Memory (ephemeral)
+- In-process shared memory backed by a `MemoryArchivist` — for tests and throwaway nodes; nothing survives a restart
+- No separate package; the in-memory maps ship in the `@xyo-network/xl1-sdk/driver-memory` subpath
+- Config: a named connection of type `memory`, e.g. `XL1_CONNECTIONS__SCRATCH__TYPE=memory`
 
 ---
 

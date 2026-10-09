@@ -4,12 +4,14 @@ How to construct an XL1 gateway in a non-browser environment — backend service
 
 **Scope:** environment-specific *construction*. Once you have a gateway, the chain reads, transaction methods, and datalake access work the same as in any other environment — see [Gateway](gateway.md) for the API surface and cross-environment recipes.
 
-**Key npm packages** (all subpaths below are exports of the two monoliths, and
-all are re-exported from the `@xyo-network/xl1-sdk` root barrel):
-- `@xyo-network/xl1-sdk` — root barrel; re-exports `GatewayBuilder`, `buildSimpleXyoSigner`, `DefaultNetworks`, `NetworkDataLakeUrls`, and everything below
-- `@xyo-network/xl1-sdk/protocol-sdk` — `generateXyoBaseWalletFromPhrase` (the subpath is the most precise import; the root barrel also surfaces it)
-- `@xyo-network/xl1-protocol/protocol-lib` — `XyoGatewayMoniker`, gateway types (only needed if you drop down to the locator)
-- `@xyo-network/xl1-sdk/providers` — `basicRemoteViewerLocator` (escape hatch only)
+**Key npm package:** `@xyo-network/xl1-sdk` — import everything on this page
+from its root barrel: `GatewayBuilder` and its `GatewaySession` type,
+`generateXyoBaseWalletFromPhrase`, `DefaultNetworks`, `NetworkDataLakeUrls`, the
+`XyoGateway` / `XyoGatewayRunner` types and `XyoGatewayMoniker` (re-exported
+from `@xyo-network/xl1-protocol`), `getRestGateway` / `getRestGatewayRunner`, and
+the `basicRemoteViewerLocator` escape hatch. Its subpaths
+(`@xyo-network/xl1-sdk/protocol-sdk`, `/providers`, `/gateway`) carry the same
+symbols; prefer the root barrel (see [Development on XL1](development.md)).
 
 ---
 
@@ -20,7 +22,9 @@ all are re-exported from the `@xyo-network/xl1-sdk` root barrel):
 - `.build()` — takes **no arguments** and returns an `XyoGateway` (read-only).
 - `.buildRunner()` — returns an `XyoGatewayRunner` (write-capable). Requires a signing origin to have been set first.
 
-The same builder works for both — the difference is which terminal call you make, and whether a signing origin was configured.
+Each has a session variant — `.buildSession()` / `.buildRunnerSession()` — that also returns an owner able to stop the gateway (see [Gateway sessions](#gateway-sessions--buildsession--buildrunnersession)).
+
+The same builder works for all of them — the difference is which terminal call you make, and whether a signing origin was configured.
 
 > **Changed in 5.0.** `build(signer)` no longer exists. A pre-built signer is never injected; instead you declare a *signing origin* with one of `.signerFactory()` › `.account()` › `.signerTransport()` (that is also the precedence order if more than one is set) and then call `.buildRunner()`. Passing an `AccountInstance` straight to `.account()` is now the canonical path — no `buildSimpleXyoSigner` wrap required.
 
@@ -28,9 +32,8 @@ The same builder works for both — the difference is which terminal call you ma
 
 ```ts
 import {
-  DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
+  DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls, type XyoGateway,
 } from '@xyo-network/xl1-sdk'
-import { type XyoGateway } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = 'sequence' // or 'mainnet' / 'local'
 const network = DefaultNetworks.find((n) => n.id === id)
@@ -51,10 +54,9 @@ This is the right path for: chain walks, indexers, archival jobs, dashboards, ET
 
 ```ts
 import {
-  DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
+  DefaultNetworks, GatewayBuilder, generateXyoBaseWalletFromPhrase, NetworkDataLakeUrls,
+  type XyoGatewayRunner,
 } from '@xyo-network/xl1-sdk'
-import { generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
-import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = 'sequence'
 const network = DefaultNetworks.find((n) => n.id === id)
@@ -79,6 +81,32 @@ The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendM
 
 `.buildRunner()` throws if none of `.signerFactory()`, `.account()`, or `.signerTransport()` was set.
 
+### Gateway sessions — `buildSession()` / `buildRunnerSession()`
+
+`.build()` and `.buildRunner()` hand back the gateway *without retaining an owner for its provider graph*: nothing you hold can release the transports and providers behind it. When the process has to end cleanly — CLIs, scheduled jobs, test suites, servers that handle `SIGTERM` — build a session instead:
+
+- `.buildSession()` → `GatewaySession<XyoGateway>`
+- `.buildRunnerSession()` → `GatewaySession<XyoGatewayRunner>` (same signing-origin requirement as `.buildRunner()`)
+
+A `GatewaySession` is a frozen `{ gateway, stop() }`. `stop()` cancels in-flight requests, releases every provider in reverse creation order, and is idempotent — concurrent and repeated calls share one release. After it resolves, calls through `session.gateway` reject. If resolving the gateway fails, the session variants release the providers already created before rethrowing.
+
+```ts
+import { GatewayBuilder } from '@xyo-network/xl1-sdk'
+
+const session = await new GatewayBuilder()
+  .rpcUrl(`${network.url}/rpc`)
+  .account(account)
+  .buildRunnerSession()
+try {
+  const [txHash] = await session.gateway.addPayloadsToChain([], appPayloads)
+  await session.gateway.confirmSubmittedTransaction(txHash, { attempts: 30, delay: 10_000 })
+} finally {
+  await session.stop()
+}
+```
+
+In a long-running service, build one session at startup, use `session.gateway` everywhere, and call `session.stop()` from the shutdown handler (see [Caching](#caching)).
+
 ### Builder reference
 
 | Method | Purpose |
@@ -86,7 +114,7 @@ The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendM
 | `.rpcUrl(url)` | HTTP transport — point at a gateway RPC endpoint |
 | `.postMessage(networkId, sessionId)` | PostMessage transport — for browser wallet ↔ dApp wiring (rarely used in Node) |
 | `.dataLakeEndpoint(url)` | Optional datalake URL — backs `connection.storage` (a `DataLakeViewer` from `.build()`, a `DataLakeRunner` from `.buildRunner()`) and the runner's pre-broadcast write of each transaction's full content, `offChain` payloads included. Viewer reads never consult it — fetch off-chain bodies with `createRestDataLakeViewer(url).get(hashes)` |
-| `.name(name)` | Actor name used for diagnostics (default `'gateway-client'`) |
+| `.name(name)` | Diagnostic name for the gateway and its provider locator (default `'gateway-client'`). It does **not** select the network — `.rpcUrl()` does |
 | `.validators(validators)` | Custom block validators |
 | `.additionalProviders(factories)` | Extra `CreatableProviderFactory` entries (read path) |
 | `.additionalRunnerProviders(factories)` | Extra `CreatableProviderFactory` entries (write path) |
@@ -96,8 +124,10 @@ The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendM
 | `.logger(logger)` | Logger passed through to the locator |
 | `.build()` | Resolve a read-only `XyoGateway` (no arguments) |
 | `.buildRunner()` | Resolve a write-capable `XyoGatewayRunner` |
+| `.buildSession()` | Resolve a read-only gateway with its owner — `GatewaySession<XyoGateway>` |
+| `.buildRunnerSession()` | Resolve a write-capable gateway with its owner — `GatewaySession<XyoGatewayRunner>` |
 
-`build()` and `buildRunner()` both throw if neither `.rpcUrl()` nor `.postMessage()` was set. `buildRunner()` additionally throws if no signing origin was configured.
+All four terminal calls throw if neither `.rpcUrl()` nor `.postMessage()` was set. `buildRunner()` and `buildRunnerSession()` additionally throw if no signing origin was configured.
 
 ---
 
@@ -107,7 +137,8 @@ When the chain data is published to a static REST/S3 layout (finalized blocks,
 index, chain state — see [Datalakes](datalakes.md) and the `xl1-s3-providers`
 package), you can build a gateway that reads directly from those buckets instead
 of talking to a live RPC gateway. Use `getRestGateway` / `getRestGatewayRunner`
-from `@xyo-network/xl1-sdk/gateway` (also on the root barrel):
+from `@xyo-network/xl1-sdk`. The public networks' REST roots are listed in
+[Gateway — Networks](gateway.md#networks) (`https://<gateway name>.xyo.space`):
 
 ```ts
 import { getRestGateway, getRestGatewayRunner } from '@xyo-network/xl1-sdk'
@@ -115,12 +146,12 @@ import { getRestGateway, getRestGatewayRunner } from '@xyo-network/xl1-sdk'
 // Read-only: pass an endpoint string (read buckets derived as
 // blocks.<domain>, state.<domain>, indexes.<domain>), or an explicit
 // RestGatewayConfig with per-bucket readUrls.
-const gateway = await getRestGateway('https://cdn.xl1.example')
+const gateway = await getRestGateway('https://sequence.xyo.space')
 
 // Write-capable: reads over REST/S3, submits over RPC. Same consumer-facing
 // write surface as GatewayBuilder.buildRunner().
 const runner = await getRestGatewayRunner({
-  endpoint: 'https://cdn.xl1.example',
+  endpoint: 'https://sequence.xyo.space',
   rpcUrl: `${network.url}/rpc`,
   signerAccount: account,
 })
@@ -138,38 +169,54 @@ key: a pre-built signer instance is never injected.
 
 `GatewayBuilder.build()` does non-trivial async setup (resolves the locator graph, builds the transport, creates the viewer chain). Construct the gateway once per process and reuse it — do not rebuild per request.
 
-A common pattern is a lazy module-level promise:
+A common pattern is a lazy module-level promise. Caching a session rather than a bare gateway also gives the shutdown path something to stop:
 
 ```ts
-let gatewayPromise: Promise<XyoGatewayRunner> | undefined
+import {
+  GatewayBuilder, type GatewaySession, generateXyoBaseWalletFromPhrase, NetworkDataLakeUrls,
+  type XyoGatewayRunner,
+} from '@xyo-network/xl1-sdk'
 
-export function getGateway(): Promise<XyoGatewayRunner> {
-  if (!gatewayPromise) {
-    gatewayPromise = (async () => {
+let sessionPromise: Promise<GatewaySession<XyoGatewayRunner>> | undefined
+
+function getSession(): Promise<GatewaySession<XyoGatewayRunner>> {
+  if (!sessionPromise) {
+    sessionPromise = (async () => {
       const baseWallet = await generateXyoBaseWalletFromPhrase(process.env.SEED_PHRASE!)
       const account = await baseWallet.derivePath('0')
-      return new GatewayBuilder()
+      return await new GatewayBuilder()
         .name('sequence')
         .rpcUrl(`${network.url}/rpc`)
         .dataLakeEndpoint(NetworkDataLakeUrls.sequence)
         .account(account)
-        .buildRunner()
+        .buildRunnerSession()
     })()
   }
-  return gatewayPromise
+  return sessionPromise
+}
+
+export async function getGateway(): Promise<XyoGatewayRunner> {
+  return (await getSession()).gateway
+}
+
+export async function stopGateway(): Promise<void> {
+  await (await sessionPromise)?.stop()
 }
 ```
 
-Cache the **promise**, not the resolved value, so concurrent first callers share one construction.
+Cache the **promise**, not the resolved value, so concurrent first callers share one construction. Call `stopGateway()` from the process's shutdown handler (`SIGTERM`, test `afterAll`).
 
 ---
 
 ## Network Selection
 
-Pass the network ID directly — there is no React prop equivalent. The IDs and their endpoints are documented in [Gateway — Networks](gateway.md). Drive selection from an environment variable in production:
+There is no React prop equivalent: resolve the network ID to its URLs yourself and pass those to the builder. The network is whatever `.rpcUrl()` (and `.dataLakeEndpoint()`) point at; `.name()` is only a diagnostic label. The IDs and their endpoints are documented in [Gateway — Networks](gateway.md#networks). Drive selection from an environment variable in production:
 
 ```ts
 const id = process.env.XL1_NETWORK ?? 'sequence'
+const network = DefaultNetworks.find((n) => n.id === id)
+if (!network) throw new Error(`Unknown network "${id}"`)
+// .rpcUrl(`${network.url}/rpc`).dataLakeEndpoint(NetworkDataLakeUrls[id])
 ```
 
 ---
@@ -185,8 +232,9 @@ The runner path above is the foundation for verifying any XL1 dApp without a bro
 If you need control beyond what the builder exposes (custom locator graphs, manual provider wiring, instrumented transports), you can call `basicRemoteViewerLocator` directly:
 
 ```ts
-import { XyoGatewayMoniker, type XyoGateway } from '@xyo-network/xl1-protocol/protocol-lib'
-import { basicRemoteViewerLocator } from '@xyo-network/xl1-sdk/providers'
+import {
+  basicRemoteViewerLocator, NetworkDataLakeUrls, type XyoGateway, XyoGatewayMoniker,
+} from '@xyo-network/xl1-sdk'
 
 const locator = await basicRemoteViewerLocator(
   id,
@@ -196,7 +244,7 @@ const locator = await basicRemoteViewerLocator(
 const gateway = await locator.getInstance<XyoGateway>(XyoGatewayMoniker)
 ```
 
-This is an escape hatch — prefer `GatewayBuilder` unless you have a concrete reason to drop down. Anything `GatewayBuilder` exposes (additional providers, validators) should be set through builder methods first.
+This is an escape hatch — prefer `GatewayBuilder` unless you have a concrete reason to drop down. Anything `GatewayBuilder` exposes (additional providers, validators) should be set through builder methods first. The first argument is the same diagnostic name `.name()` sets, not a network selector. A locator you build yourself is yours to release: `releaseProviderFactoryLocator(locator)` is what a session's `stop()` calls.
 
 ---
 

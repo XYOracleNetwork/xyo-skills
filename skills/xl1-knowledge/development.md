@@ -35,10 +35,14 @@ import { Payload } from '@xyo-network/payload-model'
 
 > The `@xyo-network/xl1-protocol` and `@xyo-network/xl1-sdk` packages are
 > toolchain monoliths. The old standalone names (`@xyo-network/xl1-protocol-model`,
-> `-protocol-lib`, `-validation`, `-providers`, `-protocol-sdk`, `-rpc`) no longer
-> exist — they are now export subpaths of the two monoliths (e.g.
-> `@xyo-network/xl1-sdk/protocol-sdk`). The `@xyo-network/xl1-sdk` root barrel
-> re-exports all of them, so prefer it.
+> `-protocol-lib`, `-validation`, `-providers`, `-protocol-sdk`, `-rpc`,
+> `-driver-memory`) are now export subpaths of the two monoliths (e.g.
+> `@xyo-network/xl1-sdk/protocol-sdk`). On npm the old names survive only as
+> deprecated 4.0.12 compatibility shims that will not be updated — never add
+> them. The `@xyo-network/xl1-sdk` root barrel re-exports its subpaths, so
+> prefer it. Two subpaths are not on it: `./rest-block-viewer`
+> (`RestBlockViewer` and friends, normally reached through `getRestGateway`) and
+> `./test`; import those from the subpath when you need them.
 
 For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each root barrel package.
 
@@ -50,7 +54,7 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 
 ```ts
 import { zodAsFactory, zodIsFactory, zodToFactory } from '@ariestools/sdk'
-import { z } from 'zod'
+import { z } from 'zod/mini'
 
 // 1. Zod schema (the single source of truth)
 export const FooZod = z.object({ bar: z.string() })
@@ -76,7 +80,7 @@ This pattern is **mandatory** for all new types. Define the Zod schema first, de
 
 The generic `FooZod` example above is not a complete payload definition. Author
 an XYO payload as in [Authoring a payload type](../xyo-knowledge/primitives.md#authoring-a-payload-type):
-`import * as z from 'zod/mini'`, a `FieldsZod`, `z.extend(PayloadZodOfSchema(Schema), FieldsZod.shape)`,
+`import { z } from 'zod/mini'`, a `FieldsZod`, `z.extend(PayloadZodOfSchema(Schema), FieldsZod.shape)`,
 `z.infer`, and the `zodIsFactory` / `zodAsFactory` / `zodToFactory` trio. Swap
 `PayloadZodOfSchema` for `PayloadZodLooseOfSchema` or `PayloadZodStrictOfSchema`
 only when the unknown-field policy requires it. Those factories default to
@@ -103,15 +107,16 @@ The protocol separates read and write operations:
 
 ### Viewers (organized by domain)
 
-The interface files live under `protocol-lib/viewers/` (~28 files, including the
-`XyoViewer` aggregate). Read that directory for the authoritative list rather
-than relying on a fixed count.
+The interface files live under `protocol-lib/viewers/` (~30 files plus the
+`NetworkStake/` directory, including the `XyoViewer` aggregate). Read that
+directory for the authoritative list rather than relying on a fixed count.
 
 **Block:** BlockViewer, BlockValidation, BlockInvalidation, BlockReward, WindowedBlock, IndexViewer (block-index / `blocksByStep` summaries)
 **Transaction:** TransactionViewer, TransactionValidation, TransactionInvalidation
 **Account:** AccountBalanceViewer, TransferBalance
-**Chain State:** ChainContract, ChainStateViewer, Fork, Finalization, TimeSync, Sync, EvmChain (canonical EVM source)
-**Stake:** Stake, StakeTotals, StakeIntent, StakeEvents, ChainStakeViewer, StepStake, NetworkStakeStepReward, StepViewer
+**Chain State:** ChainContract, ChainParams (`ChainParamsViewer` — the chain parameter register: `currentParams()`, `tryCurrentParams()`, `paramsByVersion(v)`), ChainStateViewer, Fork, Finalization, TimeSync, Sync, EvmChain (canonical EVM source)
+**Stake:** Stake, StakeTotals, StakeIntent, StakeEvents, StakeSnapshot (`StakeSnapshotViewer` — active, at-risk, seasoned, and self-bonded stake as of an EVM block height), ChainStakeViewer, StepStake, NetworkStakeStepReward, StepViewer
+**Evidence:** Evidence (`EvidenceViewer` — same-height candidate pairs, i.e. the equivocation feed, plus raw entries and observer-signed rejections; `EvidenceProtectionViewer` — evidence retention protections)
 **Data:** DataLake, Mempool, DeadLetterQueue
 
 ### Runners
@@ -125,14 +130,18 @@ The four core write-path runners:
 
 Plus the publish-side runners under the same `protocol-lib/runners/` directory:
 `BlockPublish`, `ChainStatePublish`, `DataLakePublish`, `EvmEventIndexPublish`,
-`IndexPublish`, and `NetworkStakeRewardsIndexPublish`.
+`IndexPublish`, and `NetworkStakeRewardsIndexPublish`, and the evidence runner
+**EvidenceStoreRunner** — `noteCandidates()` (records candidates and returns
+newly detected same-height pairs), `recordRejection()`, `archiveCandidates()`.
 
 ### Implementation Prefixes
 
 | Prefix | Description | Example |
 |--------|-------------|---------|
 | `Simple*` | In-memory / direct implementation | `SimpleBlockViewer` |
-| `Rest*` | REST API implementation | `RestDataLakeViewer` |
+| `JsonRpc*` | Client that calls a remote gateway's JSON-RPC methods (what `GatewayBuilder` wires up) | `JsonRpcBlockViewer`, `JsonRpcXyoRunner` |
+| `Rest*` | REST API implementation — reads the static REST layout or a datalake over HTTP | `RestDataLakeViewer`, `RestChainParamsViewer` |
+| `S3*` | Publishes or reads the static REST layout in an S3-compatible bucket (`@xyo-network/xl1-s3-providers`, operator side) | `S3BlockPublishRunner`, `S3ChainStateViewer` |
 | `Abstract*` | Base class for extension | `AbstractCreatableProvider` |
 
 ---
@@ -167,7 +176,7 @@ For the common case of getting a working gateway, you almost never construct a l
 
 A provider implementation is identified by its class's own `static providerId`, never by its class name. That id is the candidate id a config pin (`providerBindings.<moniker>.provider`) matches. Bundlers rename classes: the `@xyo-network/xl1-cli` 5.5.0 bundle emits `SimpleChainContractViewer$1 = class …`, so a name-derived id broke the `"SimpleChainContractViewer"` pin with `UnknownProviderError`.
 
-> **Changed after `@xyo-network/xl1-sdk` 5.7.1.** Every SDK provider declares `static readonly providerId: string = '<ClassName>'`, so pins written against class names keep working. `providerCandidateFromClass(cls)` and `providerCandidatesFromClasses(classes)` take each class's `providerId` and throw `MissingProviderIdError` when a class declares none. They never fall back to the constructor name. On 5.7.1 and earlier they silently use the constructor name, so pass an explicit id there.
+Every SDK provider declares `static readonly providerId: string = '<ClassName>'`, so pins written against class names keep working. `providerCandidateFromClass(cls)` and `providerCandidatesFromClasses(classes)` take each class's `providerId` and throw `MissingProviderIdError` when a class declares none — they never fall back to the constructor name. Current releases all resolve pins this way: `@xyo-network/chain-sdk` 5.6.1 peers `@xyo-network/xl1-sdk ^5.8`, and `@xyo-network/xl1-cli` 5.6.1 bundles xl1-sdk 5.8. On xl1-cli 5.6.x a dev chain that publishes chain state to S3 still needs the explicit `SimpleChainContractViewer` pin — see [Gateway — Configuration](gateway.md#configuration).
 
 Declare an id on every provider class you write:
 
@@ -213,7 +222,7 @@ type HydratedBlock = [BlockBoundWitness, Payload[]]
 type HydratedTransaction = [TransactionBoundWitness, Payload[]]
 ```
 
-Blocks and transactions each have several type variants combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / `ToJson` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, `UnsignedHydratedTransactionWithStorageMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta` and `SignedHydratedTransactionWithHashMeta`. Hydration is shallow: a viewer fills `Payload[]` only from the gateway's own payload store — a block's transaction bound witnesses and on-chain payloads — never with the off-chain bodies those transactions reference, which come from a datalake by hash (see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
+Transactions have 9 type variants, combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain): `SignedHydratedTransactionWithHashMeta`, `UnsignedHydratedTransactionWithStorageMeta`, etc. Blocks have 7: default and `Signed` (no `Unsigned`) with the same three metadata forms, plus the JSON wire form `SignedHydratedBlockToJson`. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta` and `SignedHydratedTransactionWithHashMeta`. Hydration is shallow: a viewer fills `Payload[]` only from the gateway's own payload store — a block's transaction bound witnesses and on-chain payloads — never with the off-chain bodies those transactions reference, which come from a datalake by hash (see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
 
 ---
 
