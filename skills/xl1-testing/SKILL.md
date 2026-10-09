@@ -59,7 +59,7 @@ explicitly and deliberately opts into mainnet for a specific run.
 | Test a complete local XL1 dApp backend (classic **or** dapp-kit) | **[Full local XL1 dApp stack](local-dapp-stack.md)** | Classic: `aries-dapp-core`. dapp-kit: `xl1-dapp` / local hosts + [dapp-kit vitest](local-chain-dapp-kit-vitest.md) |
 | Drive an external, funded actor on Sequence **unattended** | **[Unattended Sequence via CLI wallet](sequence-cli-wallet.md)** | `xl1-wallet` CLI, password in the OS keychain |
 | Test **browser-environment code** in headless Chromium | **[Headless browser-mode testing](browser-mode.md)** | vitest browser mode + Playwright provider, MSW-mocked |
-| Drive the **fully rendered app UI** | the `xylabs-e2e-setup` skill (separate skill, if installed) | Playwright e2e against the real UI |
+| Drive the **fully rendered app UI** | The repo's own e2e package (often `packages/e2e`) if it has one; otherwise **[Full-app Playwright e2e](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/testing.md#full-app-playwright-e2e)** (xy-toolchain) | Playwright Test against the real UI, run with `pnpm --filter <e2e-package> test` |
 
 ### Local chain boot — pick one
 
