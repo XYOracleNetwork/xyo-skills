@@ -1,0 +1,21 @@
+{
+  "defaultQueue": "default",
+  "idPrefix": "XYW",
+  "priority": {
+    "formula": "impact + urgency + risk + confidence - effort"
+  },
+  "stores": {
+    "github": {
+      "enabled": true
+    },
+    "inline": {
+      "enabled": true,
+      "marker": "xy-work"
+    },
+    "repo": {
+      "enabled": true,
+      "path": ".xy/work/items"
+    }
+  },
+  "version": 1
+}
