@@ -55,7 +55,7 @@ flowchart TB
 | Term | Meaning on this page |
 | --- | --- |
 | Protocol | The written contract for the dApp's state data: schemas, authority, timing, ordering, derivation, failure handling and versioning. |
-| Engine | The UI-agnostic implementation of the protocol: validation, state derivation and action construction, behind injected I/O ports. |
+| Engine | The UI-agnostic implementation of the protocol: validation, state derivation and action construction, behind injected I/O ports. On dapp-kit, its runtime form is the Dapp Engine (`launchDappEngine`) and the systems it owns (see [Vocabulary](vocabulary.md)). |
 | Evidence | Anchored payloads plus their bodies. The only input to state. |
 | Anchor | The finalized XL1 transaction that commits a payload hash, and the position `(block, transaction ordinal, payload ordinal)` it gives that payload. |
 | Datalake | A content-addressed body store: each key is the hash of its value. |
@@ -88,7 +88,9 @@ is the supported way to build the engine as a headless runtime.
   in Node, in the browser, on serverless targets and under test.
 - Make signing a port that signs and does not broadcast. The engine prepares an
   action; a wallet, a CLI key or a bot key signs it. Keys never live in the
-  interface layer.
+  interface layer. `@xyo-network/dapp-kit-wallet` is one optional
+  implementation: account-bound, sign-only sessions that never derive keys,
+  publish bodies or broadcast.
 - Journal each signed submission before broadcasting it, and resume from the
   journal without re-signing. Retry safety belongs to the engine, not to a UI.
 - Expose typed commands, queries and status (dapp-kit application ports), not a

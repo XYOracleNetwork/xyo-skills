@@ -2,9 +2,11 @@
 name: xl1-dapp-kit
 description: >-
   Portable headless XL1 dApp architecture via @xyo-network/dapp-kit*. Covers
-  definition/config/plan/incarnation, xl1.dapp.json, application ports, effect
-  journals and crash recovery, durable events vs Event Kit wakes, Node/browser
-  hosts, Vercel/Cloudflare target composition, and conformance evidence.
+  definition/config/plan/incarnation, xl1.dapp.json vs xl1.deploy.json,
+  application ports, effect journals and crash recovery, durable events vs
+  Event Kit wakes, Node/browser hosts, sign-only wallet capability,
+  Vercel/Cloudflare target composition (Kubernetes/Proxmox target plans are
+  schema-only), and conformance evidence.
   Also holds the architecture principles for any multi-party XL1 dApp (engine
   vs clients, evidence-derived state, written protocol, house role, constant-cost
   indexed loads, verifiable indexes). Activates when designing or reviewing an
@@ -24,7 +26,9 @@ This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It s
 
 **Skill identity.** Report as `xl1-dapp-kit v<version>` (from this file's `metadata.version`) in every plan, acknowledgement, and completion summary.
 
-**Maturity:** `@xyo-network/dapp-kit*` is **published on npm** (1.x line, public access; license may still be `UNLICENSED`). Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates can still be open** per consumer — check the deployment's evidence labels. Prefer local conformance via [`@xyo-network/dapp-kit-vitest-config`](../xl1-testing/local-chain-dapp-kit-vitest.md); do not claim hosted qualification from local tests.
+**Maturity:** `@xyo-network/dapp-kit*` is **published on npm** (3.x line, public access, `LGPL-3.0-only`; versions before 2.1.1 were published `UNLICENSED`). Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates can still be open** per consumer — check the deployment's evidence labels. Prefer local conformance via [`@xyo-network/dapp-kit-vitest-config`](../xl1-testing/local-chain-dapp-kit-vitest.md); do not claim hosted qualification from local tests.
+
+**Private upstream.** The dapp-kit source repo is private. Its status file (`docs/STATE.md`), `DAPP_KIT_CONTRACT.md`, `PROGRAM_RULES.md`, the White and Yellow Papers, the `conformance/` vectors, and the private workspace packages are **XYO-internal**. Outside XYO, the reference is each published package's README on npm.
 
 ## Lower layers
 
@@ -39,22 +43,22 @@ This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It s
 **Read first when designing or reviewing any XL1 dApp whose state matters to more than one party**, with or without dapp-kit. Seven principles (the dApp is an engine and every interface a client; state is anchored evidence; a written protocol; the house as a bound protocol role; load from indexes, not replay; constant-cost indexes; cheaply verifiable index answers), cross-cutting rules, a trust table and ten review questions.
 
 ### [Vocabulary](vocabulary.md)
-Definition, configuration, plan, incarnation, host, status dimensions, durability classes — the words agents must not collapse.
+Definition, configuration, plan, incarnation, host, engine and systems, the two manifests, lock versions, status dimensions, durability classes — the words agents must not collapse.
 
 ### [Project manifest](project-manifest.md)
-`xl1.dapp.json`, deployment requests, locks, and the `xl1-dapp` CLI (`validate` / `inspect` / `plan` / `dev` / `test`).
+`xl1.dapp.json` (and how it differs from `xl1.deploy.json`), deployment requests, locks, the package map, and the `xl1-dapp` CLI (`init` / `validate` / `inspect` / `build` / `plan` / `dev` / `test`).
 
 ### [Effects and recovery](effects-and-recovery.md)
-Staged XL1 effects, effect journals, prepared sidecars, and SIGKILL-safe recovery.
+Staged XL1 effects and their exact stage names, effect journals, prepared sidecars, the neutral plan/reconcile/recover helpers, and SIGKILL-safe recovery.
 
 ### [Application ports](application-ports.md)
-Typed command/query/status/admin frames over WebSocket / MessagePort — not “REST as the protocol.”
+Typed command/query/status/admin frames over WebSocket / MessagePort, the frame kinds, consistency evidence, and the fixed `/_xl1/*` paths — not “REST as the protocol.”
 
 ### [Events and wakes](events-and-wakes.md)
 Event Kit wakes vs dapp-kit durable events vs subscription cursors. Detail for JWT/grants: [Authenticated Wake Delivery](../xl1-patterns/authenticated-wake-delivery.md).
 
 ### [Hosting and targets](hosting.md)
-Node vs browser hosts, deployable things, Vercel/Cloudflare composition, fail-closed policies.
+Node vs browser hosts, deployable things, Vercel/Cloudflare composition and the `xl1-dapp-vercel` CLI, schema-only Kubernetes/Proxmox target plans, fail-closed policies.
 
 ### [Conformance](conformance.md)
-Evidence labels, what “done” means for a dapp-kit app, and what local tests do **not** prove.
+The L1–L9 evidence ladder and the runner's `evidence` labels, what “done” means for a dapp-kit app, and what local tests do **not** prove.

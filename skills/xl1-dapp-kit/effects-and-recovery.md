@@ -4,9 +4,15 @@ Read when the dApp performs XL1 writes or any multi-step effect that must surviv
 
 ## Thesis
 
-Commands produce **attributable, staged receipts** (prepared → signed → content → broadcast → inclusion → finality, as applicable). There is **no fictional atomicity** across chain + datalake. **Crash recovery is first-class.**
+Commands produce **attributable, staged receipts**. The evidence stages, in order, are exactly `prepared` → `signed` → `content-written` → `content-verified` → `broadcast` → `included` → `finalized`. The two content stages apply only when the effect's `contentPolicy` is `required-before-broadcast`; the other five are always required for an XL1 transaction effect. There is no `confirmed` stage — do not invent one. There is **no fictional atomicity** across chain + datalake. **Crash recovery is first-class.**
 
-Neutral planning helpers (names live in `@xyo-network/dapp-kit`) such as effect planning / reconciler / `recoverEffectJournal` keep pure planning separate from injected I/O.
+Neutral helpers in `@xyo-network/dapp-kit` keep pure planning separate from injected I/O:
+
+- `planXl1TransactionEffect(receipt)` — selects the next safe action for a receipt, with no I/O.
+- `createXl1TransactionEffectReconciler(capabilities)` — drives that action through injected capabilities (`sign`, `writeContent`, `verifyContent`, `reconcileBroadcast`, `observeInclusion`, `observeFinality`).
+- `recoverEffectJournal(options)` — one bounded recovery pass over the journal's incomplete receipts.
+
+Journal implementations come from host packages: `FileEffectReceiptJournal` (`@xyo-network/dapp-kit-node`; crash-durable file journal with exclusive single-host write ownership) and `VercelBlobEffectPreparationJournal` (`@xyo-network/dapp-kit-vercel`; private Blob envelope fenced by deployment epoch).
 
 ## Effect journal
 
