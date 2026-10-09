@@ -20,7 +20,7 @@ This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, 
 
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs the agent to read sub-files on demand based on task context.
 
-**Required companion:** install **both** packs. In XY/XYO repos prefer `xy skills defaults`, which already pulls base skills from ariestools and domain skills from this repo.
+**Required companion:** install **both** packs. In XY/XYO repos prefer `pnpm xy skills defaults`, which already pulls base skills from ariestools and domain skills from this repo.
 
 ## How These Work in Multiple Places
 
@@ -141,29 +141,34 @@ For development against a local clone of *this* repo, render the Codex tree and 
 Run from the root of your project. Skills are written into your agent's project-local folder (e.g. `.claude/skills/` for Claude Code), which you can commit alongside the project so anyone who clones it gets the same skills.
 
 ```shell
-# Base layers (required companion)
-npx skills add ariestools/ariestools-skills --all
-# XYO / XL1 domain layers
-npx skills add XYOracleNetwork/xyo-skills --all
+# XYO / XL1 domain layers: name the skills, never the whole pack
+npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build -y
+# Base layers (required companion): install last
+npx skills add ariestools/ariestools-skills --skill '*' -y
 ```
 
-In XY/XYO repos that already use `@ariestools/toolchain`, prefer `xy skills defaults` — it installs both sources with the correct skill selectors.
+**Name the XYO skills, and install ariestools-skills last.** This pack still ships redirect stubs named `xy-development` and `xy-toolchain`. Skills.sh installs by skill name and the last install wins, so a whole-pack install of this repo replaces the canonical ariestools-skills copies with the stubs. The stubs carry `internal: true` in their `metadata`, so Skills.sh 1.5.26 and later skip them for whole-pack selections (`--all`, `--skill '*'`, `-y` without `--skill`, and the picker), but older Skills.sh versions and an explicit `--skill xy-development` still install them. Installing ariestools-skills last puts the canonical copies back on top.
+
+Avoid `--all`. It is shorthand for `--skill '*' --agent '*' -y`, so it selects the whole pack and installs into every agent Skills.sh supports. Without `-a`, Skills.sh targets the agents it detects and falls back to all agents only when it detects none; name the agents with `-a` to be sure, for example `-a claude-code codex`.
+
+In XY/XYO repos that already use `@ariestools/toolchain`, prefer `pnpm xy skills defaults`. It installs both sources and names the seven XYO skills above, so the stubs are never selected.
 
 #### Global install
 
 Installs into your home directory (e.g. `~/.claude/skills/`) so the skills are available across every project on your machine.
 
 ```shell
-npx skills add ariestools/ariestools-skills --all -g
-npx skills add XYOracleNetwork/xyo-skills --all -g
+npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build -g -y
+npx skills add ariestools/ariestools-skills --skill '*' -g -y
 ```
 
 #### Platform notes
 
-- **Windows:** Skills.sh defaults to symlinking, which on Windows requires either Developer Mode or running your terminal as Administrator. The easier fix is to add `--copy`, which copies files instead:
+- **Windows:** Skills.sh defaults to symlinking, which on Windows requires either Developer Mode or running your terminal as Administrator. The easier fix is to add `--copy`, which copies files instead. Keep the same order:
 
   ```shell
-  npx skills add XYOracleNetwork/xyo-skills --all --copy
+  npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build --copy -y
+  npx skills add ariestools/ariestools-skills --skill "*" --copy -y
   ```
 
 - **macOS / Linux:** Symlinks work out of the box — no extra setup needed.
@@ -175,6 +180,13 @@ npx skills update              # update all installed skills
 npx skills remove              # remove skills (interactive)
 npx skills list                # show what's installed
 ```
+
+#### Repairing an install that picked up the redirect stubs
+
+If `xy-development` or `xy-toolchain` was installed from this pack (for example by an earlier `npx skills add XYOracleNetwork/xyo-skills --all`), the lock records `XYOracleNetwork/xyo-skills` as its source. `npx skills update` does **not** repair this: it reinstalls each skill from the source in the lock, so it puts the stubs back.
+
+- In a project that uses `@ariestools/toolchain`, run `pnpm xy skills lint --fix` from the repository root. It reinstalls both skills from `ariestools/ariestools-skills`. `pnpm xy check` reports the problem as `skills.migrated-source`.
+- `xy skills lint` reads only the project's `skills-lock.json`, `.claude/skills` and `.agents/skills`. For a global install, or a project without the toolchain, rerun the ariestools-skills command above (with `-g` for a global install).
 
 Full CLI reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
 
