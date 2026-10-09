@@ -46,7 +46,7 @@ Wire format: raw wake Payload + `Authorization: Bearer <JWT>`. There is **no** s
 
 Inbox keys collide closed on conflicting `(aud, iss, wakeId)` / hash pairs.
 
-### Grant vocabulary (Statement Graph v2)
+### Grant vocabulary (Statement Graph)
 
 Namespace `network.xyo.event.wake`:
 
@@ -59,7 +59,9 @@ Namespace `network.xyo.event.wake`:
 
 Event Kit schema names remain unversioned. Do not propose `.v2` or other structural suffixes for successors: new structure revisions follow [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md). Existing Event Kit JWT/envelope/hash contracts still require their own coordinated version-support migration; adding `$version` to a strict legacy envelope is not automatically supported. `grantId` is 16 cryptographically random bytes encoded as 32 lowercase hexadecimal characters. It stays stable when retrying or republishing the same logical grant; re-enabling after revocation creates a new grant object with a fresh `grantId`.
 
-Grants are ordinary SG objects: **claim** to publish; **claim a revocation object** to negate (no SG revoke verb).
+Grants are ordinary SG objects: **claim** to publish; **claim a revocation object** to negate (no SG revoke verb). Because they are claimed through Statement Graph, grant and revocation objects cannot carry `$` client metadata such as `$version` (see [Statement Graph — Existing hash contract](statement-graph.md#existing-hash-contract)), so a structure revision of either object cannot be expressed as a `$version` bump while that data-hash contract stands.
+
+Every Event Kit Claim of a grant or of its revocation uses `source` = the pinned controller *C* and `subject` = the publisher address *P*. Authorization requires the grant Claim's `subject` **and** the grant body's `publisher` both to equal the requested publisher; neither field substitutes for the other. A revocation counts only when the same pinned controller claims it with the same publisher subject; one claimed by any other source is ignored. Event Kit's grant reader currently selects revocation Claims by their declared schema and needs the revocation body to resolve, so publish revocations under their exact schema with the body inserted into the datalake that Event Kit's grant replay reads.
 
 ---
 
