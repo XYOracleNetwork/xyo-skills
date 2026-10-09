@@ -286,21 +286,30 @@ A working local recipe for `@xyo-network/xl1-cli` 5.4.1:
 
 Two traps:
 
-- Do **not** bind `"ChainContractViewer": { "provider": "SimpleChainContractViewer" }`,
-  as ariestools' `chain-serve-local-s3` `buildXl1Config` does. 5.4.1 exits at
-  startup with `UnknownProviderError: Provider "SimpleChainContractViewer" does
-  not satisfy capability "ChainContractViewer"`. Omit the binding. The CLI
-  bundle renames the class (5.5.0 emits `SimpleChainContractViewer$1 = class …`)
-  and SDKs up to 5.7.1 take the id from that name, so the pin matches nothing.
-  A CLI built on `@xyo-network/xl1-sdk` after 5.7.1 matches it through the
-  declared `providerId` (see
+- On `@xyo-network/xl1-cli` 5.6.x, **pin** the chain-contract viewer. Binding
+  `ChainStatePublishRunner` to an `s3` connection with a `finalizer` actor plans
+  `S3ChainStatePublishRunner`, which reads the chain-contract manifest; the node
+  then refuses to start unless `ChainContractViewer` is bound to an `evm-rpc`
+  connection or explicitly pinned to the in-memory stub. A dev chain has no EVM,
+  so add the pin, with no `connection`, to `providerBindings`:
+
+  ```json
+  "ChainContractViewer": { "provider": "SimpleChainContractViewer" }
+  ```
+
+  Without it, startup exits with `ChainContractViewer requires an evm-rpc-backed
+  binding when ChainStatePublishRunner is planned`. Historical note: through
+  5.5.0 the CLI bundle renamed the class (`SimpleChainContractViewer$1`), so this
+  pin failed with `UnknownProviderError` and the binding had to be omitted;
+  5.6.x matches it by a stable provider id (see
   [Provider identity](../xl1-knowledge/development.md#provider-identity)).
 - Restart chain-serve with every `xl1` boot. Its memory buckets outlive the
   chain, so a new chain publishing over the old objects serves a stale head,
   and the indexer fails with `Ceiling N exceeds source head M`.
 
-A reference config lives in the wallet-xl1-chrome repo at
-`packages/e2e/fixtures/local-chain/xl1.config.json` once that change lands.
+A reference config, run against `@xyo-network/xl1-cli` 5.6.1 and including the
+pin, lives in the `XYOracleNetwork/wallet-xl1-chrome` repo at
+`packages/e2e/fixtures/local-chain/xl1.config.json`.
 
 ## Teardown
 
