@@ -83,6 +83,8 @@ for await (const { block } of stream.blocks({ after })) {
 Do **not** use deprecated `headUpdated` viewer events as the sync driver — they are unordered head signals. Full API: [Gateway — Finalized block stream](../xl1-knowledge/gateway.md#finalized-block-stream).
 
 ```ts
+import { asXL1BlockNumber } from '@xyo-network/xl1-sdk'
+
 async function indexerMain() {
   const gateway = await getServerGateway()
   const state = await loadStateFromCheckpoint()  // seeds from INDEXER_FLOOR_BLOCK on cold start
@@ -93,8 +95,8 @@ async function indexerMain() {
     const head = Number(await gateway.connection.viewer!.finalization.headNumber())
     while (state.lastProcessedBlock < head) {
       const next = state.lastProcessedBlock + 1
-      const block = await gateway.connection.viewer!.block.blockByNumber(next)
-      if (block) applyBlock(state, block)
+      const block = await gateway.connection.viewer!.block.blockByNumber(asXL1BlockNumber(next, true))
+      if (block) await applyBlock(state, block)
       state.lastProcessedBlock = next
       if (next % CHECKPOINT_INTERVAL === 0) await saveCheckpoint(state)
     }
@@ -183,9 +185,9 @@ This is complementary to floor block, not an alternative. The floor decides *whi
 
 ## Exposing Results
 
-The indexer's API is application-specific, but a few patterns recur:
+The indexer's API is application-specific, but a few patterns recur. Every route — infrastructure routes included — mounts under `/api/*` per [Browser ↔ Service Wiring](browser-service-wiring.md):
 
-- **Read-mostly endpoints.** `GET /balance/:address`, `GET /artifact/:id` — straight reads from the in-memory map.
+- **Read-mostly endpoints.** `GET /api/balance/:address`, `GET /api/artifact/:id` — straight reads from the in-memory map.
 - **Pagination by index, not by cursor.** Indexer state is a deterministic function of block height, so `?fromBlock=...&toBlock=...` is a natural pagination boundary.
 - **Lag headers.** Surface `X-Indexer-Last-Block` and `X-Chain-Head` so consumers can detect indexer staleness vs chain liveness.
 - **No write endpoints unless the indexer is also a signer** — see below.
@@ -195,7 +197,7 @@ import express from 'express'
 
 function startHttpApi(state: IndexerState, port: number) {
   const app = express()
-  app.get('/balance/:address', (req, res) => {
+  app.get('/api/balance/:address', (req, res) => {
     res.set('X-Indexer-Last-Block', String(state.lastProcessedBlock))
     res.json({
       address: req.params.address,
@@ -233,7 +235,7 @@ Field guarantees:
 - **`lastIndexedBlock`** — the highest block the indexer has fully processed (its `lastProcessedBlock` checkpoint). Monotonic across restarts. **This is the watermark verify scripts gate on.**
 - **`floorBlock`** — the indexer's `INDEXER_FLOOR_BLOCK` (captured during dApp creation; see [Floor Block](chain-data-indexing-protocol.md#floor-block)). Surfacing it lets clients sanity-check they are talking to the right deployment — a bounded indexer claiming `floorBlock: 0` is a misconfiguration.
 - **`finalizedHead`** — the most recent `viewer.finalization.headNumber()` the indexer has observed. Pair with `lastIndexedBlock` so a single fetch reveals whether the indexer is keeping up.
-- **`indexerHealthy`** — derived boolean: `finalizedHead - lastIndexedBlock < HEALTHY_LAG_BLOCKS`. Same predicate `/healthz` uses; expose both — `/api/indexer/status` for programmatic introspection by clients and verify scripts, `/healthz` for the load balancer or supervisor.
+- **`indexerHealthy`** — derived boolean: `finalizedHead - lastIndexedBlock < HEALTHY_LAG_BLOCKS`. Same predicate `/api/healthz` uses; expose both — `/api/indexer/status` for programmatic introspection by clients and verify scripts, `/api/healthz` for the load balancer or supervisor.
 
 For multi-indexer services, namespace per indexer: `/api/games/status`, `/api/leaderboard/status`, etc. Each indexer maintains its own `lastProcessedBlock` and reports its own watermark.
 
@@ -250,6 +252,8 @@ The indexer is then both a *reader* (deriving state from the chain) and a *write
 - **Key custody.** The signing key is loaded at startup (env var holding a seed phrase, or HSM-backed). Use the canonical backend pattern: `generateXyoBaseWalletFromPhrase(mnemonic)` then `derivePath('0')` to get an `AccountInstance`, which goes straight to `GatewayBuilder.account(...)` before `.buildRunner()` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md) and [Node Gateway — Write-capable gateway](../xl1-knowledge/gateway-node.md#write-capable-gateway-runner). This produces the same default address that MetaMask and the XYO browser extension show for the seed, so an operator can inspect balances and signing identity in either place.
 - **Idempotency on the write side.** A submitted transaction may be observed by the indexer's own sync loop; the application logic must not double-submit. Track submitted-transaction hashes in state.
 - **Restart safety.** A signer that crashes mid-decision must not re-submit on restart. Persist intent (decided to settle X) before submitting; on restart, check whether the chain already contains the result before retrying.
+- **Durable submission.** `addPayloadsToChain` is not a crash-safe boundary — it signs and broadcasts in one call, and a retry signs a different transaction. Submit through the phased API instead: `buildXl1Transaction` → `signXl1Transaction` (or `createSignedXl1TransactionEvidence` for a reloaded transaction) → persist the signed evidence → `writeXl1TransactionContent` → `broadcastXl1Transaction` → `observeXl1TransactionInclusion` / `observeXl1TransactionFinality`. See [Gateway — Durable submission](../xl1-knowledge/gateway.md#durable-submission).
+- **No separate datalake insert.** A runner built with `new GatewayBuilder()…dataLakeEndpoint(url)…buildRunner()` already writes each transaction's off-chain content to that datalake before broadcast, so the explicit `datalakeRunner.insert(...)` from [Protocol § Step 2](chain-data-indexing-protocol.md#step-2-submit-application-data) is redundant here; on the phased path, `writeXl1TransactionContent` is that write.
 
 ---
 
@@ -257,7 +261,7 @@ The indexer is then both a *reader* (deriving state from the chain) and a *write
 
 - **Process supervision.** systemd, Docker with `restart: always`, Kubernetes — anything that restarts the process on crash. The indexer's resume-from-checkpoint behavior makes restart cheap.
 - **Single instance.** Most indexers don't horizontally scale — running two instances means two competing checkpoint writers. Scale read traffic with a stateless read API in front of the single indexer process.
-- **Health checks.** A `/healthz` endpoint that returns 200 only if `headNumber - lastProcessedBlock < threshold` catches lag automatically. Wire it to your load balancer or supervisor.
+- **Health checks.** An `/api/healthz` endpoint (under `/api/*` like every other route) that returns 200 only if `headNumber - lastProcessedBlock < threshold` catches lag automatically. Wire it to your load balancer or supervisor.
 - **Network identifier from env.** The same indexer code runs against `mainnet` / `sequence` / `local`. Drive selection from an env var; never hardcode.
 
 ---
@@ -274,7 +278,7 @@ The indexer is then both a *reader* (deriving state from the chain) and a *write
 | Running multiple instances of the same indexer | Competing checkpoint writes, divergent or corrupted state | Single instance for the indexer; horizontal-scale the read API in front of it |
 | Exposing unfinalized state via the API | Clients see ghost state that disappears on reorg | API surface should reflect only finalized-block-derived state |
 | Blocking the sync loop on every API request | Indexer falls behind chain head when traffic spikes | Read API queries an in-memory snapshot; sync loop runs independently |
-| No lag monitoring | Indexer silently falls hours behind, clients get stale data without warning | Surface lag in `/healthz` and dashboards; alert when threshold exceeded |
+| No lag monitoring | Indexer silently falls hours behind, clients get stale data without warning | Surface lag in `/api/healthz` and dashboards; alert when threshold exceeded |
 | Skipping the [progress endpoint](#progress-endpoint) ("the API is enough") | Verify scripts and downstream clients cannot distinguish "still indexing" from "indexer broken." The agent rationalizes empty results as network slowness | Mount `/api/<indexer>/status` returning `{ lastIndexedBlock, floorBlock, finalizedHead, indexerHealthy }` — it is part of the service contract |
 | Assuming `viewer.block.blockByNumber(n)` hydrates off-chain payloads inside the indexer | Indexer walks blocks, sees only `TransactionBoundWitness` instances, records nothing about the application payloads they reference. Indexer state stays empty even though the chain has the data | Use the two-step pattern from [Chain Data Indexing — Protocol § Via Block Walk](chain-data-indexing-protocol.md#via-block-walk--schema-discovery-from-the-chain): scan `payload_schemas[]`, gather matching `payload_hashes[]`, fetch the bodies from the datalake via `createRestDataLakeViewer(endpoint).get(hashes)`. See also [Debugging an Empty Indexer](#debugging-an-empty-indexer) below |
 

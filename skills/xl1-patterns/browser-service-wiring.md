@@ -21,6 +21,8 @@ Read this pattern when scaffolding any XL1 dApp where a React app talks to a com
 
 The scaffold's `react`, `xl1-service`, and `xl1-monorepo` templates encode all of this. Don't re-derive it per project.
 
+**Local Explorer port clash.** `LocalNetwork.explorerUrl` is `http://localhost:3000` — the app's port — so a local Explorer and the dApp cannot both run on `3000`. Keep the app on `3000` and start the Explorer on another free port (not `3001`, the service's), then build `ExplorerLinks` from that URL instead of `LocalNetwork.explorerUrl`; otherwise local Explorer links open the dApp itself. Moving the Explorer, not the app, keeps the prescribed ports (and the Definition of Done check on them) intact.
+
 ---
 
 ## Why Same-Origin by Default

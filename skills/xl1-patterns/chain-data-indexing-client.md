@@ -40,7 +40,7 @@ These are not edge cases — they cover most production dApp needs. The pattern 
 
 ## React Hook for Polled Reads (ephemeral only)
 
-Wrap the protocol-level `pollForNewData` (defined in [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md)) in a hook with an interval:
+Wrap the protocol-level `pollForNewData` recipe (defined in [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md)) in a hook with an interval. `useChainData` is a recipe you write, not an SDK export:
 
 ```ts
 import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
@@ -102,6 +102,8 @@ The right shape: walk **backward** from `currentBlockNumber()`, accumulate match
 
 For a bounded dApp (one querying its own self-authored schemas — see [Floor Block](chain-data-indexing-protocol.md#floor-block)), the walk also bounds at the floor. Without it, a UI for a connected wallet that has zero matching payloads runs an unbounded scan toward genesis — slow, RPC-quota-burning, and at risk of rendering pre-deployment matches that cannot be this dApp's data. The same `INDEXER_FLOOR_BLOCK` the service indexer reads from `.env` is exposed to the browser via Vite as `VITE_INDEXER_FLOOR_BLOCK`.
 
+`fetchRecent` below is a recipe you write, not an SDK export:
+
 ```ts
 import type { Hash } from '@ariestools/sdk'
 import type { Payload, Schema } from '@xyo-network/sdk'
@@ -162,6 +164,8 @@ Filtering `blockByNumber(n)[1]` by `p.schema` finds nothing for Path-A applicati
 For an unbounded browser view (e.g., a recent-transfers feed), `VITE_INDEXER_FLOOR_BLOCK` is set to `0` and the floor safety net falls away — only the time-bound applies. The `payload_schemas[]` match only decides which hashes to fetch; the structural filter on the fetched payloads is the dApp's Zod-factory guard — `payloads.filter(isMovePayload)` instead of a schema-string check — which validates shape and rejects most collisions on its own. See [Chain Data Indexing — Protocol § The honor question](chain-data-indexing-protocol.md#the-honor-question) for when authorship discriminators (signer scoping, sentinel filtering) layer on top.
 
 ### React hook wrapper
+
+`useRecentChainData` is likewise your own code, not an SDK export:
 
 ```ts
 function useRecentChainData(schemas: Schema[], count: number) {

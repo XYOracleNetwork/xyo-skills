@@ -8,10 +8,9 @@ Conceptual rules for retrieving, filtering, and watching application-specific da
 This file is environment-agnostic. It documents schemas, anchoring choices, and scan strategies that both clients and services rely on. The two role files apply these rules to their respective deployment contexts.
 
 **Builds on:**
-- [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, schema filtering, REST datalake endpoints
-- [Gateway](../xl1-knowledge/gateway.md) — RPC viewer methods, transports
+- [Datalakes](../xl1-knowledge/datalakes.md) — DataLakeViewer, reads by hash (`get(hashes)`), REST datalake endpoints
 - [Protocol Primitives](../xyo-knowledge/primitives.md) — payloads, schemas, hashing
-- [Gateway](../xl1-knowledge/gateway.md) — env-agnostic gateway reference + recipes (viewer API, transactions, datalake access)
+- [Gateway](../xl1-knowledge/gateway.md) — env-agnostic gateway reference + recipes (viewer API, transports, transactions, datalake access, finalized block stream)
 
 ---
 
@@ -38,7 +37,7 @@ tx recorded on chain ──────────► schema-filtered retrieval
 
 1. **Define application schemas** — one per payload type, hierarchical naming
 2. **Submit payloads** — via `addPayloadsToChain` (off-chain parameter)
-3. **Query by schema** — use datalake schema filtering or RPC viewer methods
+3. **Query by schema** — two steps: the chain gives you the hashes (each `TransactionBoundWitness`'s `payload_hashes[]`, filtered by the parallel `payload_schemas[]`), then you fetch the bodies from your datalake by hash. Never ask the datalake for a schema — remote datalakes have no cursor, so `.next()` is not a query
 4. **Build a read model** — transform raw payloads into application state
 
 ---
@@ -256,7 +255,7 @@ const [txHash] = await gateway.addPayloadsToChain([], [myPayload])
 
 **Properties.** Hash on chain via `tx.payload_hashes[i]`, schema in `tx.payload_schemas[i]`. One payload of gas. The wrapping TransactionBoundWitness's `from` is the authorship anchor.
 
-**Peculiarities.** Indexers must walk transactions and discriminate by inner schema (build a `hashToSigner` index per block — see [Inscription Substrate § Replay loop](inscription-substrate.md#replay-loop)). The hash is *not* visible at block level as a first-class entity; it lives inside the TransactionBoundWitness wrapper.
+**Peculiarities.** Indexers must walk transactions and discriminate by inner schema, keeping each payload hash paired with the `from` of the transaction that carried it — an ordered list of refs, not a `hash → signer` map, which lets a later transaction carrying an identical payload overwrite the signer (see [Inscription Substrate § Replay loop](inscription-substrate.md#replay-loop)). The hash is *not* visible at block level as a first-class entity; it lives inside the TransactionBoundWitness wrapper.
 
 **When to use.** Any single-author application data that doesn't need multi-party attestation or independent block-level visibility. This is the substrate default.
 
@@ -265,8 +264,12 @@ const [txHash] = await gateway.addPayloadsToChain([], [myPayload])
 A commit-then-reveal-style anchor. Submit a `HashPayload` (already on `AllowedBlockPayloadSchemas`) as an on-chain block payload. The hash is now a first-class block-level entity. Content can be revealed in the same transaction (off-chain), in a later transaction, or never.
 
 ```ts
-const hashCommit = new PayloadBuilder({ schema: 'network.xyo.hash' })
-  .fields({ hash: await PayloadBuilder.hash(payload), schema: payload.schema })
+import { PayloadBuilder } from '@xyo-network/sdk'
+import { HashSchema } from '@xyo-network/xl1-sdk'
+
+// HashPayload carries only `hash` — never put `schema` in .fields(), it would replace the payload's own schema
+const hashCommit = new PayloadBuilder({ schema: HashSchema })
+  .fields({ hash: await PayloadBuilder.hash(payload) })
   .build()
 await datalakeRunner.insert([payload])
 const [txHash] = await gateway.addPayloadsToChain([hashCommit], [payload])
@@ -293,6 +296,8 @@ const witness = await new BoundWitnessBuilder()
 await datalakeRunner.insert([content, witness[0]])
 const [txHash] = await gateway.addPayloadsToChain([witness[0]], [content])
 ```
+
+`.signers([...])` needs every private key in one process. When the parties sign in separate processes, reserve each remote party's slot with `.participant(s)` and have each party fill its own slot with `cosignBoundWitness` — see [Protocol Primitives — Parties in separate processes](../xyo-knowledge/primitives.md#parties-in-separate-processes-sequential-cosigning).
 
 **Properties.** BoundWitness is first-class at block level, signed by all listed parties. 2+ payloads of gas. Co-signers' signatures are part of the on-chain commitment, separate from the gas payer's transaction signature.
 
@@ -541,7 +546,9 @@ Default-when-absent is the dApp's `floorBlock`, not `0`. The safe choice is the 
 
 ## Polling for New Data
 
-XL1 does not provide push-based subscriptions. Poll for new data by tracking the last-seen block number.
+The gateway has no ordered push feed of its own (the deprecated `headUpdated` viewer event is an unordered head signal), but the SDK's `FinalizedBlockStream` gives you one: `finalizedBlockStreamFromGateway(gateway)` from `@xyo-network/xl1-sdk` polls the viewers for you and delivers finalized blocks strictly in order — hot `nextBlock` / `live` events on one shared timeline (which announce a `gap` when catch-up runs too long), or a cold, gapless `stream.blocks({ after })` iterator that replays from your checkpoint hash and then follows the head. **Use the cold iterator for any durable forward feed** (indexers, reducers, anything that checkpoints); wiring, the explicit cold-start `after` seed, and resume are in [Chain Data Indexing — Service § Finalized block stream](chain-data-indexing-service.md#finalized-block-stream).
+
+Hand-polling the head while tracking the last-seen block number — the `pollForNewData` recipe below — remains the simple option for **ephemeral UI feeds**, and the only one that can see unfinalized blocks.
 
 ### Finalized vs. latest — pick the right bound
 
@@ -554,9 +561,9 @@ Two sub-viewers expose the chain head, and the choice matters:
 
 **Default to `finalization` when in doubt.** Replaying state from unfinalized blocks means a reorg can erase transitions you've already shown to users. The cost of finalization-only replay is latency (state appears slightly later); the benefit is a deterministic, reorg-safe read model.
 
-The example below uses `currentBlockNumber()` for simplicity (showing recent payloads in a feed). For state-derivation indexers — see [Inscription Substrate](inscription-substrate.md) — use `viewer.finalization.headNumber()` instead.
+### Hand-polling — ephemeral UI feeds
 
-
+`pollForNewData` is a recipe you write into your app, not an SDK export. It uses `currentBlockNumber()` for simplicity (showing recent payloads in a feed). For state-derivation indexers — see [Inscription Substrate](inscription-substrate.md) — drive the walk with the finalized block stream above instead.
 
 ```ts
 import type { Hash } from '@ariestools/sdk'
@@ -613,7 +620,7 @@ async function pollForNewData(
 The `pollForNewData` function above is environment-agnostic — it takes a gateway as a parameter and works equally in a browser, a Node service, or a CLI. For role-specific wrappers:
 
 - **Browser clients** (React hooks with `setInterval`, capability detection, lifting state into context) → see [Chain Data Indexing — Client](chain-data-indexing-client.md)
-- **Long-running indexers** (sync loop with checkpointing, finalized-only replay) → see [Chain Data Indexing — Service](chain-data-indexing-service.md)
+- **Long-running indexers** (finalized block stream with checkpointing, finalized-only replay) → see [Chain Data Indexing — Service](chain-data-indexing-service.md)
 
 ---
 
@@ -655,7 +662,7 @@ Once data is anchored on chain, indexers and consumers need to read it. Four str
 
 **Natural direction: forward.** Required — state derivation depends on in-order replay.
 
-The reference indexer pattern. Poll `viewer.finalization.headNumber()`, iterate every finalized block from `lastProcessed + 1` to head, dispatch each block's payloads through application handlers. Full coverage, deterministic state derivation across competing indexers. See [Inscription Substrate § Replay loop](inscription-substrate.md#replay-loop) for a worked example.
+The reference indexer pattern. Iterate every finalized block after `lastProcessed`, in order, and dispatch each block's payloads through application handlers. Drive it with the `FinalizedBlockStream` cold iterator rather than hand-polling the head: `stream.blocks({ after: lastProcessedHash })` replays from your checkpoint hash, then follows the finalized head. It needs an explicit `after` seed on cold start — with no `after` it starts at the current head and skips your history (see [Chain Data Indexing — Service § Finalized block stream](chain-data-indexing-service.md#finalized-block-stream)). A loop that polls `viewer.finalization.headNumber()` and reads `blockByNumber` up to it remains correct when you already own that loop. Full coverage, deterministic state derivation across competing indexers. See [Inscription Substrate § Replay loop](inscription-substrate.md#replay-loop) for a worked example.
 
 **When to use.** Any indexer that derives global state. Required for ledger correctness, ownership maps, supply tracking. The chain's authoritative indexing model.
 
@@ -665,15 +672,25 @@ The reference indexer pattern. Poll `viewer.finalization.headNumber()`, iterate 
 
 **Natural direction: backward** for recency-biased reads ("user's last N transfers"); forward (with a bounded `range`) for audit. The `range` parameter selects a block window; verify the return-order semantics against the current chain implementation if your code depends on it.
 
-Use `viewer.account.balance.accountBalanceHistory(address, { range })`. Returns hydrated `[block, tx, transfer]` tuples for every transaction containing a `Transfer` payload involving the address.
+Use `viewer.account.balance.accountBalanceHistory(address, { range })`. Returns `[block, tx, transfer]` tuples (`AccountBalanceHistoryItem`) for every `Transfer` payload involving the address. `block` is the `BlockBoundWitness`, and `tx` is **nullable** (`TransactionBoundWitness | null`) — the SDK's `SimpleAccountBalanceViewer` currently returns `null` for every entry — so never dereference it unguarded:
 
 ```ts
-const history = await gateway.connection.viewer?.account.balance
+import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+
+const viewer = gateway.connection.viewer
+if (!viewer) throw new Error('Gateway has no viewer attached')
+
+const history = await viewer.account.balance
   .accountBalanceHistory(address, { range: [startBlock, endBlock] })
 
-for (const [block, tx, transfer] of history ?? []) {
-  // tx is the wrapping TransactionBoundWitness; take tx.payload_hashes to
-  // datalakeViewer.get(...) for any off-chain application payloads riding along.
+for (const [block, tx, transfer] of history) {
+  // When `tx` is null, find the wrapping transaction in the block by the transfer's hash
+  const wrapping = tx ?? (await viewer.block.blockByHash(block._hash))?.[1]
+    .filter(isTransactionBoundWitness)
+    .find(t => t.payload_hashes.includes(transfer._hash))
+  if (!wrapping) continue
+  // Take wrapping.payload_hashes to datalakeViewer.get(...) for any off-chain
+  // application payloads riding along.
 }
 ```
 
@@ -715,23 +732,19 @@ function applyOwnership(state: IndexerState, id: ArtifactId, owner: Address) {
 Inscribe a small `Transfer` alongside the application payload, with the destination set to a known sentinel address (see [Destination as Protocol](#destination-as-protocol--a-native-xl1-pattern)). This forces the transaction into `accountBalanceHistory` so Strategy 2 can scan for it — turning the chain's address-scoped APIs into a free indexer for the application protocol.
 
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk'
-import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
+import { asXyoAddress, PayloadBuilder } from '@xyo-network/sdk'
+import { createTransferPayload, sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
-// Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal')
-const ORDINAL_SENTINEL = '4b210503f8caa8e82d38617997f2eaf612c0ec04' as Address
-const burnAddress      = sentinelAddressFromSchema('network.xyo.ordinal', await PayloadBuilder.dataHash(appPayload))
+// Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal'); asXyoAddress brands it for the transfers map
+const ORDINAL_SENTINEL = asXyoAddress('4b210503f8caa8e82d38617997f2eaf612c0ec04', true)
+const burnAddress = sentinelAddressFromSchema('network.xyo.ordinal', await PayloadBuilder.dataHash(appPayload))
 
-const transfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
-  .fields({
-    from: walletAddress,
-    epoch: Date.now(),
-    transfers: {
-      [ORDINAL_SENTINEL]: '1',  // chain stores addresses without the 0x prefix
-      [burnAddress]:      '1',
-    },
-  })
-  .build()
+// Builds the chain's TransferSchema payload { from, epoch, transfers }: stamps `epoch`,
+// hex-encodes the bigint AttoXL1 amounts. `from` must equal the transaction's signer.
+const transfer = createTransferPayload(walletAddress, {
+  [ORDINAL_SENTINEL]: 1n,
+  [burnAddress]: 1n,
+})
 
 await datalakeRunner.insert([appPayload])
 await gateway.addPayloadsToChain([transfer], [appPayload])
@@ -744,12 +757,12 @@ The single `Transfer` payload carries both recipients via the `transfers` map �
 - Any protocol that wants free chain-native protocol-wide and per-user indexing without infrastructure
 - As a complement to Strategies 1+3 — gives users a way to verify their own activity using the chain's own APIs without trusting any specific indexer
 
-**Peculiarities.** The chain's `Transfer` schema requires `from`, `epoch`, and `transfers`. `epoch: Date.now()` mirrors the canonical `gateway.sendMany` implementation. Addresses inside the `transfers` map are stored *without* the `0x` prefix — slice it off when constructing the payload. The destination addresses are computed via the keccak truncation construction documented in [Destination as Protocol](#destination-as-protocol--a-native-xl1-pattern).
+**Peculiarities.** The chain's `Transfer` schema requires `from`, `epoch`, and `transfers`; `createTransferPayload` fills `epoch` and hex-encodes the amounts, as the canonical `gateway.sendMany` does. Addresses inside the `transfers` map are `XyoAddress` values without the `0x` prefix. The destination addresses are computed via the keccak truncation construction documented in [Destination as Protocol](#destination-as-protocol--a-native-xl1-pattern).
 
 **`tx.from` vs `transfer.from` — which is the actor?** The wrapping `TransactionBoundWitness` has a `from` field, and so does the `Transfer` payload. The chain's balance validator enforces `transfer.from === tx.from`, so they're always equal in well-formed transactions. They surface in different scan strategies, though:
 
 - **Strategy 1+3 indexers** read `tx.from` from the `TransactionBoundWitness` directly. This is the canonical authorship field and it works uniformly for *every* application payload in the transaction — payloads with sentinel transfers and payloads without.
-- **Strategy 4 chain-native consumers** read `transfer.from` because that's what `accountBalanceHistory` returns directly in the `[block, tx, transfer]` tuple. They never construct a `hashToSigner` index.
+- **Strategy 4 chain-native consumers** read `transfer.from` because that's what `accountBalanceHistory` returns directly in the `[block, tx, transfer]` tuple, whose `tx` may be `null`. They never need per-transaction signer refs.
 
 Both arrive at the same minter address. The substrate's reference indexer prefers `tx.from` because authorship is structural to the BoundWitness, not declarative content of a payload field — see [Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md). Don't read `transfer.from` from your global indexer just because it's there; reach for the BoundWitness signer.
 
@@ -764,8 +777,8 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 | Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
 | Just need payloads by type? | Two-step walk: `viewer.block.blockByNumber()` returns on-chain `TransactionBoundWitness` instances; scan their `payload_schemas[]` for your schema, gather the parallel `payload_hashes[]`, then fetch them from your datalake via `createRestDataLakeViewer(endpoint).get(hashes)`. No gateway read hydrates off-chain payloads — see [Via Block Walk](#via-block-walk--schema-discovery-from-the-chain) |
 | Need a specific payload? | Off-chain body: `RestDataLakeViewer.get(hashes)` against the datalake it was written to. On-chain payload: `connection.viewer.block.payloadsByHash(hashes)` (the gateway's own store) — see [Via Payload Hash](#via-payload-hash--direct-lookup) |
-| Real-time updates with transient OK? | Poll `connection.viewer.block.currentBlockNumber()` on an interval |
-| Real-time updates that drive durable state? | Poll `connection.viewer.finalization.headNumber()` — never derive state from unfinalized blocks |
+| Real-time updates with transient OK? | Hand-poll `connection.viewer.block.currentBlockNumber()` on an interval (ephemeral UI feeds) |
+| Real-time updates that drive durable state? | `FinalizedBlockStream` — `finalizedBlockStreamFromGateway(gateway)`, then `stream.blocks({ after })` from your checkpoint hash, seeded explicitly on cold start ([Service § Finalized block stream](chain-data-indexing-service.md#finalized-block-stream)). Never derive state from unfinalized blocks |
 | Anchoring choice (Path A vs B vs C)? | Default to A (TransactionBoundWitness reference). Use B for commit-then-reveal. Use C for multi-party attestation |
 | Indexing global protocol state? | Strategy 1 — global block walk in a diviner |
 | Showing "my X" in a dApp? | Strategy 3 — per-address side-index inside the global indexer, OR Strategy 4 sentinel transfer + `accountBalanceHistory` |

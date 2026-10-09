@@ -5,7 +5,7 @@ Read this pattern when your application needs a **replayable, source-attributed 
 This is an **application-layer substrate**, not part of core XL1 consensus. Peer of [Inscription Substrate](inscription-substrate.md): inscriptions own transferable content artifacts; Statement Graph records signed assertions about objects.
 
 **Builds on:**
-- [Chain Data Indexing](chain-data-indexing-protocol.md) — finalized-only replay, schema filtering
+- [Chain Data Indexing](chain-data-indexing-protocol.md) — finalized-only replay, two-step reads (schemas on the chain, bodies by hash)
 - [Finalized block streams](../xl1-knowledge/gateway.md#finalized-block-stream) — ordered gap-aware delivery for indexers
 - [Datalakes](../xl1-knowledge/datalakes.md) — object bodies referenced by hash
 - [Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md) — authorship on the BoundWitness, not invented payload `from` fields

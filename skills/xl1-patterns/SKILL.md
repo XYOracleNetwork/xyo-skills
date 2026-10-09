@@ -47,10 +47,10 @@ The first pattern in the layer to follow the protocol/client/service split. Read
 Conceptual rules for retrieving, filtering, and watching application-specific chain data — schemas, anchoring choices (Path A/B/C), `Destination as Protocol` (sentinel addresses), the four scan strategies, and finalized-vs-latest semantics. Environment-agnostic; both clients and services rely on it.
 
 #### [Chain Data Indexing — Client](chain-data-indexing-client.md)
-Browser-side reads — but **only for ephemeral, single-user, trivial cases**. The `useChainData` React hook for polled reads, capability detection in components, and a sharp boundary on what does and does not belong in the browser. Anything multi-user, durable, or reorg-sensitive needs the service file instead.
+Browser-side reads — but **only for ephemeral, single-user, trivial cases**. A `useChainData` hook recipe (your own code, not an SDK export) for polled reads, capability detection in components, and a sharp boundary on what does and does not belong in the browser. Anything multi-user, durable, or reorg-sensitive needs the service file instead.
 
 #### [Chain Data Indexing — Service](chain-data-indexing-service.md)
-Long-running indexer service. Process model (sync/persist/serve loops), state persistence and atomic checkpoints, restart-resume semantics, exposing results via HTTP API, signer indexers, deployment shape (process supervision, single-instance, healthz, network from env).
+Long-running indexer service. Process model (sync/persist/serve loops), state persistence and atomic checkpoints, restart-resume semantics, exposing results via HTTP API, signer indexers and durable submission, deployment shape (process supervision, single-instance, `/api/healthz`, network from env).
 
 ### [Commit-Reveal Primitive](commit-reveal.md)
 Read when building any feature where multiple parties make simultaneous decisions and seeing another's choice first would be unfair. Covers the two-phase commit-reveal workflow, schema design for commits and reveals, on-chain recording, hash verification, and timeout handling.
