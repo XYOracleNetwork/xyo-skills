@@ -1,2 +1,23 @@
 packages:
   - 'packages/*'
+
+# pnpm 11+ reads every non-auth setting from this file (`.npmrc` is auth and
+# registry only), and pnpm 12 fails on a key it does not recognize here.
+
+# pnpm 11 changed the default to `install`, which checks node_modules before
+# every `pnpm <script>` and can reinstall in the middle of a run. Keep pnpm
+# 10's behaviour: no pre-run check.
+verifyDepsBeforeRun: false
+
+# pnpm 11+ fails the install (strictDepBuilds) when a dependency's build script
+# is not listed here. Same entries as the upstream ariestools/XYO repos.
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+
+# pnpm 11+ already defaults to a one-day release age. Our own scopes are
+# exempt so a same-day @ariestools / @xyo-network release can be picked up.
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@ariestools/*'
+  - '@xyo-network/*'

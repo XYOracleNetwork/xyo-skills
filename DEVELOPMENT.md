@@ -77,10 +77,11 @@ The compiled scaffold ships inside the `skills/` tree and is consumed by every d
 The `xl1-scaffold` skill invokes a compiled CLI bundled under `skills/xl1-scaffold/scripts/scaffold/`. That directory is **generated** from the TypeScript source at `packages/xl1-scaffold/`; it is not hand-authored. Before testing the scaffold skill locally, build it at least once:
 
 ```shell
-corepack enable                      # first time only — ensures pnpm 10.x is available
-corepack pnpm@10 install
-corepack pnpm@10 -w run build
+pnpm install      # any pnpm 10+ switches to the pnpm 12.10.1 pinned in package.json
+pnpm -w run build
 ```
+
+The repo needs Node 26 or later (Volta pins 26.9.0). Node 25+ no longer bundles corepack, so if `pnpm` isn't on your PATH, install it directly or run `npm i -g corepack && corepack enable` first.
 
 The build chain (`clean → tsc → copy-templates → sync-to-plugin`) compiles the TS source, mirrors the raw template files, and writes the resulting runtime into the skill directory.
 

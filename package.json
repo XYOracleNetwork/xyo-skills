@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.33.2",
+  "packageManager": "pnpm@12.10.1+sha512.ba40a37eb1a370d60fea8c4cf1d364c13bcccef518e98ad2bcee954f539d38da37458e58261a3fa55e06523450ea0ffff9f497b135be41f2c15c1642bacace6c",
   "scripts": {
     "build": "pnpm -r build",
     "eval": "node scripts/eval/run.mjs",
@@ -18,10 +18,10 @@
     "sync:codex": "node scripts/marketplace-sync/build-codex.mjs"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "volta": {
-    "node": "24.15.0",
-    "pnpm": "10.33.2"
+    "node": "26.9.0",
+    "pnpm": "12.10.1"
   }
 }

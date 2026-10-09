@@ -1,4 +1,4 @@
-import { config as xylabsConfig } from '@xylabs/eslint-config-flat'
+import { recommendedConfig } from '@ariestools/eslint-config-flat'
 
 export default [
   {
@@ -12,5 +12,7 @@ export default [
       'vitest.config.ts',
     ],
   },
-  ...xylabsConfig,
+  // Tier 2 type-checked is what 10.x maps the old @xylabs `config`
+  // (recommendedTypeCheckedConfig) to.
+  ...recommendedConfig({ tier: 2, isTypeChecked: true }),
 ]

@@ -68,7 +68,7 @@ Upward links in body text (a lower layer linking a higher one, outside `## Skill
 
 **Package manager:** pnpm (enforced — never use npm or yarn in this repo)
 
-**Node version:** >=24 required. Volta pins Node 24.15.0 and pnpm 10.33.2. Use `corepack enable` if Volta isn't available.
+**Node version:** >=26 required. Volta pins Node 26.9.0 and pnpm 12.10.1; `packageManager` pins the same pnpm (with its integrity hash), so any pnpm 10 or later switches to 12.10.1 inside the repo. Node 25+ no longer bundles corepack. Without Volta, install pnpm directly, or run `npm i -g corepack` and then `corepack enable`. Non-auth pnpm settings (`allowBuilds`, `minimumReleaseAge`, `verifyDepsBeforeRun`) live in `pnpm-workspace.yaml`.
 
 **Branching:** Gitflow with `develop` as the integration branch. Feature branches use `feature/<description>` off `develop`. Never rewrite git history (no amend, rebase, or force push).
 
@@ -105,7 +105,7 @@ pnpm sync:codex  --out .preview/codex  && jq empty .preview/codex/.agents/plugin
 ```
 
 **Workspace layout** (pnpm workspaces):
-- `/` — workspace root (`package.json`, `pnpm-workspace.yaml`, `.npmrc`)
+- `/` — workspace root (`package.json`, `pnpm-workspace.yaml`; pnpm 11+ reads only auth and registry settings from `.npmrc`, which is gitignored)
 - `/packages/xl1-scaffold/` — the scaffold CLI (TS source under `src/`, raw template files under `templates/`, compiled output in `dist/`)
 - `/evals/` — behavioral eval suite (`evals/<skill>/<case>/`), run with `claude plugin eval` via `scripts/eval/run.mjs`. A sibling of `skills/` so no renderer ever ships it; see `evals/README.md`.
 - `/src/` — target for the scaffolded app. **Not** a workspace member (`pnpm-workspace.yaml` only lists `packages/*`), so `pnpm -w` commands do not recurse into it. The scaffold generates `src/` as a standalone pnpm project; run its scripts from inside `src/`.

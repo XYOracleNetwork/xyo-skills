@@ -114,21 +114,25 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Reads engines.node from the root package.json so CI tracks the
-          # version requirement automatically — bump engines and CI follows.
+          # Reads volta.node (falling back to engines.node) from the root
+          # package.json, so CI follows the pinned Node version — bump the pin
+          # and CI follows.
           node-version-file: "package.json"
 
-      - name: Enable corepack
-        run: corepack enable
+      # Node 25+ no longer bundles corepack. With no `version` input this
+      # installs the pnpm pinned by the root package.json `packageManager`
+      # field. It runs after setup-node because pnpm 12's install script
+      # needs `node` on PATH.
+      - uses: pnpm/action-setup@v4
 
       - name: Install workspace deps
-        run: corepack pnpm@10 install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build scaffold (mirrors into skills/xl1-scaffold/scripts/scaffold/)
-        run: corepack pnpm@10 -w run build
+        run: pnpm -w run build
 
       - name: Run scaffold tests
-        run: corepack pnpm@10 --filter @xyo-network/xl1-scaffold run test
+        run: pnpm --filter @xyo-network/xl1-scaffold run test
 
       - name: Fail if scaffold runtime drifted from source
         run: |
