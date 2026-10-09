@@ -4,8 +4,9 @@ description: >
   How to test and verify XL1 work — choosing and running the right verification
   approach. Groups headless verification methods: Sequence testnet verification
   (in-process seed-phrase signer), local dev-chain verification (public xl1 CLI
-  or vitest-owned chains via public @xyo-network/dapp-kit-vitest-config local-xl1,
-  or XYO-internal @xyo-network/xl1-vitest-config apiLocal), composed local chain +
+  or vitest-owned chains via public @xyo-network/dapp-kit-vitest-config local-xl1
+  / api-local, or the restricted XYO-internal @xyo-network/xl1-vitest-config
+  apiLocal), composed local chain +
   Aries data-store verification, full local dApp backend verification
   (aries-dapp-core classic path or dapp-kit local path), unattended Sequence
   testing via @xyo-network/wallet-xl1-cli, and headless browser-mode testing
@@ -53,21 +54,22 @@ explicitly and deliberately opts into mainnet for a specific run.
 |---|---|---|
 | Prove a dApp's chain interactions work against a **live testnet**, in-process (agentic build, CI smoke test, regression) | **[Headless testnet verification](headless-testnet-verification.md)** | In-process seed-phrase signer via `GatewayBuilder.buildRunner()` |
 | Prove them against a **free, deterministic local chain** — offline, no funding step, fast | **[Local dev-chain verification](local-chain.md)** | Local `xl1 start` chain + in-process signer (genesis-funded dev account) |
-| Same, but let **vitest own the chain** (public packages) — default for new dapp-kit / public consumers | **[Local chain via dApp Kit Vitest](local-chain-dapp-kit-vitest.md)** | `@xyo-network/dapp-kit-vitest-config` `local-xl1` + in-process signer |
-| Same vitest-owned chain, but **XYO-internal** restricted harness | **[Local chain via apiLocal](local-chain-vitest.md)** | `@xyo-network/xl1-vitest-config` `apiLocal` |
+| Same, but let **vitest own the chain** (public packages) — default for new dapp-kit / public consumers | **[Local chain via dApp Kit Vitest](local-chain-dapp-kit-vitest.md)** | `@xyo-network/dapp-kit-vitest-config` `local-xl1` (or its public `api-local` project for existing `spec/api-local` specs) + in-process signer |
+| Same vitest-owned chain, but **XYO-internal** restricted harness | **[Local chain via apiLocal](local-chain-vitest.md)** | `@xyo-network/xl1-vitest-config` `apiLocal` (restricted) |
 | Test a local XL1 chain and an independently hosted **Aries data/object lake** together, without yet running a real reducer | **[Local chain + Aries data-lake fixture](local-chain-datalake.md)** | Direct `xl1` CLI + `aries dapp` CLI with the noop actor |
 | Test a complete local XL1 dApp backend (classic **or** dapp-kit) | **[Full local XL1 dApp stack](local-dapp-stack.md)** | Classic: `aries-dapp-core`. dapp-kit: `xl1-dapp` / local hosts + [dapp-kit vitest](local-chain-dapp-kit-vitest.md) |
 | Drive an external, funded actor on Sequence **unattended** | **[Unattended Sequence via CLI wallet](sequence-cli-wallet.md)** | `xl1-wallet` CLI, password in the OS keychain |
 | Test **browser-environment code** in headless Chromium | **[Headless browser-mode testing](browser-mode.md)** | vitest browser mode + Playwright provider, MSW-mocked |
 | Drive the **fully rendered app UI** | The repo's own e2e package (often `packages/e2e`) if it has one; otherwise **[Full-app Playwright e2e](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/testing.md#full-app-playwright-e2e)** (xy-toolchain) | Playwright Test against the real UI, run with `pnpm --filter <e2e-package> test` |
+| Drive the **real XL1 Wallet extension** in that e2e — **XYO-internal** | `@xyo-network/wallet-xl1-harness-playwright` + `@xyo-network/wallet-xl1-harness-core` (restricted; `E404` to a logged-out `npm view`). The `walletLocalChainEndpoint` / `walletLocalOnly` options keep the wallet on a [local published chain](local-chain.md#rest-readers-need-a-published-chain) | Playwright Test `walletTest` fixtures (`wallet`, `dappPage`) over the real extension |
 
 ### Local chain boot — pick one
 
 | Route | When |
 |---|---|
 | [`xl1 start`](local-chain.md) | Manual/session debugging; no vitest preset yet |
-| [`dapp-kit-vitest-config` `local-xl1`](local-chain-dapp-kit-vitest.md) | **Preferred public** CI/TDD when you can add the published preset |
-| [`apiLocal`](local-chain-vitest.md) | XYO-internal only (restricted packages) |
+| [`dapp-kit-vitest-config` `local-xl1`](local-chain-dapp-kit-vitest.md) | **Preferred public** CI/TDD when you can add the published preset (its `api-local` project boots the same public chain for `spec/api-local` specs) |
+| [`xl1-vitest-config` `apiLocal`](local-chain-vitest.md) | XYO-internal only (restricted packages) |
 
 Local vs testnet: iterate on a local chain, then confirm against
 **[Sequence](headless-testnet-verification.md)** before shipping. Local uses
@@ -93,7 +95,7 @@ wallet extension. This barrel groups the variants:
 - **[Headless testnet verification](headless-testnet-verification.md)** — Sequence.
 - **[Local dev-chain verification](local-chain.md)** — public `xl1 start`.
 - **[Local chain via dApp Kit Vitest](local-chain-dapp-kit-vitest.md)** — public vitest-owned chain.
-- **[Local chain via apiLocal](local-chain-vitest.md)** — XYO-internal vitest-owned chain.
+- **[Local chain via apiLocal](local-chain-vitest.md)** — XYO-internal vitest-owned chain (restricted `@xyo-network/xl1-vitest-config`).
 - **[Local chain + Aries data-lake fixture](local-chain-datalake.md)** — chain + Aries stores.
 - **[Full local XL1 dApp stack](local-dapp-stack.md)** — classic aries **or** dapp-kit composition.
 

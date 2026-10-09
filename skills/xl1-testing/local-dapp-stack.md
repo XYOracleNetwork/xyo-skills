@@ -18,7 +18,7 @@ Shared authority rules (both paths):
 - Reducers / projections are rebuildable interpretations — not protocol truth.
 - Prefer [dapp-kit vitest `local-xl1`](local-chain-dapp-kit-vitest.md) or
   [manual `xl1 start`](local-chain.md) for the chain boot; XYO-internal repos may
-  use [apiLocal](local-chain-vitest.md).
+  use the restricted [`xl1-vitest-config` apiLocal](local-chain-vitest.md).
 
 ---
 
@@ -74,11 +74,19 @@ pnpm add @ariestools/aries-dapp-core @ariestools/aries-dapp-serve
 only by test helpers, keep it in `devDependencies`. The project-owned backend
 package normally carries `aries-dapp-core` as a runtime dependency.
 
+Run this stack on **Node 26**: `aries-dapp-core`, `aries-dapp-serve`,
+`@ariestools/cli`, and `@xyo-network/xl1-sdk` declare `>=26`, although
+`@xyo-network/xl1-cli` alone accepts `>=24`.
+
 ## Use SDK composition for the full ceremony
 
-Do not run the noop `aries dapp up` daemon for this layer. Start its storage
-component programmatically so the test owns the port and lifecycle, then run
-the project's real reducer through `aries-dapp-core`:
+Do not run the noop `aries dapp up` daemon for this layer. (`aries dapp up
+--reducer <module>` — a `.mjs`/`.js` path or package export, with
+`--reducer-export <name>` and `--reduce-interval <ms>`, default 5000 — does run
+a real reducer, which suits interactive poking, but the daemon then owns the
+port and lifecycle.) Start its storage component programmatically so the test
+owns the port and lifecycle, then run the project's real reducer through
+`aries-dapp-core`:
 
 ```ts
 import {
@@ -136,20 +144,21 @@ write attempted through the reducer-facing data store is rejected.
 
 ## Build the finalized-chain source through the SDK
 
-Create one `GatewayBuilder` instance and reuse it. Never use raw JSON-RPC
-method names:
+Create one `GatewayBuilder` session and reuse it; release it with `stop()` at
+teardown (`buildSession()`, `@xyo-network/xl1-sdk` ≥ 5.1). Never use raw
+JSON-RPC method names:
 
 ```ts
 import { GatewayBuilder } from '@xyo-network/xl1-sdk'
 
-const gateway = await new GatewayBuilder()
+const gatewaySession = await new GatewayBuilder()
   .name('local-dapp-source')
   .rpcUrl(localRpcUrl)
-  .build()
+  .buildSession()
 
 async function readFinalized(signal?: AbortSignal) {
   if (signal?.aborted === true) throw new Error('Finalized read aborted')
-  const viewer = gateway.connection.viewer
+  const viewer = gatewaySession.gateway.connection.viewer
   if (!viewer) throw new Error('XL1 gateway has no viewer')
   const [block, payloads] = await viewer.finalization.head()
   return {
@@ -292,8 +301,9 @@ Run one isolated ceremony per test file:
 5. Create the locator, real reducer, and actors; allow `bootDappActors` readiness
    to prove the first reduce pass.
 6. Verify the public view through `aries-dapp-core/consumer`.
-7. Stop actors in reverse order, call `locator.destroy()`, close the server, and
-   terminate XL1. Clean only test-owned temporary files.
+7. Stop actors in reverse order, stop the gateway session, call
+   `locator.destroy()`, close the server, and terminate XL1. Clean only
+   test-owned temporary files.
 
 Make cleanup safe for partial startup:
 
@@ -302,6 +312,7 @@ try {
   await runAssertions()
 } finally {
   for (const actor of [...actors].reverse()) await actor.stop()
+  await gatewaySession?.stop()
   locator?.destroy()
   await server?.close()
   await stopXl1Child(xl1Child)
@@ -369,18 +380,18 @@ rebuildable projections / consumers (not chain truth)
 
 1. Install published packages (`@xyo-network/dapp-kit`, `-cli`, host packs as needed).
 2. `xl1-dapp validate` and `xl1-dapp plan --deployment <name>` for the deployment under test — see [Project manifest](../xl1-dapp-kit/project-manifest.md).
-3. Boot local chain via **[dapp-kit vitest `local-xl1`](local-chain-dapp-kit-vitest.md)** for automated specs, or [`xl1 start`](local-chain.md) / `xl1-dapp dev` for interactive ownership.
+3. Boot local chain via **[dapp-kit vitest `local-xl1`](local-chain-dapp-kit-vitest.md)** for automated specs, or [`xl1 start`](local-chain.md) / `xl1-dapp dev --deployment <name>` for interactive ownership (`dev` and `test` require `--deployment`, like `plan`).
 4. Exercise the happy path through **application ports** / documented status — not a one-off shadow REST API.
 5. If event-driven: keep wake ≠ durable event ≠ cursor ([Events and wakes](../xl1-dapp-kit/events-and-wakes.md)).
 6. Label evidence as **local** (or packed) per [Conformance](../xl1-dapp-kit/conformance.md) — local green ≠ Sequence/hosted/production.
 7. Still pass [Gateway & chain access](../xl1-patterns/dapp-checklist.md#gateway--chain-access) rules.
 
-`localDatalake` / `localSystem` / `localBrowser` installer **project names** exist on the vitest preset for suite isolation; only `localXl1` auto-boots infrastructure today — do not invent setup behavior the catalog does not provide.
+The vitest preset's catalog has six installers, all opt-in. Three boot infrastructure: `localXl1` and `apiLocal` (the same public chain for `spec/local-xl1` / `spec/api-local` specs) and `localEventPublisher` (its own chain plus a signed Event Kit wake publisher — use it for wake-driven dApps, see [dApp Kit Vitest](local-chain-dapp-kit-vitest.md#local-chain-with-event-kit-publication)). `localDatalake` / `localSystem` / `localBrowser` only isolate suites — do not invent setup behavior the catalog does not provide.
 
 ### Minimum acceptance (dapp-kit)
 
 1. `xl1-dapp validate` / `plan` succeed for the deployment.
-2. Local chain interactions green via `local-xl1` and/or `xl1-dapp test`/`dev` as appropriate.
+2. Local chain interactions green via `local-xl1` and/or `xl1-dapp test`/`dev --deployment <name>` as appropriate.
 3. Recovery / effect-journal expectations met or explicitly out of scope with reason.
 4. Evidence label stated; Sequence confirmation still required before shipping.
 

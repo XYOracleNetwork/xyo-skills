@@ -44,7 +44,7 @@ testnet verification to assert program behavior.
 
 - macOS with the `security` CLI (present by default). For Linux, substitute
   `secret-tool` (libsecret) — the flow is identical, only the keychain commands differ.
-- Node.js `>=22.19.0` (the `engines` floor declared by `@xyo-network/wallet-xl1-cli`).
+- Node.js `>=26` (the `engines` floor declared by `@xyo-network/wallet-xl1-cli`).
 - The `xl1-wallet` CLI. Install globally:
 
   ```sh
@@ -59,6 +59,17 @@ testnet verification to assert program behavior.
 - **`ARIES_WALLET_PASSWORD`** — when set and non-empty, every command uses it
   instead of prompting for the password (both first-time init and later unlocks).
   This is the hook this skill relies on; the value comes from the keychain.
+- **`ARIES_WALLET_NON_INTERACTIVE=1`** — refuses terminal password and
+  recovery-phrase prompts, so a missing password fails fast (`Wallet is locked…`)
+  instead of hanging an unattended run on a prompt. Set it on every unattended
+  invocation.
+- **`--password-fd 3`** — accepted by every command; reads the current password
+  from inherited descriptor 3, ahead of `ARIES_WALLET_PASSWORD` and of
+  `ARIES_WALLET_NON_INTERACTIVE=1`, which keeps it out of the process
+  environment. Only descriptor 3 is accepted, read once and exactly as given
+  (no newline stripped):
+  `xl1-wallet balance 0 --json --password-fd 3 3< <(printf %s "$(security find-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" -w)") </dev/null`
+  (bash/zsh process substitution; a here-string adds a newline and fails).
 - **`XL1_WALLET_HOME`** — overrides the wallet storage directory (default
   `~/.xl1/wallet/cli`). Use a dedicated directory so the test wallet is isolated
   from any real wallet on the machine.
@@ -103,6 +114,10 @@ disposable testnet home this is low-risk, but don't persist that output into
 logs you keep. If the home already contains a wallet, a new one is not
 auto-activated — run `xl1-wallet use <id>` to select it.
 
+The `network use xl1-sequence` step is **mandatory**: a fresh wallet home's
+active network is `xl1-mainnet`, and skipping the step points every later
+`balance`/`send` at mainnet.
+
 **4. Read the root address to fund.** Account **offset 0** is the address tests
 send from and the one the user funds:
 
@@ -133,16 +148,20 @@ done
 xl1-wallet balance 0 --json | jq '{ xl1, atto, network: .network.id }'
 ```
 
-`balance --json` returns `{ address, offset, xl1, atto, network: { id, rpcUrl } }`.
+`balance --json` returns `{ address, offset, xl1, atto, network: { id, label,
+isCustom, chainId? } }` — the RPC URL is deliberately left out (it can carry
+credentials).
 
 ## Running unattended tests
 
 Every unattended invocation follows the same shape: export the password from the
-keychain, (re-)export the isolated wallet home, run commands with `--json`.
+keychain, (re-)export the isolated wallet home, refuse prompts, run commands
+with `--json`.
 
 ```sh
 export XL1_WALLET_HOME="$HOME/.xl1/wallet/sequence-test"
 export ARIES_WALLET_PASSWORD="$(security find-generic-password -a "$USER" -s xl1-wallet-sequence -w)"
+export ARIES_WALLET_NON_INTERACTIVE=1
 ```
 
 Common operations (all support `--json` for parsing):
@@ -186,14 +205,15 @@ if [ "$NET" != "xl1-sequence" ]; then
 fi
 ```
 
-`network list --json` returns an array of `{ id, label, rpcUrl, active }`, where
-`active` is a boolean marking the selected network — hence the `select(.active
-== true)` filter above. `balance --json` also carries the active network at
-`.network.id` if you prefer a single call.
+`network list --json` returns an array of `{ id, label, isCustom, chainId?,
+active }` (no RPC URL), where `active` is a boolean marking the selected
+network — hence the `select(.active == true)` filter above. `balance --json`
+also carries the active network at `.network.id` if you prefer a single call.
 
 Networks available by default: `xl1-sequence` (testnet,
 `https://beta.api.chain.xyo.network/rpc`) and `xl1-mainnet`
-(`https://api.chain.xyo.network/rpc`). This skill's flows are valid **only** for
+(`https://api.chain.xyo.network/rpc`) — and `xl1-mainnet` is the default active
+network in a fresh home. This skill's flows are valid **only** for
 `xl1-sequence`.
 
 ## Rotation / teardown
@@ -201,9 +221,14 @@ Networks available by default: `xl1-sequence` (testnet,
 The test wallet is disposable. To rotate or tear down:
 
 ```sh
-xl1-wallet reset                                                   # delete local wallet CLI data (in this XL1_WALLET_HOME)
+xl1-wallet reset --confirm=RESET --yes                             # delete wallet CLI files in this XL1_WALLET_HOME
 security delete-generic-password -a "$USER" -s xl1-wallet-sequence # remove the keychain entry
 ```
+
+A bare `xl1-wallet reset` asks you to type `RESET` and then confirm, and under
+`ARIES_WALLET_NON_INTERACTIVE=1` it refuses without both flags. Reset needs no
+password, removes only the CLI's own wallet files, and leaves the directory and
+unrelated files in place.
 
 Because only test tokens are ever at risk, a compromised test wallet costs
 nothing — recreate it and re-fund.

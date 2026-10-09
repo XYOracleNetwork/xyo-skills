@@ -101,7 +101,9 @@ export default defineConfig({
         test: {
           name: 'browser',
           include: ['src/spec/**/*.spec.ts', 'packages/**/src/**/spec/**/*.spec.ts'],
-          exclude: ['**/spec/node/**'], // node-only specs stay out of the browser run
+          // `exclude` replaces Vitest's defaults, so restate them: node-only specs,
+          // dependencies, and Claude Code worktrees under .claude/ stay out
+          exclude: ['**/spec/node/**', '**/node_modules/**', '**/.claude/**'],
           setupFiles: ['test/setup/browser.ts'],
           browser: {
             enabled: true,
@@ -119,7 +121,10 @@ export default defineConfig({
 Keep cross-environment specs in `spec/` (they run in both node and browser
 projects when both exist), browser-only specs under `spec/browser/` (or where
 the browser project includes them), and node-only specs under `spec/node/`
-(excluded above).
+(excluded above). The `node_modules` and `.claude` entries mirror the shared
+preset's `XY_VITEST_BROWSER_EXCLUDE`, so a broadened `include` never picks up
+dependency specs or the full checkouts Claude Code keeps under
+`.claude/worktrees/**`.
 
 ### Network mocking (MSW)
 

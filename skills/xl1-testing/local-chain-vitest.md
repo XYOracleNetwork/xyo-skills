@@ -4,13 +4,17 @@
 > vitest run** — one chain per spec file, started in `beforeAll` and stopped in
 > `afterAll` — instead of hand-managing a background `xl1 start` process.
 > **XYO-internal track only:** needs npm access to restricted `@xyo-network/*`
-> packages.
+> packages. "`apiLocal`" in this doc means the installer from the restricted
+> `@xyo-network/xl1-vitest-config`.
 >
 > **Public / dapp-kit consumers:** use
 > **[Local chain via dApp Kit Vitest](local-chain-dapp-kit-vitest.md)**
 > (`@xyo-network/dapp-kit-vitest-config`) instead — same vitest-owned lifecycle,
-> published packages. Manual [local `xl1 start`](local-chain.md) remains the
-> zero-preset escape hatch.
+> published packages. That preset has its own public `apiLocal` installer
+> (project `api-local`, same `spec/api-local/**` globs) that boots the published
+> `xl1` CLI chain, so a public repo with existing `spec/api-local` specs can keep
+> them without this package. Manual [local `xl1 start`](local-chain.md) remains
+> the zero-preset escape hatch.
 
 The chain, the signer, and the app-level surface are the same as
 [local dev-chain verification](local-chain.md); only the *lifecycle* differs.
@@ -43,7 +47,7 @@ in-memory storage, no EVM staking layer, ephemeral chain id.
 
 ```sh
 npm whoami                                        # error / no output => not authenticated
-npm view @xyo-network/xl1-vitest-config version    # 5.1.0 when authenticated
+npm view @xyo-network/xl1-vitest-config version    # 5.6.1 when authenticated
 ```
 
 The response does mention permissions, but only below the `E404` line most
@@ -69,8 +73,8 @@ pnpm add -D @vitest/browser-playwright playwright
 declare it directly: nothing in your own source imports it, so `xy deplint`
 reports a direct declaration as an unused devDependency.
 
-Peer ranges at `@xyo-network/xl1-vitest-config` 5.1.0: `@ariestools/vitest-config`
-`^9.0`, `vitest` `^4.1`.
+Peer ranges at `@xyo-network/xl1-vitest-config` 5.6.1: `@ariestools/vitest-config`
+`^10.0`, `vitest` `^5.0`.
 
 ## ⚠️ Two silent topology changes on adoption
 
@@ -237,21 +241,31 @@ declare global {
 }
 ```
 
-Then build the gateway exactly as in the public route:
+Then build the gateway as in the public route, as an owning session that
+`afterAll` releases (`buildSession()` / `buildRunnerSession()`,
+`@xyo-network/xl1-sdk` ≥ 5.1; plain `build()` keeps no handle to free its
+provider graph):
 
 ```ts
 import { assertEx } from '@ariestools/sdk'
-import type { XyoViewer } from '@xyo-network/xl1-sdk'
+import type {
+  GatewaySession, XyoGateway, XyoViewer,
+} from '@xyo-network/xl1-sdk'
 import { GatewayBuilder } from '@xyo-network/xl1-sdk'
 import {
-  beforeAll, describe, expect, it,
+  afterAll, beforeAll, describe, expect, it,
 } from 'vitest'
 
+let session: GatewaySession<XyoGateway> | undefined
 let viewer: XyoViewer
 
 beforeAll(async () => {
-  const gateway = await new GatewayBuilder().name('local').rpcUrl(globalThis.rpcUrl).build()
-  viewer = assertEx(gateway.connection.viewer, () => 'local chain gateway exposed no viewer')
+  session = await new GatewayBuilder().name('local').rpcUrl(globalThis.rpcUrl).buildSession()
+  viewer = assertEx(session.gateway.connection.viewer, () => 'local chain gateway exposed no viewer')
+})
+
+afterAll(async () => {
+  await session?.stop()
 })
 
 describe('finalized head (live local chain)', () => {

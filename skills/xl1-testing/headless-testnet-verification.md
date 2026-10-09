@@ -2,7 +2,7 @@
 
 Read this when you need to prove that a dApp's chain interactions work end-to-end against a live (test)network — without launching a browser or driving the wallet extension. It signs with a seed-phrase-derived signer **in-process** (Node + `GatewayBuilder.buildRunner()`) and asserts on-chain outcomes. The verification mode of choice for agentic development, CI smoke tests, and regression scripts.
 
-This is one of several headless verification approaches under [xl1-testing](SKILL.md); it is the **network / testnet** variant (in-process signer against `sequence` or `local`). For an external, unattended CLI-wallet actor on Sequence, see [Unattended Sequence via CLI wallet](sequence-cli-wallet.md).
+This is one of several headless verification approaches under [xl1-testing](SKILL.md); it is the **network / testnet** variant (in-process signer against `sequence` or `local` — on `local`, drop the datalake wiring as noted in [step 3](#3-build-a-runner-per-actor)). For an external, unattended CLI-wallet actor on Sequence, see [Unattended Sequence via CLI wallet](sequence-cli-wallet.md).
 
 **Builds on:**
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — `GatewayBuilder` and the seed-phrase signer
@@ -69,11 +69,11 @@ Treat the seed phrase like any other secret — never commit, never log, never e
 ```ts
 import 'dotenv/config'
 
+import type { XyoGatewayRunner } from '@xyo-network/xl1-sdk'
 import {
   DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls,
 } from '@xyo-network/xl1-sdk'
 import { generateXyoBaseWalletFromPhrase } from '@xyo-network/xl1-sdk/protocol-sdk'
-import { type XyoGatewayRunner } from '@xyo-network/xl1-protocol/protocol-lib'
 
 const id = process.env.XL1_NETWORK ?? 'sequence'
 const network = DefaultNetworks.find((n) => n.id === id)
@@ -111,6 +111,8 @@ const runner2: XyoGatewayRunner = await new GatewayBuilder()
 ```
 
 Use distinct `.name()` values so logs and traces can tell the actors apart. Never share one runner between actors — the signing origin is fixed at build time.
+
+**On `local`, leave out `.dataLakeEndpoint(...)`.** `NetworkDataLakeUrls.local` is `http://localhost:8080/dataLake`, but a plain `xl1 start` serves no `/dataLake` route (see [Local dev-chain verification](local-chain.md#verify-script)). Without an endpoint the runner has no datalake to write off-chain bodies to, so also skip the datalake read-back (step 4 of the [script shape](#verification-script-shape)) and assert on the transaction itself (its `payload_hashes` and on-chain payloads). Wire both back in only when the test composes something that serves the XL1 REST datalake API (`/get/<hash>`, `/insert`) — the Aries `/data` bucket in [Local chain + Aries data-lake fixture](local-chain-datalake.md) is a separate S3 object store, not that API.
 
 ---
 

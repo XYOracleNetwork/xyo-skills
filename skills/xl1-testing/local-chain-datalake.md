@@ -45,6 +45,11 @@ pnpm add @xyo-network/xl1-sdk
 Keep `@xyo-network/xl1-sdk` in `devDependencies` instead when only tests use it.
 Use the repository's package-manager and dependency conventions.
 
+Run the composed stack on **Node 26**. `@xyo-network/xl1-cli` alone declares
+Node `>=24`, but `@ariestools/cli` (the `aries` bin), `@ariestools/aries-dapp-core`,
+`@ariestools/aries-dapp-serve`, `@ariestools/aries-chain-serve`, and
+`@xyo-network/xl1-sdk` all declare `>=26`.
+
 ## Declare the XL1 topology
 
 Write a test-owned `xyo.json`. Explicit connections and bindings prevent a CLI
@@ -154,19 +159,23 @@ production access controls.
 
 ## Exercise the real boundaries
 
-Use `GatewayBuilder`; never issue hand-written XL1 JSON-RPC calls:
+Use `GatewayBuilder`; never issue hand-written XL1 JSON-RPC calls. Build an
+owning session (`@xyo-network/xl1-sdk` ≥ 5.1) so teardown can release the
+gateway's provider graph:
 
 ```ts
 import { GatewayBuilder } from '@xyo-network/xl1-sdk'
 
-const gateway = await new GatewayBuilder()
+const gatewaySession = await new GatewayBuilder()
   .name('local-e2e')
   .rpcUrl('http://127.0.0.1:8080/rpc')
-  .build()
+  .buildSession()
 
-const viewer = gateway.connection.viewer
+const viewer = gatewaySession.gateway.connection.viewer
 if (!viewer) throw new Error('Local XL1 gateway has no viewer')
 const [finalizedBlock] = await viewer.finalization.head()
+
+// teardown (e.g. afterAll): await gatewaySession.stop()
 ```
 
 Write the data bucket through its S3 API, then verify the anonymously readable
@@ -211,8 +220,9 @@ transaction logic inside the test.
 - Wait for a **finalized head**, not merely an open TCP port, before starting
   application assertions.
 - Capture child stdout/stderr and include it in startup-timeout errors.
-- Stop in reverse order. Run `aries dapp down`, terminate XL1, and remove only
-  the temporary directories created by the test.
+- Stop in reverse order. Call the gateway session's `stop()`, run
+  `aries dapp down`, terminate XL1, and remove only the temporary directories
+  created by the test.
 
 ## Minimum acceptance
 
