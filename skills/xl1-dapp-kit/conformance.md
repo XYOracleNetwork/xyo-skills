@@ -31,7 +31,7 @@ No level implies any higher level. Above L3 there are two independent axes: **in
 3. Relevant durability classes and recovery path are exercised or explicitly out of scope with reason.
 4. Clients talk through **application ports** / documented status — not a one-off shadow API.
 5. If event-driven: wake ≠ durable event ≠ cursor discipline held ([Events and wakes](events-and-wakes.md)).
-6. Chain access still passes [dApp Definition of Done — Gateway](../xl1-patterns/dapp-checklist.md#gateway--chain-access).
+6. Chain access still passes [dApp Definition of Done — Gateway](../xl1-testing/dapp-checklist.md#gateway--chain-access).
 7. Local chain automation (when needed) uses published **`@xyo-network/dapp-kit-vitest-config`** [`local-xl1`](../xl1-testing/local-chain-dapp-kit-vitest.md) — not the restricted, XYO-internal `@xyo-network/xl1-vitest-config` `apiLocal` harness, and not a hardcoded `localhost:8080` RPC in parallel CI. (The public preset's own `apiLocal` installer is fine: it boots the same published-CLI chain for specs under `spec/api-local`.)
 8. State which evidence label you actually produced, and its L-level.
 
@@ -41,4 +41,4 @@ Upstream keeps language-neutral fixtures and independent verifiers under `confor
 
 ## Relation to classic DoD
 
-[dApp Definition of Done](../xl1-patterns/dapp-checklist.md) remains required for wallet/React/gateway anti-patterns. dapp-kit adds headless-runtime / ports / recovery / evidence-label gates on top — it does not waive Layer 1 generic DoD from [xy-development workflow](../xy-development/workflow.md).
+The [dApp Definition of Done](../xl1-testing/dapp-checklist.md) (Gate 2, owned by xl1-testing) remains required for wallet/React/gateway anti-patterns. dapp-kit adds headless-runtime / ports / recovery / evidence-label gates on top — it does not waive Gate 1, the generic DoD in [`xy-development` (ariestools-skills) — workflow § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done).

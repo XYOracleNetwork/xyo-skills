@@ -384,7 +384,7 @@ rebuildable projections / consumers (not chain truth)
 4. Exercise the happy path through **application ports** / documented status — not a one-off shadow REST API.
 5. If event-driven: keep wake ≠ durable event ≠ cursor ([Events and wakes](../xl1-dapp-kit/events-and-wakes.md)).
 6. Label evidence as **local** (or packed) per [Conformance](../xl1-dapp-kit/conformance.md) — local green ≠ Sequence/hosted/production.
-7. Still pass [Gateway & chain access](../xl1-patterns/dapp-checklist.md#gateway--chain-access) rules.
+7. Still pass [Gateway & chain access](dapp-checklist.md#gateway--chain-access) rules.
 
 The vitest preset's catalog has six installers, all opt-in. Three boot infrastructure: `localXl1` and `apiLocal` (the same public chain for `spec/local-xl1` / `spec/api-local` specs) and `localEventPublisher` (its own chain plus a signed Event Kit wake publisher — use it for wake-driven dApps, see [dApp Kit Vitest](local-chain-dapp-kit-vitest.md#local-chain-with-event-kit-publication)). `localDatalake` / `localSystem` / `localBrowser` only isolate suites — do not invent setup behavior the catalog does not provide.
 
@@ -403,4 +403,4 @@ The vitest preset's catalog has six installers, all opt-in. Three boot infrastru
 - [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md) — vocabulary, ports, hosting, conformance.
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — canonical source construction.
 - [Chain data indexing](../xl1-patterns/chain-data-indexing-protocol.md) — finalized replay and index semantics.
-- [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) — the broader completion gate.
+- [dApp Definition of Done](dapp-checklist.md) — the broader completion gate.

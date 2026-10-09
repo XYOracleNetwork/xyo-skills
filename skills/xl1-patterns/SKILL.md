@@ -1,33 +1,34 @@
 ---
 name: xl1-patterns
-description: Prescriptive design patterns for XL1 dApps. Covers browser UX, wallet connection and permission requests, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, wallet permissions, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing and headless verification now live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
+description: Prescriptive design patterns for XL1 dApps. Covers multi-party dApp architecture principles, browser UX, wallet connection and permission requests, chain data indexing, commit-reveal schemes, in-page datalakes, prediction markets, atomic exchange (multi-party escrow), inscription substrates, fungible tokens, Statement Graph relationship claims, and Event Kit authenticated wake delivery. Activates when designing or reviewing a multi-party XL1 dApp's architecture, or when building application-level features on XL1 that require structured data access, multi-party fairness, atomic asset exchange, client-side chain queries, wallet permissions, ownable artifacts, token protocols, signed relationship graphs, wallet-JWT wakes, or dApp UI conventions. (Testing, headless verification, and the dApp Definition of Done live in the xl1-testing skill. Headless application contracts live in xl1-dapp-kit.)
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 5
 ---
 
 # XL1 Design Patterns
 
 This skill provides prescriptive, recipe-style patterns for building common application features on XL1. Where the lower layers document *what XL1 is*, this layer documents *how to build things on it*.
 
-**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
-
 **Rule ownership.** Entries below summarize rules that are stated in full in the linked file. The linked file is canonical: if a summary here and its file ever disagree, follow the file and flag the drift rather than reconciling silently.
 
-## Lower Layer Skills
+**Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
-These patterns compose primitives from the full skill stack:
+## Skill layers
 
-- **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain data model, datalakes, gateway (generic, browser, and Node)
-- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — headless application contracts, ports, recovery (when adopting `@xyo-network/dapp-kit*`), and the [architecture principles](../xl1-dapp-kit/architecture-principles.md) every multi-party dApp design should satisfy
-- **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — payloads, bound witnesses, modules, identity
-- **[XY Toolchain](../xy-toolchain/SKILL.md)** — build tooling, ESLint, TypeScript config, Vitest (canonical: ariestools-skills)
-- **[Development](../xy-development/SKILL.md)** — coding conventions, Git, testing, workflow (canonical: ariestools-skills)
+This is **Layer 5** of the XYO skill stack: `xy-development` (1) → `xy-toolchain` (2) → `xyo-knowledge` (3) → `xl1-knowledge` (4) → `xl1-patterns` (5) → `xl1-dapp-kit` (6) → `xl1-testing` (7) → `xl1-scaffold` (8) → `xl1-build` (9).
+
+- **Builds on:** [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) — chain data model, datalakes, gateway (generic, browser, and Node); [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) — payloads, bound witnesses, modules, identity; `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2) — build tooling, ESLint, TypeScript config, Vitest; coding conventions, Git, testing, workflow
+- **Hands off to:** [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) (6) — when adopting `@xyo-network/dapp-kit*` (headless runtime, application ports, effect journals and recovery, hosting); [xl1-testing](../xl1-testing/SKILL.md) (7) — to verify the work (headless testnet, local chain, browser mode) and to walk the dApp Definition of Done before reporting it complete; [xl1-scaffold](../xl1-scaffold/SKILL.md) (8) — when starting a new XL1 project; [xl1-build](../xl1-build/SKILL.md) (9) — when the build request is still vague
 
 ## Payload schema and hash prerequisites
 
 Before adapting a recipe, read [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md): stable ASCII schema names, explicit version/shape support, frozen definitions with deliberate closure, and root hashes for new application references/commitments. Existing protocol-specific data-hash algorithms remain contracts; their documented exceptions do not make data hashes the default for new applications.
 
 ## Table of Contents
+
+### [Architecture principles](architecture-principles.md)
+**Read first when designing or reviewing any XL1 dApp whose state matters to more than one party** (games, markets, auctions, registries, leaderboards), with or without dapp-kit. Seven principles (the dApp is an engine and every interface a client; state is anchored evidence; a written protocol; the house as a bound protocol role; load from indexes, not replay; constant-cost indexes; cheaply verifiable index answers), cross-cutting rules, a trust table and ten review questions.
 
 ### [Browser UX](browser-ux.md)
 **REQUIRED reading for any dApp with a UI** — which is nearly all of them. Covers wallet connection lifecycle (`ConnectAccountsStack` and its slot props), lifting the granted accounts into app state with `onAccountsChanged` (not the compatibility `onAccountConnected`), the `useConnectAccount` singleton pitfall, capability-aware components (a granted account plus a write-capable runner), dApp UI structure, and display conventions (hash/address clamping, copy-to-clipboard). The UX layer that sits on top of [Browser Gateway](../xl1-knowledge/gateway-browser.md) construction. Skip only if the work is genuinely UI-less (a pure indexer service or a CLI).
@@ -75,8 +76,5 @@ Read when you need a replayable, source-attributed relationship / assertion grap
 ### [Authenticated Wake Delivery](authenticated-wake-delivery.md)
 Read when a sleepable indexer/host must be woken by wallet-JWT publishers authorized by a Statement Graph grant plus an active D-005 handshake subscription — not HMAC webhooks. Event Kit 2.2.x (Node ≥ 26): finalized XL1 / finalized Ethereum / UTC-interval sources, explicit `durable` / `best-effort` delivery, active-source admission, `wakeId` vs `jti`, and WakeQueue leases. Wakes schedule work; they are not chain truth.
 
-### Headless verification → moved to [xl1-testing](../xl1-testing/SKILL.md)
-Headless dApp verification now lives in the **[xl1-testing](../xl1-testing/SKILL.md)** skill as [Headless testnet verification](../xl1-testing/headless-testnet-verification.md) — proving a dApp's chain interactions end-to-end via an in-process seed-phrase signer (`GatewayBuilder.buildRunner()`), for agentic development, CI smoke tests, and regression scripts. It remains a required part of the [dApp Definition of Done](dapp-checklist.md) below.
-
-### [dApp Definition of Done](dapp-checklist.md)
-**REQUIRED before reporting any XL1 dApp work as complete.** Not optional, not "if you have time" — walk it explicitly and call out pass/fail per relevant section in your completion summary. The checklist enumerates the rules and anti-patterns documented across the skill stack (gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, indexer floor block, provider architecture, display conventions, commit-reveal correctness, settlement authorities, multi-party co-signing, headless verification). Sections marked "(if applicable)" can be skipped only when truly out of scope — state which and why.
+### [dApp Definition of Done](../xl1-testing/dapp-checklist.md) (in xl1-testing)
+**REQUIRED before reporting any XL1 dApp work as complete** — the completion gate for every pattern above is owned by [xl1-testing](../xl1-testing/SKILL.md) (Layer 7); walk it and report pass/fail per relevant section.

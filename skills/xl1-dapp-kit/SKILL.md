@@ -6,41 +6,42 @@ description: >-
   application ports, effect journals and crash recovery, durable events vs
   Event Kit wakes, Node/browser hosts, sign-only wallet capability,
   Vercel/Cloudflare target composition (Kubernetes/Proxmox target plans are
-  schema-only), and conformance evidence.
-  Also holds the architecture principles for any multi-party XL1 dApp (engine
-  vs clients, evidence-derived state, written protocol, house role, constant-cost
-  indexed loads, verifiable indexes). Activates when designing or reviewing an
-  XL1 dApp's architecture, building or migrating toward dapp-kit, writing
-  xl1.dapp.json, hosting a headless runtime, or distinguishing UI clients from
-  the protocol application. Complements xl1-patterns domain recipes and
+  schema-only), and conformance evidence. Applies the multi-party dApp
+  architecture principles owned by xl1-patterns (engine vs clients,
+  evidence-derived state, constant-cost verifiable indexes) as a headless
+  runtime. Activates when designing or reviewing a dapp-kit app's
+  architecture, building or migrating toward dapp-kit, writing xl1.dapp.json,
+  hosting a headless runtime, or distinguishing UI clients from the protocol
+  application. Builds on xl1-patterns domain recipes and complements
   xl1-scaffold React+service apps — does not replace gateway/chain knowledge.
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 6
 ---
 
 # XL1 dApp Kit
 
 An XL1 dApp is a **portable, headless protocol runtime**. UI, CLI, and HTTP surfaces are **clients**. Indexes and projections are **rebuildable**. Finalized XL1 is the canonical ordering substrate; side channels may accelerate liveness but must not secretly govern recovery.
 
-This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It sits **above** [xl1-knowledge](../xl1-knowledge/SKILL.md) and **alongside** [xl1-patterns](../xl1-patterns/SKILL.md) (domain recipes still apply). Classic [xl1-scaffold](../xl1-scaffold/SKILL.md) React+Express apps remain valid; migrate to dapp-kit when you need definition/plan/ports/recovery/conformance — not merely a Vite UI.
+This skill teaches the `@xyo-network/dapp-kit*` application-contract layer. It sits directly **above** [xl1-patterns](../xl1-patterns/SKILL.md), whose domain recipes and [architecture principles](../xl1-patterns/architecture-principles.md) still apply, and builds on [xl1-knowledge](../xl1-knowledge/SKILL.md) for the chain itself. Classic [xl1-scaffold](../xl1-scaffold/SKILL.md) React+Express apps remain valid; migrate to dapp-kit when you need definition/plan/ports/recovery/conformance — not merely a Vite UI.
 
-**Skill identity.** Report as `xl1-dapp-kit v<version>` (from this file's `metadata.version`) in every plan, acknowledgement, and completion summary.
-
-**Maturity:** `@xyo-network/dapp-kit*` is **published on npm** (3.x line, public access, `LGPL-3.0-only`; versions before 2.1.1 were published `UNLICENSED`). Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates can still be open** per consumer — check the deployment's evidence labels. Prefer local conformance via [`@xyo-network/dapp-kit-vitest-config`](../xl1-testing/local-chain-dapp-kit-vitest.md); do not claim hosted qualification from local tests.
+**Maturity:** `@xyo-network/dapp-kit*` is **published on npm** (3.x line, public access, `LGPL-3.0-only`; versions before 2.1.1 were published `UNLICENSED`). Local UC-01..03 and adapters exist; **credentialed hosted / Sequence / production evidence gates can still be open** per consumer — check the deployment's evidence labels. Prefer local conformance via [`@xyo-network/dapp-kit-vitest-config`](../xl1-testing/local-chain-dapp-kit-vitest.md) and the [local dapp-kit stack](../xl1-testing/local-dapp-stack.md#dapp-kit); do not claim hosted qualification from local tests.
 
 **Private upstream.** The dapp-kit source repo is private. Its status file (`docs/STATE.md`), `DAPP_KIT_CONTRACT.md`, `PROGRAM_RULES.md`, the White and Yellow Papers, the `conformance/` vectors, and the private workspace packages are **XYO-internal**. Outside XYO, the reference is each published package's README on npm.
 
-## Lower layers
+**Skill identity.** Report as `xl1-dapp-kit v<version>` (from this file's `metadata.version`) in every plan, acknowledgement, and completion summary.
 
-- **[XL1 Knowledge](../xl1-knowledge/SKILL.md)** — chain, gateway, datalakes, identity
-- **[XL1 Patterns](../xl1-patterns/SKILL.md)** — indexing, statement graph, wakes, DoD checklist
-- **[XL1 Testing](../xl1-testing/SKILL.md)** — headless verification, including [dapp-kit vitest `local-xl1`](../xl1-testing/local-chain-dapp-kit-vitest.md) and [local dapp-kit stack](../xl1-testing/local-dapp-stack.md#dapp-kit)
-- **[xy-toolchain](../xy-toolchain/SKILL.md)** / **[xy-development](../xy-development/SKILL.md)** — from **ariestools-skills** (redirect stubs may appear in this pack)
+## Skill layers
+
+This is **Layer 6** of the XYO skill stack: `xy-development` (1) → `xy-toolchain` (2) → `xyo-knowledge` (3) → `xl1-knowledge` (4) → `xl1-patterns` (5) → `xl1-dapp-kit` (6) → `xl1-testing` (7) → `xl1-scaffold` (8) → `xl1-build` (9).
+
+- **Builds on:** [xl1-patterns](../xl1-patterns/SKILL.md) (5) — architecture principles, indexing, statement graph, wakes; [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) — chain, gateway, datalakes, identity; [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) — payloads, bound witnesses, schemas; `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2) — build tooling and coding conventions
+- **Hands off to:** [xl1-testing](../xl1-testing/SKILL.md) (7) — to verify a dapp-kit app (dapp-kit vitest `local-xl1`, the local dapp-kit stack, Sequence) and to walk the dApp Definition of Done before reporting it complete; [xl1-scaffold](../xl1-scaffold/SKILL.md) (8) — when starting a new project as a classic React+service app instead
 
 ## Table of Contents
 
-### [Architecture principles](architecture-principles.md)
-**Read first when designing or reviewing any XL1 dApp whose state matters to more than one party**, with or without dapp-kit. Seven principles (the dApp is an engine and every interface a client; state is anchored evidence; a written protocol; the house as a bound protocol role; load from indexes, not replay; constant-cost indexes; cheaply verifiable index answers), cross-cutting rules, a trust table and ten review questions.
+### [Architecture principles](../xl1-patterns/architecture-principles.md) (in xl1-patterns — lower layer, read first)
+**Read first when designing or reviewing a dapp-kit app whose state matters to more than one party.** The principles live in xl1-patterns because they hold with or without dapp-kit; this skill is the supported way to build the engine they describe as a headless runtime.
 
 ### [Vocabulary](vocabulary.md)
 Definition, configuration, plan, incarnation, host, engine and systems, the two manifests, lock versions, status dimensions, durability classes — the words agents must not collapse.

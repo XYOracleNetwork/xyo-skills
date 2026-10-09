@@ -163,7 +163,7 @@ Components that only read work immediately — no wallet prompt. Pick the source
 
 | Read | Source | Why |
 |---|---|---|
-| Multi-user derived views — game history, leaderboards, market listings | Companion service: `fetch('/api/…')` | The service indexes finalized blocks once, from `INDEXER_FLOOR_BLOCK`, and serves the result. A browser walk re-derives it in every tab, and its cost grows with history — see [Load from indexes, not from replay](../xl1-dapp-kit/architecture-principles.md#5-load-from-indexes-not-from-replay) |
+| Multi-user derived views — game history, leaderboards, market listings | Companion service: `fetch('/api/…')` | The service indexes finalized blocks once, from `INDEXER_FLOOR_BLOCK`, and serves the result. A browser walk re-derives it in every tab, and its cost grows with history — see [Load from indexes, not from replay](architecture-principles.md#5-load-from-indexes-not-from-replay) |
 | Bounded lookups — one game's transaction or payloads by hash, a block by number, the finalized head | In-page gateway: `gateways.inPageGateway?.connection.viewer`, plus `datalakeViewer.get(hashes)` for off-chain payloads | Constant-cost reads — the same price on day one and day one thousand. See [Querying the In-Page Datalake](#querying-the-in-page-datalake) |
 
 The service mounts its routes under `/api/*`, and the app calls them with relative URLs ([Browser ↔ Service Wiring](browser-service-wiring.md)). The service indexes; the browser displays:

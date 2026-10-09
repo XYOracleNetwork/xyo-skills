@@ -1,14 +1,14 @@
 # dApp Definition of Done
 
-Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. Each item corresponds to a rule or anti-pattern documented in the skill stack.
+Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. The `xl1-testing` skill owns this gate; each item corresponds to a rule or anti-pattern documented elsewhere in the skill stack and cites it under **Source**.
 
-This checklist is **Layer 2** of a three-layer completion gate (see [xy-development/workflow.md § Applying the Definition of Done](../xy-development/workflow.md#applying-the-definition-of-done)):
+This checklist is **Gate 2** of a three-gate completion gate (see [`xy-development` (ariestools-skills) — workflow § Applying the Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#applying-the-definition-of-done), which numbers these as "layers"; here they are *gates*, so they do not collide with the skill-stack layer numbers):
 
-1. **Layer 1 — Generic DoD** ([xy-development/workflow.md](../xy-development/workflow.md)): builds, lints, tests, dev server, no placeholders, no regressions. Always applies.
-2. **Layer 2 — This file (dApp DoD)**: XL1/browser-specific concerns. Applies when the project is a browser-facing dApp on XL1.
-3. **Layer 3 — Project-specific acceptance criteria**: in `PRD.md` at the working directory, when present. Generated at planning time for each project — see [Writing Project-Specific Acceptance Criteria](../xy-development/workflow.md#writing-project-specific-acceptance-criteria).
+1. **Gate 1 — Generic DoD** ([`xy-development` (ariestools-skills) — workflow § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done)): builds, lints, tests, dev server, no placeholders, no regressions. Always applies.
+2. **Gate 2 — Domain DoD (this checklist)**: XL1/browser-specific concerns. Applies when the project is a browser-facing dApp on XL1.
+3. **Gate 3 — Project-specific acceptance criteria**: in `PRD.md` at the working directory, when present. Generated at planning time for each project — see [`xy-development` (ariestools-skills) — workflow § Writing Project-Specific Acceptance Criteria](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#writing-project-specific-acceptance-criteria).
 
-Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Walk Layer 3 when a `PRD.md` exists. If any item across any applicable layer fails, the work is not done — iterate until all layers pass.
+Gate 1 always applies. Walk this checklist (Gate 2) when the project is a dApp. Walk Gate 3 when a `PRD.md` exists. If any item across any applicable gate fails, the work is not done — iterate until all gates pass.
 
 ---
 
@@ -53,7 +53,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] The SDK's datalake components (`DataLake*` buttons and panels, `ApprovedLakeSelector`) are not rendered — they drive the wallet's internal `xyoDataLakes_*` methods
 - [ ] The connection UI is restyled, if at all, through `ConnectAccountsStack`'s slot props (`AccountComponent`, `ConnectComponent`, `LoadingComponent`, `NoWalletInstalledComponent`) — not by wrapping or forking it
 
-**Source:** [Browser UX — Wallet Connection](browser-ux.md), [Wallet — Permissions](wallet.md#permissions)
+**Source:** [Browser UX — Wallet Connection](../xl1-patterns/browser-ux.md), [Wallet — Permissions](../xl1-patterns/wallet.md#permissions)
 
 ---
 
@@ -67,7 +67,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Payloads read from the chain or datalake are filtered through Zod-factory guards (`isXxxPayload`) before being honored — `payload.schema === '...'` is a tag check, not a validator. `isPayloadOfSchemaType` is not a substitute
 - [ ] Schemas are created with `asSchema('com.example.app.entity', true)` — not bare string literals
 
-**Source:** [Protocol Best Practices](../xyo-knowledge/best-practices.md), [Development on XL1](../xl1-knowledge/development.md)
+**Source:** [Protocol Best Practices](../xyo-knowledge/best-practices.md), [Development on XL1](../xl1-knowledge/development.md), [Datalakes](../xl1-knowledge/datalakes.md)
 
 ---
 
@@ -96,7 +96,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] The indexer fails closed when `INDEXER_FLOOR_BLOCK` is missing — no implicit floor of `0`
 - [ ] Each environment (mainnet, sequence, devnet) has its own `.env` with its own captured floor — no reuse across chains
 
-**Source:** [Chain Data Indexing — Floor Block](chain-data-indexing-protocol.md#floor-block), [Chain Data Indexing — Service](chain-data-indexing-service.md)
+**Source:** [Chain Data Indexing — Floor Block](../xl1-patterns/chain-data-indexing-protocol.md#floor-block), [Chain Data Indexing — Service](../xl1-patterns/chain-data-indexing-service.md)
 
 ---
 
@@ -111,7 +111,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] **Multi-user derived views (game history, leaderboards, market listings) read the companion service's index** via relative `fetch('/api/…')` — not a browser chain walk. The in-page gateway serves only bounded lookups — a transaction by hash, a block by number, the finalized head — with off-chain payloads fetched from the dApp's datalake by hash. Any browser-side block walk that remains (a `blockByNumber` / `blocksByNumber` loop in the app package) is labelled prototype-only and bounded below at `VITE_INDEXER_FLOOR_BLOCK`
 - [ ] Wallet-gated components (submit move, create game) check for a granted account and write capability before rendering action controls
 
-**Source:** [In-Page Data Lakes](in-page-datalakes.md), [Chain Data Indexing — Client](chain-data-indexing-client.md), [Browser ↔ Service Wiring](browser-service-wiring.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
+**Source:** [In-Page Data Lakes](../xl1-patterns/in-page-datalakes.md), [Chain Data Indexing — Client](../xl1-patterns/chain-data-indexing-client.md), [Browser ↔ Service Wiring](../xl1-patterns/browser-service-wiring.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
@@ -125,7 +125,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Workspace root has a `dev` script that runs app + service concurrently (`pnpm -r --parallel run dev`)
 - [ ] If the dApp deliberately runs cross-origin (escape hatch), the choice is documented, the CORS allowlist is explicit (not `*` for credentialed routes), and the preflight path was tested
 
-**Source:** [Browser ↔ Service Wiring](browser-service-wiring.md)
+**Source:** [Browser ↔ Service Wiring](../xl1-patterns/browser-service-wiring.md)
 
 ---
 
@@ -138,23 +138,23 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Multi-party flows derive distinct signers (`derivePath('0')`, `derivePath('1')`, …) and build one runner per signer
 - [ ] The script reads back through `connection.viewer` after submission, and fetches the off-chain bodies from the dApp's datalake by the tx's `payload_hashes` — confirming the chain accepted the tx and the data shape is correct. This proves the **chain edge**; if the UI also reads from a service surface, see the next two items
 - [ ] If the dApp exposes derived state through a service (REST API, GraphQL, WebSocket — anything the UI calls that is not directly `connection.viewer`), the verification script also reads back through that service surface. **Do not synthesize derived state via direct hash lookups (datalake `get(hashes)`, `viewer.block.payloadsByHash`) in the verify script** — that proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI exercises
-- [ ] Before declaring "the service is just behind, not buggy," the script asserts BOTH `viewer.finalization.headNumber() ≥ blockContaining(txHash)` AND `indexer.lastIndexedBlock ≥ blockContaining(txHash)` (read from the indexer's progress endpoint — see [Chain Data Indexing — Service § Progress Endpoint](chain-data-indexing-service.md#progress-endpoint)). If both watermarks are past the tx block and the service still returns empty, that is a bug. "Sequence is slow" is not a valid explanation when both watermarks have advanced
+- [ ] Before declaring "the service is just behind, not buggy," the script asserts BOTH `viewer.finalization.headNumber() ≥ blockContaining(txHash)` AND `indexer.lastIndexedBlock ≥ blockContaining(txHash)` (read from the indexer's progress endpoint — see [Chain Data Indexing — Service § Progress Endpoint](../xl1-patterns/chain-data-indexing-service.md#progress-endpoint)). If both watermarks are past the tx block and the service still returns empty, that is a bug. "Sequence is slow" is not a valid explanation when both watermarks have advanced
 - [ ] `confirmSubmittedTransaction` calls pass explicit options for non-local networks (e.g., `{ attempts: 30, delay: 10_000 }` for Sequence) — defaults time out before finalization
 - [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
 - [ ] Script defaults to a non-mainnet network (e.g., `XL1_NETWORK=sequence`) — explicit override required to point at mainnet
-- [ ] **(if local vitest chain)** Prefer `@xyo-network/dapp-kit-vitest-config` `local-xl1` for public/dapp-kit consumers (its own `apiLocal` installer is also public); use the restricted `@xyo-network/xl1-vitest-config` `apiLocal` harness only when its XYO-internal packages are available — see [dApp Kit Vitest](../xl1-testing/local-chain-dapp-kit-vitest.md)
+- [ ] **(if local vitest chain)** Prefer `@xyo-network/dapp-kit-vitest-config` `local-xl1` for public/dapp-kit consumers (its own `apiLocal` installer is also public); use the restricted `@xyo-network/xl1-vitest-config` `apiLocal` harness only when its XYO-internal packages are available — see [dApp Kit Vitest](local-chain-dapp-kit-vitest.md)
 
-**Source:** [Headless Testnet Verification](../xl1-testing/headless-testnet-verification.md) (in the `xl1-testing` skill)
+**Source:** [Headless Testnet Verification](headless-testnet-verification.md)
 
 ---
 
 ## Architecture principles (if state matters to more than one party)
 
-- [ ] The [review questions](../xl1-dapp-kit/architecture-principles.md#review-questions) are answered in the design or completion summary — in particular: one engine drives every interface; state recomputes from chain + datalakes alone; cold-load reads do not grow with history; every "first" / "latest" / completeness rule has a bound
+- [ ] The [review questions](../xl1-patterns/architecture-principles.md#review-questions) are answered in the design or completion summary — in particular: one engine drives every interface; state recomputes from chain + datalakes alone; cold-load reads do not grow with history; every "first" / "latest" / completeness rule has a bound
 - [ ] No payload declares its own author or time; the signer is the author and the block is the clock
 - [ ] Index output never grants authority (signing, sponsorship, settlement) without a source check
 
-**Source:** [dApp Architecture Principles](../xl1-dapp-kit/architecture-principles.md)
+**Source:** [dApp Architecture Principles](../xl1-patterns/architecture-principles.md)
 
 ---
 
@@ -165,11 +165,11 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Clients use **application ports** / documented status — not a one-off shadow REST schema as the protocol
 - [ ] Effect journal / crash recovery expectations are met or explicitly out of scope with reason
 - [ ] If event-driven: wake ≠ durable event ≠ subscription cursor ([Events and wakes](../xl1-dapp-kit/events-and-wakes.md))
-- [ ] If receiving Event Kit wakes: the public URL uses `createActiveSourceWakeHttpHostAdapter` (grant + active D-005 subscription, pre-auth rate limiter, size caps, deadline) and only admits; reducers run in a separate worker draining `WakeQueue` ([Authenticated Wake Delivery](authenticated-wake-delivery.md))
+- [ ] If receiving Event Kit wakes: the public URL uses `createActiveSourceWakeHttpHostAdapter` (grant + active D-005 subscription, pre-auth rate limiter, size caps, deadline) and only admits; reducers run in a separate worker draining `WakeQueue` ([Authenticated Wake Delivery](../xl1-patterns/authenticated-wake-delivery.md))
 - [ ] The evidence produced is stated as its runner label (`model` / `deterministic` / `node` / `browser` / `local-xl1` / `local-datalake` / `sequence` / `mainnet`) and L-level; local green (L5 or below) is not hosted (L6/L7) or production (L9) qualification ([Conformance](../xl1-dapp-kit/conformance.md))
-- [ ] Local chain automation uses [dapp-kit vitest `local-xl1`](../xl1-testing/local-chain-dapp-kit-vitest.md) when specs need a vitest-owned chain
+- [ ] Local chain automation uses [dapp-kit vitest `local-xl1`](local-chain-dapp-kit-vitest.md) when specs need a vitest-owned chain
 
-**Source:** [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md), [Full local dApp stack — dapp-kit](../xl1-testing/local-dapp-stack.md#dapp-kit)
+**Source:** [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md), [Full local dApp stack — dapp-kit](local-dapp-stack.md#dapp-kit)
 
 ---
 
@@ -179,7 +179,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Every clamped value provides a copy-to-clipboard action
 - [ ] Every surfaced chain primitive (address, block, transaction, payload, list view) links to the corresponding Explorer page, with the URL built via `ExplorerLinks` from `@xyo-network/xl1-sdk` — no hand-concatenated explorer paths
 
-**Source:** [Browser UX — Display Conventions](browser-ux.md)
+**Source:** [Browser UX — Display Conventions](../xl1-patterns/browser-ux.md)
 
 ---
 
@@ -196,7 +196,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] The commitment preimage binds the committer (the commit transaction's `from`) and the session topic; verification requires reveal-transaction `from` === commit-transaction `from` and recomputes with that address — no `from`/`committer` field in commit or reveal payloads, and indexers key commits/reveals by `(topic, signer)`, not by payload hash alone
 - [ ] Commits `$sources` to the market/session terms; reveals `$sources` to their commit — building a traversable audit DAG
 
-**Source:** [Commit-Reveal Primitive](commit-reveal.md)
+**Source:** [Commit-Reveal Primitive](../xl1-patterns/commit-reveal.md)
 
 ---
 
@@ -209,7 +209,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Settlement gate re-runs the entry gate before signing — never trusts caller-supplied verified state
 - [ ] Settlement gate re-verifies every reveal against its committed exact preimage (`PayloadBuilder.hash` for new application contracts) before bundling it into the settlement BW — against its signer's own commit (reveal-tx `from` === commit-tx `from`)
 
-**Source:** [Commit-Reveal Prediction Markets — Validation Gates](commit-reveal-prediction-markets.md#validation-gates), [Atomic Exchange — Validation Gates](atomic-exchange.md#validation-gates)
+**Source:** [Commit-Reveal Prediction Markets — Validation Gates](../xl1-patterns/commit-reveal-prediction-markets.md#validation-gates), [Atomic Exchange — Validation Gates](../xl1-patterns/atomic-exchange.md#validation-gates)
 
 ---
 
@@ -221,7 +221,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] "Any authorized authority may sign" checks use `addressesContainsAny(bw, authorities)` on a validated BW, with a non-empty `authorities` list (an empty list returns `true`)
 - [ ] Multi-sig parties (a party with several addresses) require *all* of that party's addresses to co-sign their secret reveal — not any one of them
 
-**Source:** [Protocol Primitives — Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses), [Atomic Exchange](atomic-exchange.md)
+**Source:** [Protocol Primitives — Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses), [Atomic Exchange](../xl1-patterns/atomic-exchange.md)
 
 ---
 
@@ -231,4 +231,4 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Vocabulary schemas live under a namespace you control (`com.<org>.*`), not `network.xyo.*`
 - [ ] Statement Graph version matches its composers' peer ranges (`~0.5.x` while Event Kit 2.2 / Service Kit 0.2 peer `^0.5`); pre-fold-4 checkpoints are deleted or rescanned
 
-**Source:** [Statement Graph](statement-graph.md)
+**Source:** [Statement Graph](../xl1-patterns/statement-graph.md)

@@ -155,4 +155,4 @@ Treat this as the exception, not the default. If you find yourself reaching for 
 
 - [Chain Data Indexing — Service](chain-data-indexing-service.md) — the most common service shape in an XL1 dApp; mounts its routes under `/api/*` like everything else
 - [Browser UX](browser-ux.md) — how the app side consumes service responses
-- [dApp Definition of Done — Browser ↔ Service Wiring](dapp-checklist.md) — the completion-gate items derived from this pattern
+- [dApp Definition of Done — Browser ↔ Service Wiring](../xl1-testing/dapp-checklist.md) — the completion-gate items derived from this pattern

@@ -13,28 +13,32 @@ description: >
   (vitest + Playwright). Includes shared testnet-only safety rules. Activates
   when an agent needs to test, verify, or smoke-test an XL1 dApp or protocol
   change, run on-chain tests against a local chain or Sequence, run headless
-  browser tests, or set up unattended / CI testing.
+  browser tests, or set up unattended / CI testing. Owns the dApp Definition
+  of Done gate, required before reporting any XL1 dApp work complete.
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 7
 ---
 
 # XL1 Testing
 
 The hub for testing and verifying XL1 work. It routes to the right verification
-approach and documents each one. Read this SKILL to choose an approach, then open
-the linked sub-doc for the full procedure.
+approach, documents each one, and owns the dApp Definition of Done that gates
+"done". Read this SKILL to choose an approach, then open the linked sub-doc for
+the full procedure.
 
 **Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
-## Lower-layer skills
+## Skill layers
 
-Testing builds on the rest of the stack. Also consult:
+This is **Layer 7** of the XYO skill stack: `xy-development` (1) → `xy-toolchain` (2) → `xyo-knowledge` (3) → `xl1-knowledge` (4) → `xl1-patterns` (5) → `xl1-dapp-kit` (6) → `xl1-testing` (7) → `xl1-scaffold` (8) → `xl1-build` (9).
 
-- **[xl1-knowledge](../xl1-knowledge/SKILL.md)** — chain, gateway, SDK, and the network endpoints under test.
-- **[xl1-patterns](../xl1-patterns/SKILL.md)** — dApp patterns and the [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) that verification plugs into.
-- **[xl1-dapp-kit](../xl1-dapp-kit/SKILL.md)** — when the project uses `@xyo-network/dapp-kit*` / `xl1.dapp.json`.
-- **[xy-toolchain](../xy-toolchain/SKILL.md)** — Vitest layout, `@ariestools/vitest-config`, `xy test` / `xy retest` (canonical: ariestools-skills).
-- **[xyo-knowledge](../xyo-knowledge/SKILL.md)** / **[xy-development](../xy-development/SKILL.md)** — protocol primitives and testing/workflow conventions.
+- **Builds on:** [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) (6) — when the project uses `@xyo-network/dapp-kit*` / `xl1.dapp.json`; [xl1-patterns](../xl1-patterns/SKILL.md) (5) — the dApp patterns and architecture principles the Definition of Done checks; [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) — chain, gateway, SDK, and the network endpoints under test; [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) — protocol primitives; `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2) — Vitest layout, `@ariestools/vitest-config`, `xy test` / `xy retest`; testing and workflow conventions, including the generic Definition of Done
+- **Hands off to:** [xl1-scaffold](../xl1-scaffold/SKILL.md) (8) — when starting a new XL1 project, which wires these verification paths in from the start; [xl1-build](../xl1-build/SKILL.md) (9) — when the build request is still vague
+
+## [dApp Definition of Done](dapp-checklist.md)
+
+**REQUIRED before reporting any XL1 dApp work as complete.** This skill owns the dApp completion gate. Not optional, not "if you have time" — walk it explicitly and call out pass/fail per relevant section in your completion summary. The checklist enumerates the rules and anti-patterns documented across the skill stack (gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, indexer floor block, provider architecture, display conventions, commit-reveal correctness, settlement authorities, multi-party co-signing, architecture principles, dApp Kit, headless verification). Sections marked "(if applicable)" can be skipped only when truly out of scope — state which and why. It is Gate 2 of a three-gate completion gate; Gate 1 (the generic DoD from `xy-development`) always applies, and Gate 3 (`PRD.md` acceptance criteria) applies when a `PRD.md` exists.
 
 ## ⛔ Testnet-only by default
 
@@ -103,4 +107,4 @@ wallet extension. This barrel groups the variants:
 
 - [Node Gateway](../xl1-knowledge/gateway-node.md) — `GatewayBuilder`, REST/S3 gateway, and network endpoints used by the in-process approach.
 - [Gateway](../xl1-knowledge/gateway.md) — viewer API, transaction methods, networks, and AttoXL1 units.
-- [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) — the completion gate that requires verification.
+- [dApp Definition of Done](dapp-checklist.md) — the completion gate that requires verification.

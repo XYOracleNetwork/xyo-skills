@@ -8,6 +8,7 @@ description: >-
   stub — do not use it as documentation.
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 2
   status: redirect
   canonical: ariestools/ariestools-skills
   internal: true
@@ -29,6 +30,6 @@ metadata:
 
 ## Why this stub exists
 
-Older xyo-skills installs and in-repo relative links still resolve here. Those links are deprecated. Do not expand this stub with toolchain docs — edit [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills) instead.
+It ships only to Skills.sh, for older installs that still resolve this name; the Claude and Codex plugins no longer include it, and the xyo skills link to ariestools-skills by URL. Do not expand this stub with toolchain docs — edit [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills) instead.
 
 Deep-link shim still present for older links: [testing.md](testing.md).

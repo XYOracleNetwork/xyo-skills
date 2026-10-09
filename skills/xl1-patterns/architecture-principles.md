@@ -2,10 +2,12 @@
 
 **Read when designing, reviewing or migrating any XL1 dApp whose state matters to more than one party**: games, markets, auctions, registries, leaderboards. This page says what the architecture must guarantee, whether or not the dApp adopts `@xyo-network/dapp-kit*`. The mechanics live elsewhere:
 
-- The rest of this skill: the headless runtime, [application ports](application-ports.md), [effect journals](effects-and-recovery.md) and [hosting](hosting.md).
-- [xl1-patterns](../xl1-patterns/SKILL.md): anchoring paths, [indexing](../xl1-patterns/chain-data-indexing-protocol.md), [commit-reveal](../xl1-patterns/commit-reveal.md) and the [dApp Definition of Done](../xl1-patterns/dapp-checklist.md).
+- The rest of this skill, [xl1-patterns](SKILL.md): anchoring paths, [indexing](chain-data-indexing-protocol.md) and [commit-reveal](commit-reveal.md).
 - [xl1-knowledge](../xl1-knowledge/SKILL.md): the chain, gateways and datalakes.
 - [Payload schema evolution](../xyo-knowledge/payload-schema-evolution.md): schema names, `$version` and root hashes.
+- If adopting dapp-kit (Layer 6): [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) for the headless runtime, [application ports](../xl1-dapp-kit/application-ports.md), [effect journals](../xl1-dapp-kit/effects-and-recovery.md) and [hosting](../xl1-dapp-kit/hosting.md).
+
+The [dApp Definition of Done](../xl1-testing/dapp-checklist.md#architecture-principles-if-state-matters-to-more-than-one-party) in xl1-testing (Layer 7) checks these principles before dApp work is reported complete.
 
 **Maturity.** Principles 1–7 are owner direction. The elaboration, tables and examples were distilled from the Crypto Cards dApp and are still under review; the [open questions](#open-questions) are unsettled. Where a mechanism below depends on XL1 behavior that is not yet confirmed, the text says so.
 
@@ -55,11 +57,11 @@ flowchart TB
 | Term | Meaning on this page |
 | --- | --- |
 | Protocol | The written contract for the dApp's state data: schemas, authority, timing, ordering, derivation, failure handling and versioning. |
-| Engine | The UI-agnostic implementation of the protocol: validation, state derivation and action construction, behind injected I/O ports. On dapp-kit, its runtime form is the Dapp Engine (`launchDappEngine`) and the systems it owns (see [Vocabulary](vocabulary.md)). |
+| Engine | The UI-agnostic implementation of the protocol: validation, state derivation and action construction, behind injected I/O ports. If adopting dapp-kit (Layer 6), its runtime form is the Dapp Engine (`launchDappEngine`) and the systems it owns (see [Vocabulary](../xl1-dapp-kit/vocabulary.md)). |
 | Evidence | Anchored payloads plus their bodies. The only input to state. |
 | Anchor | The finalized XL1 transaction that commits a payload hash, and the position `(block, transaction ordinal, payload ordinal)` it gives that payload. |
 | Datalake | A content-addressed body store: each key is the hash of its value. |
-| House | A protocol role: the account that signed and anchored the dApp's initialization payload. Named *house* rather than *host* because dapp-kit's *host* is the process, page or worker a runtime runs in. This page uses *host* only in that dapp-kit sense (see [Vocabulary](vocabulary.md)). |
+| House | A protocol role: the account that signed and anchored the dApp's initialization payload. Named *house* rather than *host* because a *host* is the process, page or worker a runtime runs in (dapp-kit's term). This page uses *host* only in that sense. |
 | Index | Derived, published data for fast reads. Rebuildable, replaceable and never authoritative. Also called a projection. |
 | Verifier | An implementation that derives state from evidence alone. |
 
@@ -74,8 +76,9 @@ flowchart TB
 indexer and the verifier cannot disagree. The whole dApp can be exercised
 without a browser, and bots that play through the same path as people keep
 that path under constant test. Interfaces can be added or replaced without
-touching the protocol. On XL1, [dapp-kit](SKILL.md)
-is the supported way to build the engine as a headless runtime.
+touching the protocol. If adopting dapp-kit (Layer 6):
+[xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) is the supported way to build the
+engine as a headless runtime on XL1.
 
 **Practices.**
 
@@ -93,8 +96,8 @@ is the supported way to build the engine as a headless runtime.
   publish bodies or broadcast.
 - Journal each signed submission before broadcasting it, and resume from the
   journal without re-signing. Retry safety belongs to the engine, not to a UI.
-- Expose typed commands, queries and status (dapp-kit application ports), not a
-  bespoke REST API that quietly becomes the protocol.
+- Expose typed commands, queries and status (on dapp-kit, application ports),
+  not a bespoke REST API that quietly becomes the protocol.
 - Interfaces present; the engine decides. A UI may format a phase, a score or
   an eligibility, but it never computes one, and no device- or
   viewport-specific branch changes behavior.
@@ -353,7 +356,7 @@ options combine:
    becomes a provable, attributable fault.
 4. **Route it on chain.** Each action carries a dust transfer to an address
    derived from its object's hash
-   ([Destination as Protocol](../xl1-patterns/chain-data-indexing-protocol.md#destination-as-protocol--a-native-xl1-pattern)),
+   ([Destination as Protocol](chain-data-indexing-protocol.md#destination-as-protocol--a-native-xl1-pattern)),
    and the protocol makes that transfer a validity condition. Address-scoped
    history then returns exactly the object's transactions, at a cost that
    follows the object's activity, and names the object on chain even when a

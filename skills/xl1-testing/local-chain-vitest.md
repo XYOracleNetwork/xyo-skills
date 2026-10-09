@@ -306,6 +306,6 @@ live run to the packages that have live specs:
 - [Local dev-chain verification](local-chain.md) — the publicly installable route, and the shared "what the local chain is (and isn't)" caveats, funding table, and SDK usage.
 - [Headless testnet verification](headless-testnet-verification.md) — validate against Sequence before shipping; a green local run is not network qualification.
 - [Headless browser-mode testing](browser-mode.md) — the browser project whose includes `browserOnly` silently narrows.
-- [xy-toolchain testing](../xy-toolchain/testing.md) — `@ariestools/vitest-config`, the `spec/` layout, and the defaults this preset overrides.
+- [`xy-toolchain` (ariestools-skills) — testing](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/testing.md) — `@ariestools/vitest-config`, the `spec/` layout, and the defaults this preset overrides.
 - [Full local XL1 dApp stack](local-dapp-stack.md) — when the chain alone is not enough and you need reducer + published consumer view.
 - [xl1-testing](SKILL.md) — the testing barrel this approach belongs to.

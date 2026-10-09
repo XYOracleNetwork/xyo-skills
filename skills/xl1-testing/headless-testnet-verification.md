@@ -243,6 +243,6 @@ If addresses do not line up, the script bypassed the canonical helpers — the f
 - [XL1 Identity & Wallets](../xl1-knowledge/identity.md) — canonical seed-phrase derivation and the cross-environment guarantee
 - [Gateway — Submitting Transactions](../xl1-knowledge/gateway.md#submitting-transactions) — `addPayloadsToChain`, `send`, `confirmSubmittedTransaction`
 - [Gateway — Reading Chain State](../xl1-knowledge/gateway.md#reading-chain-state) — viewer sub-viewers used for read-back assertions
-- [dApp Definition of Done](../xl1-patterns/dapp-checklist.md) — broader completion checklist this verification step plugs into
+- [dApp Definition of Done](dapp-checklist.md) — broader completion checklist this verification step plugs into
 - [Unattended Sequence via CLI wallet](sequence-cli-wallet.md) — the alternative: an external, keychain-backed `xl1-wallet` CLI actor for unattended Sequence-testnet runs (vs. this in-process seed-phrase signer)
 - [xl1-testing](SKILL.md) — the testing barrel this approach belongs to
