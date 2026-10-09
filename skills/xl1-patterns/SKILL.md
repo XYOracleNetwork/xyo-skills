@@ -70,7 +70,7 @@ Read when your application needs persistent, transferable, owned objects on XL1 
 Read when building a fungible token on XL1 in the style of Bitcoin's BRC-20 — open ticker registration, capped mints, address-to-address transfers, off-chain ledger from on-chain events. Layered directly on the inscription substrate. Covers deploy/mint/transfer schemas, the dual-pass indexer, canonical ordering rules, and the deliberate divergence from BRC-20's two-step transfer.
 
 ### [Statement Graph](statement-graph.md)
-Read when you need a replayable, source-attributed relationship / assertion graph on XL1 (bindings, grants, approvals, membership). Closed lifecycle (`network.xyo.statement.claim` only) + open product vocabulary; protocol v2 has no revoke verb. Peer of inscription substrate — not for NFT-like custody.
+Read when you need a replayable, source-attributed relationship / assertion graph on XL1 (bindings, grants, approvals, membership). Closed lifecycle (`network.xyo.statement.claim` only, with required `{source, subject, hashes}`) + open product vocabulary; the append-only claim protocol has no revoke verb. Peer of inscription substrate — not for NFT-like custody.
 
 ### [Authenticated Wake Delivery](authenticated-wake-delivery.md)
 Read when a sleepable indexer/host must be woken by wallet-JWT publishers allowlisted via Statement Graph grants — not HMAC webhooks. Event Kit admission, `wakeId` vs `jti`, and WakeQueue leases. Wakes schedule work; they are not chain truth.
