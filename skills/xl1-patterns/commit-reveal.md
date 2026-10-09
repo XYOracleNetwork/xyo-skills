@@ -183,29 +183,34 @@ async function submitCommit(
 }
 ```
 
-**Security invariant:** The `salt` and `choice` must never be submitted on-chain during the commit phase. Persist them locally using a `StorageArchivist` with `type: 'local'` and a namespace scoped to the application (e.g., `'my-dapp-secrets'`). This gives you archivist-interface access (`insert`, `get`) with built-in namespace isolation and cross-tab sync. If the user closes the browser, the salt survives in localStorage and can be retrieved for the reveal phase. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
+**Security invariant:** The `salt` and `choice` must never be submitted on-chain during the commit phase. Persist them locally using a `StorageArchivist` with `type: 'local'` and a namespace scoped to the application and the session's `(topic, committer)` (e.g., `my-dapp-secrets:${topic}:${committer}`). This gives you archivist-interface access (`insert`, `get`, `next`) with built-in namespace isolation and cross-tab sync. If the user closes the browser, the salt survives in localStorage and can be retrieved for the reveal phase. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md) for setup.
 
 ```ts
 import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/archivist-storage'
-import { PayloadBuilder } from '@xyo-network/sdk'
+import { asSchema, PayloadBuilder } from '@xyo-network/sdk'
 
+/** Local-only schema for the persisted secret — never submitted on-chain */
+const CommitSaltSchema = asSchema('com.example.rps.commit.salt', true)
+
+// The salt payload's hash depends on the salt, so it cannot be recomputed after a reload.
+// Scope the store to (topic, committer) instead — that key is always recoverable.
 const secretStore = await StorageArchivist.create({
   account: 'random',
   config: {
     schema: StorageArchivistConfigSchema,
     type: 'local',
-    namespace: 'my-dapp-secrets',
+    namespace: `my-dapp-secrets:${topic}:${committer}`,
   },
 })
 
 // After commit — persist salt as a payload
-const saltPayload = new PayloadBuilder({ schema: 'com.example.rps.commit.salt' })
+const saltPayload = new PayloadBuilder({ schema: CommitSaltSchema })
   .fields({ topic, salt, choice })
   .build()
 await secretStore.insert([saltPayload])
 
-// Before reveal — retrieve the salt
-const [stored] = await secretStore.get([await PayloadBuilder.hash(saltPayload)])
+// Before reveal (even after a reload) — the store's only entry is the salt
+const [stored] = await secretStore.next({ limit: 1 })
 ```
 
 **Datalake note:** The browser wallet does not persist off-chain payloads to the datalake. The dApp must insert the commit payload into the datalake before submitting the transaction — otherwise the commit data is lost and only the hash reference remains on-chain. See [In-Page Data Lakes](in-page-datalakes.md) for the full pattern.

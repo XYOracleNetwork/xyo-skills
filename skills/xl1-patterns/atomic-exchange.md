@@ -2,7 +2,7 @@
 
 Read this pattern when two or more parties need to exchange assets (or a payment for an asset) **atomically** — neither side gets what they want unless every side has irreversibly committed. Classic examples: an asset-for-payment purchase, a swap of two on-chain artifacts, a multi-signer release of a held resource.
 
-This is the dApp-shaped projection of the multi-party escrow flow used in the XYO/XNS registrar. The full escrow flow uses a server-side [Sentinel](../xyo-knowledge/modules.md) module to mediate; this pattern shows how to achieve the same atomic-exchange guarantees on XL1 with the chain as the only integration point.
+This is the dApp-shaped projection of the multi-party escrow flow used in the XYO/XNS registrar (`network.xyo.escrow.terms` / `network.xyo.escrow.outcome`, with their validators, in `@xyo-network/payload-plugins/payment`). The full escrow flow uses a server-side [Sentinel](../xyo-knowledge/modules.md) module as its escrow agent to mediate; this pattern shows how to achieve the same atomic-exchange guarantees on XL1 with the chain as the only integration point.
 
 **Builds on:**
 - [Commit-Reveal Primitive](commit-reveal.md) — each party's secret commit is one half of the proof
@@ -12,7 +12,7 @@ This is the dApp-shaped projection of the multi-party escrow flow used in the XY
 
 ---
 
-The SDK exchange terms/secrets use prescribed **data-hash** commitments. Preserve this shipped protocol contract and use its builders/validators. New independent application commitments default to root hashes; an exchange migration needs coordinated compatibility and replay handling. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
+The SDK exchange terms/secrets use prescribed **data-hash** commitments. Preserve this shipped protocol contract and use its `is…`/`as…`/`to…` guards — the SDK ships no exchange builders or validators, so build with `PayloadBuilder` and run the [Validation Gates](#validation-gates) yourself. New independent application commitments default to root hashes; an exchange migration needs coordinated compatibility and replay handling. See [Payload Schema Evolution and Identity](../xyo-knowledge/payload-schema-evolution.md).
 
 ## Why a separate pattern
 
@@ -36,6 +36,8 @@ A single immutable payload (`ExchangeTerms`) declaring:
 - The validity window (`nbf`/`exp`)
 
 Both (or all) parties co-sign the terms in a single `BoundWitnessBuilder().signers([...]).payload(terms)` call — see [Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses). The co-signed terms BW is the entry point of the exchange.
+
+The `.signers([...])` examples in this pattern assume every key is in one process. Parties in separate processes reserve each other's slots with `.participant(s)` and each fill their own with `cosignBoundWitness` — see [Parties in separate processes](../xyo-knowledge/primitives.md#parties-in-separate-processes-sequential-cosigning).
 
 ### Party secrets
 
@@ -104,7 +106,7 @@ Three gates, each with a single responsibility. The settlement gate re-runs the 
 |------|---------|--------|
 | **Entry** | Before signing `ExchangeTerms` | `parties.length >= 2`; `partySecrets.length === parties.length`; `assets.length >= 1`; valid `nbf`/`exp`; current block ∈ `[nbf, exp)` |
 | **Authority** | Before counting an appraisal/receipt | The authority payload's wrapping BW passes `BoundWitnessValidator.validate()` and lists an address from the relevant non-empty `*Authorities` list (`addressesContainsAny`) |
-| **Settlement** | Before signing `ExchangeOutcome` | Re-run entry gate; for every party `i`, locate a BW that passes `BoundWitnessValidator.validate()` where (a) all addresses in `parties[i]` are signers (`addressesContainsAll`), and (b) the BW's payloads include the secret whose hash equals `partySecrets[i]`; `current < exp` |
+| **Settlement** | Before signing `ExchangeOutcome` | Re-run entry gate; for every party `i`, locate a BW that passes `BoundWitnessValidator.validate()` where (a) all addresses in `parties[i]` are signers (`addressesContainsAll`), and (b) the BW's payloads include the secret whose data hash equals `partySecrets[i]`; `current < exp` |
 
 ---
 
@@ -140,7 +142,7 @@ This is the canonical "exchange opened" event. `BoundWitnessValidator.validate()
 
 ### Phase 3: Authority attestation (optional)
 
-If the exchange depends on appraisals or payment receipts, the relevant authority signs a payload (e.g. `network.xyo.exchange.appraisal`, `network.xyo.exchange.receipt`) referencing the terms by hash and is included in the supporting evidence.
+If the exchange depends on appraisals or payment receipts, the relevant authority signs a payload referencing the terms by hash and is included in the supporting evidence. The Exchange model ships no appraisal or receipt schema — name your own attestation schemas under your application namespace (e.g. `com.<your-org>.<app>.appraisal`, `com.<your-org>.<app>.receipt`), never under the reserved `network.xyo.*` (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)).
 
 The authority gate validates each attestation: `attestationBw` must pass `BoundWitnessValidator.validate()`, then `addressesContainsAny(attestationBw, terms.appraisalAuthorities)` (or `paymentAuthorities`). Any one address in the list suffices; an empty list must count as "no authority", never as a pass.
 
@@ -189,7 +191,7 @@ A consumer (an indexer, a UI, a counter-party) walks the audit DAG:
 
 ```ts
 import {
-  addressesContainsAll, addressesContainsAny, BoundWitnessValidator,
+  addressesContainsAll, addressesContainsAny, BoundWitnessValidator, PayloadBuilder,
 } from '@xyo-network/sdk'
 
 async function hasValidSignatures(bw: BoundWitness): Promise<boolean> {
@@ -200,6 +202,8 @@ async function hasValidSignatures(bw: BoundWitness): Promise<boolean> {
 async function isExchangeFulfilled(
   outcome: ExchangeOutcome,
   outcomeBw: BoundWitness,
+  // The outcome BW's co-payloads, fetched from the datalake by the hashes it lists
+  outcomePayloads: Payload[],
   terms: ExchangeTerms,
   attestations: { bw: BoundWitness; payload: Payload }[],
 ): Promise<boolean> {
@@ -214,10 +218,16 @@ async function isExchangeFulfilled(
     if (!addressesContainsAll(outcomeBw, party)) return false
   }
 
-  // Every party's secret hash must appear as a co-payload in the outcome BW
-  // (settlement bundles the reveals — see Phase 4)
+  // Every party's secret must be a co-payload in the outcome BW (settlement bundles
+  // the reveals — see Phase 4). partySecrets are data hashes, but payload_hashes are
+  // root hashes, which differ once a reveal carries `$` meta: keep the co-payloads
+  // whose root hash the BW lists, then compare their data hashes.
+  const bundled = (await PayloadBuilder.hashPairs(outcomePayloads))
+    .filter(([, hash]) => outcomeBw.payload_hashes.includes(hash))
+    .map(([payload]) => payload)
+  const bundledDataHashes = await PayloadBuilder.dataHashes(bundled)
   for (const secretHash of terms.partySecrets) {
-    if (!outcomeBw.payload_hashes.includes(secretHash)) return false
+    if (!bundledDataHashes.includes(secretHash)) return false
   }
 
   // Authority attestations, if required, must be signed by an authority of the right kind
