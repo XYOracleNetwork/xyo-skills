@@ -111,10 +111,13 @@ None of these payloads carry a `from`. The actor is always the BoundWitness sign
 XRC-20 uses two sentinels per operation, following the [Destination as Protocol](chain-data-indexing-protocol.md#destination-as-protocol--a-native-xl1-pattern) pattern. Operations are submitted with a single `Transfer` payload whose `transfers` map carries both:
 
 ```ts
+import type { Payload } from '@xyo-network/sdk'
+import { asXyoAddress, PayloadBuilder } from '@xyo-network/sdk'
 import { sentinelAddressFromSchema } from '@xyo-network/xl1-sdk'
 
-// Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal.token')
-const XRC20_SENTINEL = 'c17df06bc481b090f7a0e03639fca786df6e8e65'
+// Pinned: equals sentinelAddressFromSchema('network.xyo.ordinal.token').
+// asXyoAddress brands the literal so it can key a transfers map.
+const XRC20_SENTINEL = asXyoAddress('c17df06bc481b090f7a0e03639fca786df6e8e65', true)
 
 // Per-payload burn — derived from the operation payload's data hash.
 // Takes the payload and computes the hash, because `PayloadBuilder.build()` is
@@ -136,21 +139,19 @@ Deploys are inscriptions claiming a ticker. The first finalized deploy for a giv
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk'
+import { createTransferPayload } from '@xyo-network/xl1-sdk'
 
 const deploy = new PayloadBuilder<TokenDeploy>({ schema: TokenDeploySchema })
   .fields({ tick: 'XL1', max: '21000000', lim: '1000' })
   .build()
 
-const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
-  .fields({
-    from: walletAddress,
-    epoch: Date.now(),
-    transfers: {
-      [XRC20_SENTINEL]:          '1',
-      [await burnFor(deploy)]:   '1',
-    },
-  })
-  .build()
+// The chain's TransferSchema payload — { from, epoch, transfers }. createTransferPayload
+// stamps `epoch` and hex-encodes the bigint AttoXL1 amounts; `from` is the signing
+// wallet's XyoAddress and must equal the transaction's `from`.
+const sentinelTransfer = createTransferPayload(walletAddress, {
+  [XRC20_SENTINEL]: 1n,
+  [await burnFor(deploy)]: 1n,
+})
 
 await datalakeRunner.insert([deploy])
 const [txHash] = await defaultGateway.addPayloadsToChain([sentinelTransfer], [deploy])
@@ -169,22 +170,16 @@ const mint = new PayloadBuilder<TokenMint>({ schema: TokenMintSchema })
   .fields({ tick: 'XL1', amt: '1000' })
   .build()
 
-const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
-  .fields({
-    from: walletAddress,
-    epoch: Date.now(),
-    transfers: {
-      [XRC20_SENTINEL]:        '1',
-      [await burnFor(mint)]:   '1',
-    },
-  })
-  .build()
+const sentinelTransfer = createTransferPayload(walletAddress, {
+  [XRC20_SENTINEL]: 1n,
+  [await burnFor(mint)]: 1n,
+})
 
 await datalakeRunner.insert([mint])
 await defaultGateway.addPayloadsToChain([sentinelTransfer], [mint])
 ```
 
-The indexer credits the signer of the wrapping `TransactionBoundWitness`. Two users submitting byte-identical mint payloads collide on payload hash — that's fine, because mints are events, not artifacts. The wrapping BoundWitnesses differ; the indexer reads them as two separate events with two separate signers. This is what the artifact/event split buys us.
+The indexer credits the signer of the wrapping `TransactionBoundWitness`. Two users submitting byte-identical mint payloads collide on payload hash — that's fine, because mints are events, not artifacts. The wrapping BoundWitnesses differ, and the indexer keeps one ref per occurrence, each hash paired with its own transaction's signer, so it reads them as two separate events with two separate signers — even in the same block, and even when one user submits the same mint twice ([Wiring into the substrate replay](#wiring-into-the-substrate-replay)). This is what the artifact/event split buys us.
 
 ---
 
@@ -194,19 +189,13 @@ A single signed payload moves balance from the signer to `to`. No two-step inscr
 
 ```ts
 const transfer = new PayloadBuilder<TokenTransfer>({ schema: TokenTransferSchema })
-  .fields({ tick: 'XL1', to: 'recipient40HexChars…', amt: '500' })
+  .fields({ tick: 'XL1', to: recipientAddress, amt: '500' }) // recipientAddress: the recipient's XyoAddress
   .build()
 
-const sentinelTransfer = new PayloadBuilder({ schema: 'network.xyo.transfer' })
-  .fields({
-    from: walletAddress,
-    epoch: Date.now(),
-    transfers: {
-      [XRC20_SENTINEL]:            '1',
-      [await burnFor(transfer)]:   '1',
-    },
-  })
-  .build()
+const sentinelTransfer = createTransferPayload(walletAddress, {
+  [XRC20_SENTINEL]: 1n,
+  [await burnFor(transfer)]: 1n,
+})
 
 await datalakeRunner.insert([transfer])
 await defaultGateway.addPayloadsToChain([sentinelTransfer], [transfer])
@@ -223,6 +212,8 @@ The XRC-20 indexer composes with the substrate indexer. Reuse the [Inscription S
 ### State shape
 
 ```ts
+import type { XyoAddress } from '@xyo-network/sdk'
+
 type TickerRecord = {
   tick: string                    // case-folded
   deployInscriptionId: string     // ID of the deploy artifact (also acts as ticker-owner pointer)
@@ -233,8 +224,8 @@ type TickerRecord = {
 }
 
 type TokenState = {
-  tickers: Map<string, TickerRecord>          // case-folded tick -> record
-  balances: Map<string, Map<Address, bigint>> // tick -> address -> balance
+  tickers: Map<string, TickerRecord>             // case-folded tick -> record
+  balances: Map<string, Map<XyoAddress, bigint>> // tick -> address -> balance
 }
 ```
 
@@ -245,7 +236,7 @@ function applyTokenDeploy(
   substrate: IndexerState,
   state: TokenState,
   payload: WithHashMeta<TokenDeploy>,  // from the datalake fetch — hash meta recomputed by addHashMeta
-  signer: Address,
+  signer: XyoAddress,
   blockHeight: XL1BlockNumber,
 ) {
   const tick = payload.tick.toLowerCase()
@@ -272,14 +263,14 @@ function applyTokenDeploy(
 }
 
 // Helper to look up the current ticker owner via the substrate's artifact ledger
-function tickerOwner(substrate: IndexerState, ticker: TickerRecord): Address | undefined {
+function tickerOwner(substrate: IndexerState, ticker: TickerRecord): XyoAddress | undefined {
   return substrate.artifacts.get(ticker.deployInscriptionId)?.owner
 }
 
 function applyTokenMint(
   state: TokenState,
   payload: TokenMint,
-  signer: Address,
+  signer: XyoAddress,
 ) {
   const tick = payload.tick.toLowerCase()
   const ticker = state.tickers.get(tick)
@@ -298,7 +289,7 @@ function applyTokenMint(
 function applyTokenTransfer(
   state: TokenState,
   payload: TokenTransfer,
-  signer: Address,
+  signer: XyoAddress,
 ) {
   const tick = payload.tick.toLowerCase()
   const ticker = state.tickers.get(tick)
@@ -323,25 +314,25 @@ function safeBigInt(decimal: string): bigint | undefined {
 
 ### Wiring into the substrate replay
 
-Add `TokenDeploySchema`, `TokenMintSchema`, and `TokenTransferSchema` to the substrate's pass-1 schema filter (`SUBSTRATE_SCHEMAS`) so pass 2 fetches their off-chain bodies from the datalake too — no gateway read returns them. Then, inside the substrate indexer's per-payload loop over those fetched bodies (`offChain` in `replayFinalizedBlocks`, after the hash→signer index is built), add discriminated dispatch on the token schemas. The signer is recovered from the same `hashToSigner` index used by the substrate pass — authorship discipline applies uniformly:
+Add `TokenDeploySchema`, `TokenMintSchema`, and `TokenTransferSchema` to the substrate's pass-1 schema filter (`SUBSTRATE_SCHEMAS`) so `substrateRefs` lists their hashes and `fetchBodies` fetches their off-chain bodies from the datalake too — no gateway read returns them. Then, in pass 3 of the substrate's per-block apply (`applySubstrateBlock` in the [Replay loop](inscription-substrate.md#replay-loop)), add discriminated dispatch on the token schemas. The loop walks the block's ordered refs — not the fetched bodies — and each ref carries the signer of the transaction that listed it, so authorship discipline applies uniformly and two identical mints in one block are two events:
 
 ```ts
-for (const p of offChain) {
-  const signer = hashToSigner.get(p._hash)
-  if (!signer) continue // payload not wrapped by a transaction in this block
+for (const { hash, signer } of refs) {
+  const p = bodies.get(hash)
+  if (!p) continue // not in the datalake, or no fetched body hashes to it — drop
 
   // Substrate pass (existing — see Inscription Substrate)
-  if (isInscription(p))           registerArtifact(substrate, p, signer, n)
+  if (isInscription(p))           registerArtifact(substrate, p, signer, blockHeight)
   else if (isOrdinalTransfer(p))  applyTransfer(substrate, p, signer)
 
   // Token pass
-  else if (isTokenDeploy(p))   applyTokenDeploy(substrate, token, p, signer, n)
+  else if (isTokenDeploy(p))   applyTokenDeploy(substrate, token, p, signer, blockHeight)
   else if (isTokenMint(p))     applyTokenMint(token, p, signer)
   else if (isTokenTransfer(p)) applyTokenTransfer(token, p, signer)
 }
 ```
 
-Because both passes iterate canonical (block height, payload index) order over finalized blocks, the resulting state is fully deterministic. Two indexers replaying the same finalized stream produce byte-identical `TokenState`. That determinism is the social-consensus glue across competing diviners.
+Because both passes apply refs in canonical order — block height, then the transaction's position in the block, then the payload's position in that transaction's `payload_hashes[]` — over finalized blocks only, the resulting state is fully deterministic. Two indexers replaying the same finalized stream produce byte-identical `TokenState`. That determinism is the social-consensus glue across competing diviners.
 
 ---
 
@@ -352,7 +343,7 @@ These rules are deterministic and indexer-agnostic. Any indexer that follows the
 | Situation | Resolution |
 |---|---|
 | Multiple deploys for the same `tick` across blocks | Earliest finalized block wins; later are ignored |
-| Multiple deploys for the same `tick` in the same block | Lower payload index wins |
+| Multiple deploys for the same `tick` in the same block | Lower payload index wins — earlier transaction in the block, then lower position in its `payload_hashes[]` |
 | Mint after `max` reached | Drop entirely (no partial credit even if `amt` would still fit) |
 | Mint with `amt > lim` | Drop entirely |
 | Mint for unknown ticker | Drop |
@@ -374,7 +365,7 @@ The "drop" pattern is intentional and matches BRC-20: the chain accepted these p
 | Using `Number` for `amt`, `max`, `lim` | Loses precision above 2^53; breaks for any realistic token supply | Decimal strings in payloads, `BigInt` in the indexer |
 | Implementing partial mints when remaining supply is less than `amt` | Diverges from BRC-20; creates ambiguity across indexers | Drop the entire mint when it would exceed `max` |
 | Treating ticker symbols case-sensitively | `ORDI` and `ordi` deploys race for the same ticker on BRC-20 (case-folded). Diverging here breaks user expectations | Case-fold to lowercase at indexer ingress |
-| Replaying from `viewer.block.currentBlockNumber()` | Same finality footgun as the substrate; balances would oscillate during reorgs | Use `viewer.finalization.headNumber()` only |
+| Replaying from `viewer.block.currentBlockNumber()` | Same finality footgun as the substrate; balances would oscillate during reorgs | Follow finalized blocks only — `finalizedBlockStreamFromGateway`, or `viewer.finalization.headNumber()` as the bound |
 | Reading transfer authorship from the payload's `to` field | `to` is the recipient (declarative). `from` does not exist on the payload by design | Always use the BoundWitness signer for the source of a transfer |
 | Sharing one schema with an `op` discriminator (`{ p: "xrc-20", op: "mint", ... }`) | Loses Zod type sharpness, defeats per-operation schema filtering during chain walks, conflates artifact and event semantics | Three narrow schemas — one each for deploy, mint, transfer |
 
@@ -392,7 +383,7 @@ The "drop" pattern is intentional and matches BRC-20: the chain accepted these p
 | Want per-block snapshots / historical balance queries? | Persist `(blockHeight, address, tick) -> balance` deltas during replay. Out of scope for v1; layered on later |
 | dApp wants to show "user X's XRC-20 activity" without running a global indexer? | Use the dual-sentinel pattern — `accountBalanceHistory(userAddress)` filtered for transactions hitting `XRC20_SENTINEL` returns every XRC-20 op the user submitted ([Scan Strategies §4](chain-data-indexing-protocol.md#strategy-4-sentinel-transfer-typically-backward)) |
 | Need a chain-native list of every XRC-20 protocol invocation? | `accountBalanceHistory(XRC20_SENTINEL)` — the static sentinel collects every `Transfer` from any user submitting an XRC-20 op |
-| Want fast "list all holders of a ticker"? | Add a per-ticker `holders: Set<Address>` side-index inside the global indexer ([Scan Strategies §3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index-forward-iteration)) |
+| Want fast "list all holders of a ticker"? | Add a per-ticker `holders: Set<XyoAddress>` side-index inside the global indexer ([Scan Strategies §3](chain-data-indexing-protocol.md#strategy-3-indexer-maintained-per-address-side-index-forward-iteration)) |
 | Need to stop further mints (cap reached, founder pause)? | Out of v1 scope. Either let `max` exhaust naturally or define a dedicated event schema (`network.xyo.ordinal.token.freeze`) |
 
 ---
@@ -403,7 +394,7 @@ A complete XRC-20 stack on XL1 is:
 
 1. The [Inscription Substrate](inscription-substrate.md) — provides identity, ownership, finality discipline
 2. The three XRC-20 schemas defined in this document
-3. A diviner that runs the dual-pass replay over `viewer.finalization.head()`-bounded blocks
+3. A diviner that runs the dual-pass replay over finalized blocks, driven by `finalizedBlockStreamFromGateway` with a `{ hash, number }` checkpoint ([Inscription Substrate — Polling cadence](inscription-substrate.md#polling-cadence))
 4. A read-only browse UI ([In-Page Data Lakes](in-page-datalakes.md)) that queries the diviner for tickers and balances
 5. A wallet-gated UI for deploy / mint / transfer that submits via `addPayloadsToChain`
 
