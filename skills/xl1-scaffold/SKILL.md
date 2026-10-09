@@ -47,7 +47,7 @@ Before invoking the scaffold, scan the prompt and the working directory for conv
 
 - **`.env` file with a seed phrase already in the empty repo.** The user expects the dApp to be **headless-verifiable end-to-end** by an agent or CI, using the same identity a browser user would have on that seed. Build the dApp normally — browser wallet wiring intact, React providers, the works — but also write a Node verification script that exercises the happy path through `GatewayBuilder.buildRunner()` and run it before reporting completion. The seed phrase is for verification only; it does not change the UX surface of the dApp. **Read [Headless dApp Verification](../xl1-testing/headless-testnet-verification.md) before planning** — it documents the prompt shape, signer derivation, and anti-patterns. The DoD's Headless Verification section becomes mandatory in this case.
 - **Prompt names which accounts hold funds** (e.g. "accounts 0 and 1"). Tells you how many signers to derive and how to assign roles in multi-party flows.
-- **Prompt names a network** (mainnet / sequence / local). Determines the `DefaultNetworks` entry the scaffold's gateway points at and which `INDEXER_FLOOR_BLOCK` is captured.
+- **Prompt names a network** (mainnet / sequence / local). Pass it as `--network=<mainnet|sequence|local>`: it picks the `DefaultNetworks` entry (`MainNetwork` / `SequenceNetwork` / `LocalNetwork` from `@xyo-network/xl1-sdk`) the scaffold's gateway points at, and so the chain the `INDEXER_FLOOR_BLOCK` is captured on. No network named → the default, `sequence` (testnet), consistent with [xl1-testing](../xl1-testing/SKILL.md); never scaffold for mainnet unless the prompt asks for it.
 - **Prompt says `Runtime: dapp-kit`** (or asks for the `@xyo-network/dapp-kit*` headless runtime or an `xl1.dapp.json` project). Use the [dapp-kit runtime](#dapp-kit-runtime) flow instead of the classic monorepo. `Runtime: classic`, or no `Runtime:` at all, keeps the classic default.
 
 Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread, and open that acknowledgement with the skill identity line (`xl1-scaffold v<version>`, plus the skills it draws on).
@@ -80,6 +80,11 @@ Surface the written PRD in your acknowledgement so the user can correct any misr
 ## Invocation
 
 The scaffold runtime ships with this plugin under `scripts/scaffold/` (synced from `packages/xl1-scaffold/` at build time). Invoke it directly with Node — `${CLAUDE_SKILL_DIR}` resolves to this skill's directory at runtime.
+
+### Prerequisites
+
+- **Node.js 26+.** `@xyo-network/sdk` declares `engines.node: ^26` (`@xyo-network/xl1-sdk` `>=26`), and every generated `package.json` declares `engines.node: ">=26"`. Check `node --version` first; on an older Node, stop and tell the user to upgrade rather than scaffolding.
+- **pnpm 12.** Generated projects pin `packageManager: pnpm@<newest 12.x at least a day old>`. Node 25+ no longer bundles corepack, so a stock Node 26 has only `node`, `npm` and `npx`. The scaffold runs `pnpm` from `PATH` (pnpm switches itself to the pinned version), falling back to `corepack pnpm@<pinned>`, and probes each with `--version` first. If neither can run pnpm 12 it writes the files, then exits 1 with install guidance (`npm i -g pnpm@12`, or `npm i -g corepack && corepack enable pnpm`) and the commands to finish. An older pnpm on `PATH` may fail to switch (pnpm 10 on macOS cannot start the pnpm 12 it downloads) — upgrading it to 12 fixes that.
 
 ### Choosing template(s)
 
@@ -163,7 +168,7 @@ The monorepo templates wire app ↔ service the same way every time: app on `:30
 For a **single template**:
 
 ```shell
-node "${CLAUDE_SKILL_DIR}/scripts/scaffold/scaffold-xl1-dapp.js" <root> --template=<react|node|xl1-service>
+node "${CLAUDE_SKILL_DIR}/scripts/scaffold/scaffold-xl1-dapp.js" <root> --template=<react|node|xl1-service> --network=<mainnet|sequence|local>
 ```
 
 For a **monorepo**, four scaffold invocations + a single root install:
@@ -174,10 +179,13 @@ SKILL="${CLAUDE_SKILL_DIR}/scripts/scaffold/scaffold-xl1-dapp.js"
 # 1. Workspace root (no install — verification skipped, root has no installable code yet).
 #    The root's package.json `name` field is the dir's basename (e.g. `rps-game`); sub-
 #    package scopes auto-derive from this (sub-packages become `@rps-game/<basename>`).
-node "$SKILL" <root> --template=xl1-monorepo --no-install
+#    --network is recorded in the root package.json as `xl1.network`.
+node "$SKILL" <root> --template=xl1-monorepo --network=<mainnet|sequence|local> --no-install
 
 # 2. Sub-packages — each runs in workspace-member mode (skips its own install + verification;
 #    drops its own packageManager + .gitignore; package name becomes @<scope>/<basename>).
+#    Members inherit the root's `xl1.network`, so app and service talk to the same chain;
+#    passing the same --network to a member is harmless (a different one prints a warning).
 #    Order matters: scaffold shared FIRST. When app and service are scaffolded after,
 #    they auto-detect the sibling shared package and wire a "@<scope>/shared": "workspace:*"
 #    dep into their package.json automatically.
@@ -193,19 +201,21 @@ cd <root> && pnpm install
 #    + dist/*.js, so their typecheck and lint fail until shared has been built.
 #    (The root's `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm dev` scripts
 #    run `pnpm build:shared` first for you.)
-pnpm --filter @<scope>/shared run build && pnpm -r run typecheck && pnpm -r run lint && pnpm -r run build
+pnpm --filter @<scope>/shared run build && pnpm -r run typecheck && pnpm -r run lint && pnpm -r run build && pnpm -r run test
 # For xl1-service specifically, also smoke-test the server boot:
 pnpm --filter @<scope>/service run smoke
 ```
 
 The scaffold (per single-template invocation, when NOT in workspace-member mode):
 
-1. Resolves the full runtime dependency graph from the npm registry (direct deps + peers).
-2. Writes `package.json`, `tsconfig.json`, `eslint.config.mjs`, `vite.config.ts` (React), source files, and `.gitignore`.
+1. Resolves the full runtime dependency graph from the npm registry (direct deps + peers). Each dependency gets the newest release that pnpm's one-day `minimumReleaseAge` will accept — so a dependency published in the last 24 hours is held back to its previous release — except `@xyo-network/*` and `@ariestools/*`, which get `latest`.
+2. Writes `package.json`, `tsconfig.json`, `eslint.config.mjs`, `vite.config.ts` (React), source files, `.gitignore`, and `pnpm-workspace.yaml` — the file pnpm 12 reads its settings from: `allowBuilds` for the dependency build scripts pnpm must run, and `minimumReleaseAge: 1440` with our scopes in `minimumReleaseAgeExclude`. A standalone project gets one too (no `packages:` key), which also makes it its own workspace root. Workspace members get none.
 3. Runs `pnpm install`, then `pnpm typecheck`, `pnpm lint`, `pnpm build`, and — for the Node and xl1-service templates — a smoke test that executes the compiled output.
 4. Prints per-step status; the final line says "Scaffold complete" on success.
 
 In `--workspace-member` mode, steps 1–2 still run (with the workspace-aware tweaks); step 3 is skipped (the root install handles all linking + verification).
+
+Generated `test` scripts run `vitest run --passWithNoTests`, so `pnpm test` passes on a project with no specs yet; it is not a substitute for writing them. The monorepo root has no `test:watch` — watch one package with `pnpm --filter ./packages/<pkg> run test:watch`.
 
 The `react` template's `App.tsx` ships the XL1 provider stack already wired: `InPageGatewaysProvider transport="rest"` wrapping `GatewayProvider`, so the app reads chain data for anonymous visitors and gates only writes on the wallet. **Keep `transport="rest"`** — the prop defaults to `'rpc'`, and REST reads come from the network's cacheable static bucket layout rather than one live gateway call per read. See [Browser Gateway — REST over RPC](../xl1-knowledge/gateway-browser.md#rest-over-rpc). Non-React browser targets (workers, service workers, extensions) integrate through `@xyo-network/xl1-browser-system` instead.
 
@@ -289,7 +299,7 @@ The reason: the chain accepts arbitrary bytes for any schema, including before t
 
 The procedure:
 
-1. Connect to the target chain using the gateway already wired into the scaffold.
+1. Connect to the chain the scaffold was generated for — the `--network` value, recorded as `xl1.network` in the (root) `package.json` and wired as the `NETWORK` constant in `src/App.tsx` / `src/index.ts`. Use that same network's gateway; a floor read from another chain is meaningless here.
 2. Read the current finalized head: `Number(await viewer.finalization.headNumber())`.
 3. Write to the dApp's `.env` (root for single-template scaffolds; the relevant sub-package's `.env` for monorepos):
    ```
@@ -310,16 +320,21 @@ Mixed dApps (some bounded schemas, some pre-existing) still set `INDEXER_FLOOR_B
 |---|---|---|---|
 | `--template`, `-t` | `react`, `node`, `xl1-service`, `xl1-monorepo`, `xl1-shared` | `react` | `xl1-service` extends `node` with an Express HTTP server bound to `process.env.PORT \|\| 3001` (matching the app-on-3000 / service-on-3001 wiring convention) and a `Hello world` route. `xl1-monorepo` and `xl1-shared` are used together with the other templates in the monorepo flow — see "Choosing template(s)" above. |
 | `--target` | path | positional[0] or `src` | Can also pass as first positional arg |
+| `--network` | `mainnet`, `sequence`, `local` | `sequence` (a workspace member: the root's `xl1.network`) | XL1 network the generated gateway points at: `MainNetwork` / `SequenceNetwork` / `LocalNetwork` from `@xyo-network/xl1-sdk`, substituted into `App.tsx`, the node/xl1-service entry and each `.env.example`. Recorded as `xl1.network` in a standalone or root `package.json`. Set it from the prompt's named network; testnet by default. |
 | `--force` | — | off | Overwrite files in a non-empty target dir |
 | `--no-install` | — | off | Write files only; skip `pnpm install` and verification |
-| `--workspace-member` | — | off | Sub-package mode: rename to `@<scope>/<basename>`, drop `packageManager` + `.gitignore`, skip the install/verification chain. The workspace root's `pnpm install` handles all members. |
+| `--workspace-member` | — | off | Sub-package mode: rename to `@<scope>/<basename>`, drop `packageManager` + `.gitignore`, write no `pnpm-workspace.yaml`, inherit the root's `xl1.network`, skip the install/verification chain. The workspace root's `pnpm install` handles all members. |
 | `--workspace-scope` | string | auto-derived | Override the scope used in `--workspace-member` mode. Default: walk up to find `pnpm-workspace.yaml`, read the root `package.json` `name`, use it as the scope (`rps-game` → `@rps-game`; `@org/foo` → `@org`). |
 
 ## Troubleshooting
 
 **Fetch errors during version resolution** (ENOTFOUND, ETIMEDOUT) — transient npm registry issues. Retry once. If persistent, check the user's network.
 
-**pnpm `ERR_PNPM_MISSING_TIME`** — the scaffold pins pnpm to the latest 10.x via `packageManager` + corepack specifically to avoid this; it should not appear in normal runs.
+**"no usable pnpm was found"** — neither `pnpm` nor `corepack` on `PATH` could run pnpm 12 (stock Node 25+ ships neither). Install pnpm as the message says (`npm i -g pnpm@12`), then run the printed "Next:" commands; the project files are already written.
+
+**`ERR_PNPM_NO_MATURE_MATCHING_VERSION`** — a dependency added after scaffolding resolves only to a release under a day old, and the generated `pnpm-workspace.yaml` sets `minimumReleaseAge` explicitly (strict). Wait a day, pin an older version, or add `name@version` to `minimumReleaseAgeExclude`. The scaffold's own picks never trigger it.
+
+**`ERR_PNPM_IGNORED_BUILDS`** — a dependency added later has a build script pnpm 12 has not been told about. Add it under `allowBuilds` in `pnpm-workspace.yaml` (`true` to run it, `false` to skip it).
 
 **"Target dir is not empty"** — pass `--force` to overwrite in place, or pick a different target.
 

@@ -1,4 +1,3 @@
-// eslint-disable-next-line import-x/no-internal-modules -- internal helper, intentional sibling reach
 import { deepMerge } from '../utils/deep-merge.js';
 // Universal defaults shared by every concrete preset. Presets must NOT repeat
 // what's listed here — `extendBase`'s deep-merge concats arrays, so duplicates
@@ -13,7 +12,7 @@ export const baseTemplate = {
     deps: {
         runtime: [],
         dev: ['@ariestools/toolchain', '@ariestools/tsconfig', 'eslint', 'typescript', 'vitest'],
-        // typescript is pinned rather than resolved to `^latest`: typescript-eslint
+        // `typescript` is pinned rather than resolved to `^latest`: typescript-eslint
         // declares `typescript: >=4.8.4 <6.1.0`, so an unpinned TS resolves to 7.x
         // and every `pnpm lint` dies with "typescript-eslint does not support TS
         // 7.0" before linting a single file. Raise this to ^6 once typescript-eslint
@@ -28,7 +27,10 @@ export const baseTemplate = {
     scripts: {
         'lint': 'eslint .',
         'lint:fix': 'eslint . --fix',
-        'test': 'vitest run',
+        // --passWithNoTests: a freshly scaffolded project has no specs yet, and
+        // vitest exits 1 on "No test files found". A placeholder spec would be
+        // dead weight the dApp DoD then flags; real specs land with the features.
+        'test': 'vitest run --passWithNoTests',
         'test:watch': 'vitest',
         'typecheck': 'tsc --noEmit',
     },
@@ -54,5 +56,14 @@ export function extend(parent, override) {
 }
 export function extendBase(override) {
     return extend(baseTemplate, override);
+}
+// Drops inherited scripts that make no sense for a preset. deepMerge cannot
+// delete keys (an undefined child value keeps the parent's), so removal is a
+// separate, explicit step.
+export function omitScripts(template, names) {
+    return {
+        ...template,
+        scripts: Object.fromEntries(Object.entries(template.scripts).filter(([name]) => !names.includes(name))),
+    };
 }
 //# sourceMappingURL=base.js.map

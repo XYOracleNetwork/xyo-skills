@@ -5,11 +5,18 @@ import {
 import { assertExtendsBase } from './shared-assertions.js'
 import { xl1MonorepoTemplate } from './xl1-monorepo.js'
 
-assertExtendsBase(xl1MonorepoTemplate)
+assertExtendsBase(xl1MonorepoTemplate, { omittedScripts: ['test:watch'] })
 
 describe('xl1-monorepo preset specifics', () => {
-  it('declares pnpm-workspace.yaml as a written file', () => {
-    expect(xl1MonorepoTemplate.files.some(f => f.dest === 'pnpm-workspace.yaml')).toBe(true)
+  // pnpm-workspace.yaml is generated (workspace-yaml.ts) so it carries the
+  // pnpm 12 settings; the template only contributes the package globs.
+  it('declares the workspace package globs for the generated pnpm-workspace.yaml', () => {
+    expect(xl1MonorepoTemplate.workspacePackages).toEqual(['packages/*'])
+    expect(xl1MonorepoTemplate.files.some(f => f.dest === 'pnpm-workspace.yaml')).toBe(false)
+  })
+
+  it('drops base\'s `test:watch: vitest` (meaningless at the root)', () => {
+    expect(xl1MonorepoTemplate.scripts).not.toHaveProperty('test:watch')
   })
 
   it('declares a top-level README', () => {

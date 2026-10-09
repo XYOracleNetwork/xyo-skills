@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process'
 import {
-  copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync,
+  existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { renderTemplate } from './network.js'
+import type { PnpmRunner } from './pnpm-runner.js'
 import type { TemplateFile } from './template.js'
 
 // Resolves the templates directory both in dev (tsx src/...) and compiled (dist/...) modes.
@@ -43,7 +45,9 @@ export function writeJson(target: string, relPath: string, value: unknown): void
   writeString(target, relPath, JSON.stringify(value, null, 2))
 }
 
-export function copyTemplateFile(templatesRoot: string, file: TemplateFile, target: string): void {
+// Copies a template file, substituting `__XL1_*__` tokens from `vars` (see
+// network.ts). Every template file is UTF-8 text.
+export function copyTemplateFile(templatesRoot: string, file: TemplateFile, target: string, vars: Record<string, string>): void {
   // file.src is a path relative to templates/ (e.g. 'node/eslint.config.mjs',
   // 'shared/_gitignore'). Each preset's files declare their source location
   // explicitly, so a child template inheriting from a parent picks up the
@@ -54,23 +58,25 @@ export function copyTemplateFile(templatesRoot: string, file: TemplateFile, targ
   }
   const out = path.join(target, file.dest)
   mkdirSync(path.dirname(out), { recursive: true })
-  copyFileSync(found, out)
+  writeFileSync(out, renderTemplate(readFileSync(found, 'utf8'), vars))
   console.log(`  wrote ${file.dest}`)
 }
 
-export function runPnpmStep(target: string, label: string, pnpmArgs: string[]): void {
+export function runPnpmStep(runner: PnpmRunner, target: string, label: string, pnpmArgs: string[]): void {
   console.log(`\n${label}...`)
-  // --ignore-workspace prevents pnpm from walking up to a parent
-  // pnpm-workspace.yaml, which would otherwise make it treat the scaffolded
-  // target as a workspace member (reusing the outer node_modules instead of
-  // installing the target's own deps).
+  // A standalone project carries its own pnpm-workspace.yaml, which makes it
+  // its own workspace root, so pnpm never walks up into an enclosing
+  // workspace. Only without one is --ignore-workspace needed for that — and it
+  // must not be passed with one, because it also makes pnpm skip the
+  // settings (allowBuilds, minimumReleaseAge, …) in that file.
+  const ignoreWorkspace = existsSync(path.join(target, 'pnpm-workspace.yaml')) ? [] : ['--ignore-workspace']
   const r = spawnSync(
-    'corepack',
-    ['pnpm@10', '--ignore-workspace', ...pnpmArgs],
+    runner.command,
+    [...runner.args, ...ignoreWorkspace, ...pnpmArgs],
     { cwd: target, stdio: 'inherit' },
   )
-  if (r.status !== 0) {
-    // eslint-disable-next-line unicorn/no-process-exit -- CLI tool: propagate pnpm's exact exit code for CI visibility
-    process.exit(r.status ?? 1)
-  }
+  if (r.status === 0) return
+  if (r.error) console.error(`${runner.label} failed to start: ${r.error.message}`)
+  // eslint-disable-next-line unicorn/no-process-exit -- CLI tool: propagate pnpm's exact exit code for CI visibility
+  process.exit(r.status ?? 1)
 }

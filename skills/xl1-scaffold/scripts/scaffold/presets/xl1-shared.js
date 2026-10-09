@@ -4,7 +4,7 @@ const xl1SharedTemplateOverrides = {
     description: 'TypeScript library for an XL1 monorepo — shared types, schemas, helpers',
     deps: {
         runtime: [],
-        // Required by the eslint.config.mjs below (eslint itself comes from base).
+        // Required by the eslint.config.mjs below (ESLint itself comes from base).
         // Without a config, `eslint .` aborts and `pnpm -r run lint` fails.
         dev: ['@ariestools/eslint-config-flat'],
     },

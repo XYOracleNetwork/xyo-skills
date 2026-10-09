@@ -2,8 +2,15 @@ import type { XyoAddress } from '@xyo-network/sdk'
 import {
   ConnectAccountsStack, GatewayProvider, InPageGatewaysProvider,
 } from '@xyo-network/xl1-react-client-sdk'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { __XL1_NETWORK__ } from '@xyo-network/xl1-sdk'
 import { useCallback, useState } from 'react'
+
+// The __XL1_NETWORK_LABEL__ — chosen with `--network=__XL1_NETWORK_ID__` when this
+// project was scaffolded (also recorded as `xl1.network` in package.json —
+// the workspace root's, in a monorepo). GatewayProvider selects the wallet/in-page gateway for this
+// network id. Change networks here and in the service together; the indexer
+// floor block (VITE_INDEXER_FLOOR_BLOCK) is per network too.
+const NETWORK = __XL1_NETWORK__
 
 export function App() {
   // The account this dApp acts as, chosen from the accounts the wallet grants.
@@ -25,7 +32,7 @@ export function App() {
   // Writes are unaffected — mempool submission still goes over the RPC URL.
   return (
     <InPageGatewaysProvider transport="rest">
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <GatewayProvider gatewayName={NETWORK.id}>
         <main style={{ fontFamily: 'system-ui', padding: '2rem' }}>
           <h1>XL1 dApp</h1>
           {/* Renders the connect prompt and the granted account itself — restyle it

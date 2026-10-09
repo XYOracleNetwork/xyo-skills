@@ -37,9 +37,9 @@ export function deepMerge(base, override) {
     }
     if (isPlainObject(base) && isPlainObject(override)) {
         const out = { ...base };
-        for (const key of Object.keys(override)) {
+        for (const [key, overrideVal] of Object.entries(override)) {
             const baseVal = base[key];
-            out[key] = baseVal === undefined ? override[key] : deepMerge(baseVal, override[key]);
+            out[key] = baseVal === undefined ? overrideVal : deepMerge(baseVal, overrideVal);
         }
         return out;
     }

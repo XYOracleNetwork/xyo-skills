@@ -1,2 +1,9 @@
 # Copy to .env (gitignored). Loaded at startup via `import 'dotenv/config'`
 # in src/index.ts, then read with process.env.<NAME>.
+
+# XL1 network: __XL1_NETWORK_LABEL__ (scaffolded with
+# --network=__XL1_NETWORK_ID__; src/index.ts uses __XL1_NETWORK__ from
+# @xyo-network/xl1-sdk). INDEXER_FLOOR_BLOCK is per chain — capture it on this
+# network when the dApp defines its own schemas (xl1-scaffold skill, "Capture
+# the indexer floor block").
+# INDEXER_FLOOR_BLOCK=

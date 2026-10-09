@@ -13,13 +13,19 @@ import {
 import type { Template } from '../template.js'
 import { baseTemplate } from './base.js'
 
-export function assertExtendsBase(template: Template): void {
+export interface AssertExtendsBaseOptions {
+  // Base scripts the preset deliberately drops via omitScripts().
+  omittedScripts?: readonly string[]
+}
+
+export function assertExtendsBase(template: Template, options: AssertExtendsBaseOptions = {}): void {
+  const omittedScripts = options.omittedScripts ?? []
   describe(`${template.name} preset inherits base`, () => {
     it('includes base dev deps', () => {
       for (const dep of baseTemplate.deps.dev) expect(template.deps.dev).toContain(dep)
     })
 
-    // Guards the typescript pin in particular: unpinned, it resolves to 7.x and
+    // Guards the `typescript` pin in particular: unpinned, it resolves to 7.x and
     // every generated project's `pnpm lint` dies before linting a single file.
     it('inherits base dependency version pins', () => {
       for (const [dep, pin] of Object.entries(baseTemplate.deps.versions ?? {})) {
@@ -28,7 +34,13 @@ export function assertExtendsBase(template: Template): void {
     })
 
     it('includes base scripts', () => {
-      for (const key of Object.keys(baseTemplate.scripts)) expect(template.scripts).toHaveProperty(key)
+      for (const key of Object.keys(baseTemplate.scripts)) {
+        if (omittedScripts.includes(key)) {
+          expect(template.scripts).not.toHaveProperty(key)
+        } else {
+          expect(template.scripts).toHaveProperty(key)
+        }
+      }
     })
 
     it('includes base files (matched by dest)', () => {

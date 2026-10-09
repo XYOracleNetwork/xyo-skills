@@ -6,6 +6,17 @@ A pnpm workspace for an XL1 dApp split into sub-packages under `packages/`. Comm
 - `packages/service` — Express HTTP backend (scaffolded with `--template=xl1-service`)
 - `packages/shared` — TypeScript library for code shared between app and service (`--template=xl1-shared`)
 
+## Prerequisites
+
+- **Node.js 26+** — every `package.json` declares `engines.node: ">=26"` (`@xyo-network/sdk` requires Node 26).
+- **pnpm 12** — the root `packageManager` field pins the exact version. Node 25+ no longer bundles corepack, so install pnpm yourself: `npm i -g pnpm@12` (pnpm then switches itself to the pinned version), or `npm i -g corepack && corepack enable pnpm`.
+
+`pnpm-workspace.yaml` carries pnpm's settings: `allowBuilds` (pnpm 12 fails an install when a dependency's build script is not listed) and `minimumReleaseAge: 1440` — only versions at least a day old are installed, with `@xyo-network/*` and `@ariestools/*` exempt.
+
+## XL1 network
+
+Scaffolded for the __XL1_NETWORK_LABEL__ (`--network=__XL1_NETWORK_ID__`), recorded as `xl1.network` in this `package.json`; members scaffolded into `packages/` inherit it. `packages/app/src/App.tsx` and `packages/service/src/index.ts` both use `__XL1_NETWORK__` from `@xyo-network/xl1-sdk` — change them together, and capture `INDEXER_FLOOR_BLOCK` per network.
+
 ## Workspace dependencies
 
 To consume `shared` from `app` or `service`, add to that package's `package.json`:
@@ -32,7 +43,8 @@ pnpm typecheck                # build shared, then tsc --noEmit across all packa
 pnpm lint                     # build shared, then eslint across all packages
 pnpm build                    # build all packages (topological: shared first)
 pnpm test                     # build shared, then vitest across all packages
-pnpm --filter app run dev     # run only one package's dev server (build shared first)
+pnpm --filter ./packages/app run dev         # run only one package's dev server (build shared first)
+pnpm --filter ./packages/app run test:watch  # watch one package's tests (no root test:watch)
 ```
 
 ## Browser ↔ service wiring

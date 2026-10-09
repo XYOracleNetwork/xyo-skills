@@ -6,7 +6,7 @@ const nodeTemplateOverrides = {
         runtime: ['@xyo-network/sdk', '@xyo-network/xl1-sdk', 'dotenv'],
         // ajv is a peer of @xyo-network/sdk-protocol-core, which sits two levels
         // below @xyo-network/sdk — out of reach of expandWithPeers' one-level walk.
-        // Without it, eslint's transitive ajv@6 wins resolution and the service
+        // Without it, ESLint's transitive ajv@6 wins resolution and the service
         // dies at boot on `import { Ajv } from 'ajv'`.
         extras: ['ajv'],
         dev: ['@ariestools/eslint-config-flat', '@types/node', 'tsx'],

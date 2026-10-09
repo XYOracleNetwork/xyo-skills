@@ -1,2 +1,7 @@
 # Workspace-level environment variables. Copy to .env at the workspace root
 # (gitignored). Sub-packages inherit this file when launched from the root.
+
+# XL1 network for every package in this workspace: __XL1_NETWORK_LABEL__
+# (scaffolded with --network=__XL1_NETWORK_ID__, recorded as `xl1.network` in
+# package.json; members scaffolded later inherit it). INDEXER_FLOOR_BLOCK is
+# per chain — capture it on this network.

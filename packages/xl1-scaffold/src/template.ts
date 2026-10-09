@@ -35,4 +35,8 @@ export interface Template {
     extends: string
     include?: string[]
   }
+  // Package globs for the `packages:` key of the generated pnpm-workspace.yaml.
+  // Set only on a workspace root (xl1-monorepo). Every non-member project gets
+  // a pnpm-workspace.yaml for its pnpm settings; members get none.
+  workspacePackages?: string[]
 }
