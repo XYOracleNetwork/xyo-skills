@@ -143,7 +143,7 @@ const moves = allPayloads.filter(isMovePayload)
 
 ### Trust boundary on chain reads
 
-The gateway's RPC surface returns block envelopes, transaction structures, and signatures the chain has already validated — those can be trusted as the SDK presents them. The **application-level payload content** riding inside, however, is fetched from the datalake, where anyone can write bytes (including bytes that match a schema name but not its shape). Trust but verify: Zod-validate every payload your code consumes, even when it came back through `connection.viewer`.
+The gateway's RPC surface returns block envelopes, transaction structures, and signatures the chain has already validated — those can be trusted as the SDK presents them. The **application-level payload content** those transactions reference, however, is fetched from a datalake by hash, where anyone can write bytes (including bytes that match a schema name but not its shape). Trust but verify: Zod-validate every payload your code consumes, whichever store it came back from.
 
 In practice: you can trust `tx.payload_hashes`, `tx.from`, block numbers, and signatures without re-checking. You should not trust the dereferenced payload bodies until they've passed your Zod guards.
 

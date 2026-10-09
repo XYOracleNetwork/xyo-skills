@@ -89,10 +89,13 @@ Application data goes in the `offChain` parameter of `addPayloadsToChain`, but *
 
 ```ts
 import { PayloadBuilder } from '@xyo-network/sdk'
-import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
+import { createRestDataLakeRunner, NetworkDataLakeUrls } from '@xyo-network/xl1-sdk'
 
+// The dApp's own datalake: its configured endpoint (env var / config), defaulting
+// to the network's. Step 3 reads the off-chain bodies back from this same endpoint.
 // See Gateway — Accessing the Datalake for full setup details
-const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
+const DATALAKE_ENDPOINT = appConfig.dataLakeEndpoint ?? NetworkDataLakeUrls[networkId]
+const datalakeRunner = await createRestDataLakeRunner(DATALAKE_ENDPOINT)
 
 const movePayload: MovePayload = asMovePayload(
   new PayloadBuilder({ schema: MoveSchema })
@@ -309,15 +312,26 @@ Add the application schema directly to `AllowedBlockPayloadSchemas` so it can ap
 
 Chain state is read through sub-viewers on `gateway.connection.viewer`. `connection.viewer` is typed `XyoViewer | undefined` — always guard with `?.` or an explicit null check. See [Gateway — Viewer API](../xl1-knowledge/gateway.md) for the full method-by-method reference.
 
-Use the transaction sub-viewer when you need full transaction context (who signed, when, block number):
+Use the transaction sub-viewer when you need full transaction context (who signed, when, block number), then fetch the off-chain payloads it references from your datalake:
 
 ```ts
+import { createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
+
+// Off-chain bodies are read from the datalake they were written to — the
+// DATALAKE_ENDPOINT from Step 2. Construct the viewer once and reuse it.
+const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
+
 const tx = await gateway.connection.viewer?.transaction.byHash(txHash)
-// tx is SignedHydratedTransactionWithHashMeta | null
-// tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
+if (!tx) throw new Error('Transaction not found')
+// tx is SignedHydratedTransactionWithHashMeta
+// tx[0] = TransactionBoundWitness (signer: tx[0].from)
+// tx[1] = payloads the gateway's own store holds — on-chain only; unresolved hashes are omitted
+const [bw] = tx
+const moveHashes = bw.payload_hashes.filter((_, i) => bw.payload_schemas[i] === MoveSchema)
+const moves = (await datalakeViewer.get(moveHashes)).filter(isMovePayload)
 ```
 
-When called this way, the gateway's `ViewerWithDataLake` transparently resolves the transaction's off-chain payloads — you get a complete hydrated transaction in a single round-trip without querying the datalake separately. **This is specific to `transaction.byHash`** — block-level reads do not behave the same way; see below.
+`transaction.byHash` gives you the transaction context and its on-chain payloads, but not the off-chain payloads it references: no `connection.viewer` read fetches from a datalake (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). Take their hashes from `payload_hashes[]` — the parallel `payload_schemas[]` says which is which — and read the bodies from your datalake by hash. Block-level reads work the same way; see below.
 
 ### Via Block Walk — Schema Discovery From the Chain
 
@@ -325,18 +339,18 @@ When you need to find all payloads of a given type regardless of which transacti
 
 `viewer.block.blockByNumber(n)` returns the block's **on-chain payloads only** — `BlockBoundWitness`, `TransactionBoundWitness` instances, `transfer`, `time`. The off-chain payloads referenced in each `TransactionBoundWitness.payload_hashes[]` are **not** included, even with a datalake configured. See [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for why.
 
-To find application-schema payloads from a block walk, scan each transaction's parallel `payload_hashes[]` / `payload_schemas[]` arrays for the schemas you care about, then fetch the matching hashes via `viewer.block.payloadsByHash(hashes)`:
+To find application-schema payloads from a block walk, scan each transaction's parallel `payload_hashes[]` / `payload_schemas[]` arrays for the schemas you care about, then fetch the matching hashes from your datalake with `datalakeViewer.get(hashes)` (the viewer constructed above, on `DATALAKE_ENDPOINT`):
 
 ```ts
-import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+import { asXL1BlockNumber, isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
 
 const viewer = gateway.connection.viewer
 if (!viewer) throw new Error('Gateway has no viewer attached')
 
 const head = Number(await viewer.finalization.headNumber())
-const moves: Payload[] = []
+const moves: MovePayload[] = []
 for (let n = lastSeenBlock + 1; n <= head; n++) {
-  const hydrated = await viewer.block.blockByNumber(n)
+  const hydrated = await viewer.block.blockByNumber(asXL1BlockNumber(n, true))
   if (!hydrated) continue
   const [, payloads] = hydrated
 
@@ -352,23 +366,26 @@ for (let n = lastSeenBlock + 1; n <= head; n++) {
   }
   if (moveHashes.length === 0) continue
 
-  // Pass 2: fetch the off-chain payloads from the datalake by hash
-  const fetched = await viewer.block.payloadsByHash(moveHashes)
-  moves.push(...fetched)
+  // Pass 2: fetch the off-chain payloads from the datalake by hash —
+  // no gateway read (payloadsByHash included) returns them
+  const fetched = await datalakeViewer.get(moveHashes)
+  moves.push(...fetched.filter(isMovePayload))
 }
 ```
 
-This is the same engine that drives Strategy 1 below — see [Polling for New Data](#polling-for-new-data) for the React/incremental version. For multi-player dApps, combine the chain walk with a local payload store for immediate UI updates — see [In-Page Data Lakes — dApp State Management](in-page-datalakes.md).
+This is the same engine that drives Strategy 1 below — see [Polling for New Data](#polling-for-new-data) for the React/incremental version. For multi-player dApps, the walk runs in the [service indexer](chain-data-indexing-service.md) and the browser reads its `/api/*` results, paired with a local payload store for immediate UI updates — see [In-Page Data Lakes — dApp State Management](in-page-datalakes.md).
 
 **Why not `RestDataLakeViewer.next({ allowedSchemas })`?** The datalake is a content-addressed blob store, not a queryable index. Remote XL1 datalakes do not implement cursor pagination, so `.next()` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee) and silently scales poorly. Iterate the chain to find what to look for, then read the datalake by hash — see [Datalakes — How to read](../xl1-knowledge/datalakes.md).
 
 ### Via Payload Hash — Direct Lookup
 
-When you already have a hash (from a transaction's `payload_hashes`), retrieve the payload directly:
+When you already have a hash (from a transaction's `payload_hashes`), retrieve the payload directly from the store that holds it. Off-chain (Path A) bodies live in your datalake:
 
 ```ts
-const payloads = await gateway.connection.viewer?.block.payloadsByHash(hashes)
+const payloads = await datalakeViewer.get(hashes) // hashes it cannot resolve are omitted
 ```
+
+`connection.viewer.block.payloadsByHash(hashes)` reads only the gateway's own payload store, so use it for **on-chain** payloads — a Path B `HashPayload`, a Path C BoundWitness, a `Transfer` — not for off-chain bodies. It also silently omits hashes it cannot resolve.
 
 ---
 
@@ -542,12 +559,17 @@ The example below uses `currentBlockNumber()` for simplicity (showing recent pay
 
 
 ```ts
+import type { Hash } from '@ariestools/sdk'
+import type { Payload, Schema } from '@xyo-network/sdk'
+import { isAnyPayload } from '@xyo-network/sdk'
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
+import { asXL1BlockNumber, isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
 
 // `gateway` is whatever your environment gives you — the React-context
 // gateway in a browser dApp, the result of `new GatewayBuilder().rpcUrl(...).build()`
 // in a Node service, or any other XyoGateway instance. Reach viewer methods
-// via connection.viewer; never call RPC by hand.
+// via connection.viewer; never call RPC by hand. `datalakeViewer` is the
+// module-level RestDataLakeViewer from Step 3, on the dApp's DATALAKE_ENDPOINT.
 async function pollForNewData(
   gateway: XyoGateway | XyoGatewayRunner,
   lastSeenBlock: number,
@@ -562,15 +584,26 @@ async function pollForNewData(
     return { payloads: [], latestBlock: lastSeenBlock }
   }
 
-  // Query blocks from lastSeenBlock+1 to currentBlock
+  // Query blocks from lastSeenBlock+1 to currentBlock. Block reads return
+  // on-chain payloads only, so use the two-step pattern: match `schemas` on
+  // each TransactionBoundWitness, then fetch the referenced payloads by hash
+  // from the datalake.
   const newPayloads: Payload[] = []
   for (let block = lastSeenBlock + 1; block <= currentBlock; block++) {
-    const hydrated = await viewer.block.blockByNumber(block)
-    if (hydrated) {
-      const [, payloads] = hydrated
-      const matching = payloads.filter(p => schemas.includes(p.schema as Schema))
-      newPayloads.push(...matching)
+    const hydrated = await viewer.block.blockByNumber(asXL1BlockNumber(block, true))
+    if (!hydrated) continue
+    const [, payloads] = hydrated
+
+    const hashes: Hash[] = []
+    for (const p of payloads) {
+      if (!isTransactionBoundWitness(p)) continue
+      for (let i = 0; i < p.payload_hashes.length; i++) {
+        if (schemas.includes(p.payload_schemas[i])) hashes.push(p.payload_hashes[i])
+      }
     }
+    if (hashes.length === 0) continue
+
+    newPayloads.push(...(await datalakeViewer.get(hashes)).filter(isAnyPayload))
   }
 
   return { payloads: newPayloads, latestBlock: currentBlock }
@@ -639,8 +672,8 @@ const history = await gateway.connection.viewer?.account.balance
   .accountBalanceHistory(address, { range: [startBlock, endBlock] })
 
 for (const [block, tx, transfer] of history ?? []) {
-  // tx is the wrapping TransactionBoundWitness; walk tx.payload_hashes
-  // and viewer.block.payloadsByHash(...) for any application payloads riding along.
+  // tx is the wrapping TransactionBoundWitness; take tx.payload_hashes to
+  // datalakeViewer.get(...) for any off-chain application payloads riding along.
 }
 ```
 
@@ -729,8 +762,8 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 | Indexing your dApp's own schemas? | **Bounded** — capture `INDEXER_FLOOR_BLOCK` during development, iterate from there. See [Floor Block](#floor-block) |
 | Indexing pre-existing schemas (transfers, substrate, older protocols)? | **Unbounded** — set `INDEXER_FLOOR_BLOCK=0`, iterate from genesis. Substrate-shaped protocols additionally require ordered replay and a permanently-zero floor |
 | Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
-| Just need payloads by type? | Two-step walk: `viewer.block.blockByNumber()` returns on-chain `TransactionBoundWitness` instances; scan their `payload_schemas[]` for your schema, gather the parallel `payload_hashes[]`, then fetch via `viewer.block.payloadsByHash(hashes)`. Block reads do **not** auto-hydrate off-chain payloads — see [Via Block Walk](#via-block-walk--schema-discovery-from-the-chain) |
-| Need a specific payload? | Use `connection.viewer.block.payloadsByHash(hashes)` (or `RestDataLakeViewer.get(hashes)` for hashes obtained outside the gateway path) |
+| Just need payloads by type? | Two-step walk: `viewer.block.blockByNumber()` returns on-chain `TransactionBoundWitness` instances; scan their `payload_schemas[]` for your schema, gather the parallel `payload_hashes[]`, then fetch them from your datalake via `createRestDataLakeViewer(endpoint).get(hashes)`. No gateway read hydrates off-chain payloads — see [Via Block Walk](#via-block-walk--schema-discovery-from-the-chain) |
+| Need a specific payload? | Off-chain body: `RestDataLakeViewer.get(hashes)` against the datalake it was written to. On-chain payload: `connection.viewer.block.payloadsByHash(hashes)` (the gateway's own store) — see [Via Payload Hash](#via-payload-hash--direct-lookup) |
 | Real-time updates with transient OK? | Poll `connection.viewer.block.currentBlockNumber()` on an interval |
 | Real-time updates that drive durable state? | Poll `connection.viewer.finalization.headNumber()` — never derive state from unfinalized blocks |
 | Anchoring choice (Path A vs B vs C)? | Default to A (TransactionBoundWitness reference). Use B for commit-then-reveal. Use C for multi-party attestation |

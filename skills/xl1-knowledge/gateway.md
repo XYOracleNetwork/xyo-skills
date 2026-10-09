@@ -48,7 +48,7 @@ The gateway speaks JSON-RPC 2.0 under the hood and exposes method names like `bl
 
 Calling them directly:
 - Loses the SDK's type definitions for params and return shapes
-- Skips off-chain payload hydration (the SDK's `ViewerWithDataLake` wrapper handles this — the raw RPC does not)
+- Skips the SDK's per-method Zod validation of params and results (the SDK's RPC transports parse every call against its method schema)
 - Skips block validators and provenance checks
 - Bypasses the transport abstraction (HTTP vs PostMessage vs Memory)
 - Will silently break when method names or shapes change
@@ -143,11 +143,11 @@ The gateway object (`XyoGateway` or `XyoGatewayRunner`) exposes chain access thr
 | Property | Type | Description |
 |----------|------|-------------|
 | `.viewer` | `XyoViewer \| undefined` | Read-only chain state (sub-viewers for blocks, transactions, balances, etc.) |
-| `.storage` | `DataLakeViewer \| undefined` | Read-only datalake attached to this connection. May not point to the dApp's desired endpoint. |
+| `.storage` | `DataLakeRunner \| DataLakeViewer \| undefined` | Datalake attached to this connection — a `DataLakeRunner` on a write-capable gateway built with a datalake endpoint, otherwise a read-only `DataLakeViewer` (or absent). May not point to the dApp's desired endpoint. |
 | `.runner` | `XyoRunner \| undefined` | Low-level runner (internal — use gateway methods instead) |
 | `.network` | `XyoNetwork \| undefined` | Network metadata |
 
-**`connection.storage` is not the recommended datalake path.** It is a read-only `DataLakeViewer` populated from the connection's configuration — it cannot write, and it may not point to the endpoint the dApp wants to use. For datalake access, see [Accessing the Datalake](#accessing-the-datalake) below and [Datalakes](datalakes.md).
+**`connection.storage` is not the recommended datalake path.** It is populated from the connection's configuration — a `DataLakeRunner` when a write-capable gateway was built with a datalake endpoint (the datalake `addTransactionToChain` writes to), a read-only `DataLakeViewer` on a read-only gateway, absent when none was configured — so whether it can write depends on how the gateway was built, and it may not point to the endpoint the dApp wants to use. For datalake access, see [Accessing the Datalake](#accessing-the-datalake) below and [Datalakes](datalakes.md).
 
 ---
 
@@ -161,7 +161,7 @@ For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
 
 | Sub-viewer | When to use |
 |------------|-------------|
-| `.block` | Query blocks, get latest block number (for polling/deadlines), resolve off-chain payloads by hash |
+| `.block` | Query blocks, get latest block number (for polling/deadlines), resolve payloads the gateway's store holds by hash |
 | `.transaction` | Look up transactions by hash or by position within a block |
 | `.account.balance` | Check XL1 balances, batch balance lookups, balance history |
 | `.finalization` | Get the latest **finalized** (irreversible) block — use when you need confirmed state rather than latest |
@@ -182,7 +182,7 @@ For exact type signatures, read the `.d.ts` files in `@xyo-network/xl1-sdk`.
 | Look up a specific block by its number | `.block.blockByNumber(n)` |
 | Scan a window of blocks ending at a hash or number (descending, newest-first) | `.block.blocksByHash(hash, limit?)` / `.block.blocksByNumber(n, limit?)` |
 | Fetch a published step-summary batch of blocks | `.block.blocksByStep(stepLevel, stepIndex)` |
-| Resolve off-chain payloads referenced in a transaction | `.block.payloadsByHash(hashes)` |
+| Resolve payloads by hash from the gateway's own store (on-chain payloads — off-chain bodies come from your datalake) | `.block.payloadsByHash(hashes)` |
 | Get the chain id in force at a block height (varies across forks — see [Chain Forks](chain.md#chain-forks)) | `.block.chainId(blockNumber?)` |
 
 `blocksByStep` returns a whole step-aligned batch as a single index/summary
@@ -215,22 +215,21 @@ const currentBlock = Number(await viewer.block.currentBlockNumber())
 - `network.xyo.time`
 - Other system payloads listed in `AllowedBlockPayloadSchemas`
 
-They **do not fetch the off-chain application payloads referenced by each `TransactionBoundWitness.payload_hashes[]`**, even when the gateway has a datalake configured (browser in-page provider or Node `GatewayBuilder().dataLakeEndpoint(...)`). This is structural: the SDK's `addDataLakePayloads` step is bound-witness-local — it inspects only the immediate bound witness's `payload_hashes`, never recursing into nested `TransactionBoundWitness` instances. Both the block and transaction viewers share the same `dataLakeViewer`; the asymmetry is purely *which* bound witness's hashes get inspected.
+They **do not include the off-chain application payloads referenced by each `TransactionBoundWitness.payload_hashes[]`** — and no `connection.viewer` read fetches those from a datalake, even when the gateway was built with one (browser in-page provider or Node `GatewayBuilder().dataLakeEndpoint(...)`). That endpoint backs `connection.storage` and the runner's pre-broadcast write; viewer reads never consult it. Every viewer read returns what the gateway's own payload store holds — the node's finalized archivist over RPC, or the bucket's `payload/<hash>.json` files over REST. A produced block carries only its transaction bound witnesses and on-chain payloads, so that is all the store is guaranteed to hold; off-chain (Path-A) bodies appear there only if the operator also publishes datalake content into it. Do not rely on that.
 
-| Entrypoint | What gets hydrated from the datalake |
+| Entrypoint | What it returns |
 |---|---|
-| `viewer.transaction.byHash(txHash)` | The wrapping `TransactionBoundWitness` **plus** the off-chain payloads it references — full hydration |
-| `viewer.block.blockByNumber(n)` (and the other block.* readers) | The block's on-chain payloads only — off-chain payloads referenced inside nested `TransactionBoundWitness` instances are **absent** |
-| `viewer.block.payloadsByHash(hashes)` | Off-chain payloads fetched by hash from the datalake — the explicit second step |
+| `viewer.block.blockByNumber(n)` (and the other block.* readers) | The block's on-chain payloads — the nested `TransactionBoundWitness` instances, **not** the off-chain payloads they reference |
+| `viewer.transaction.byHash(txHash)` | The `TransactionBoundWitness` plus whichever of its `payload_hashes` the gateway's store holds — the on-chain ones; unresolved hashes are silently omitted |
+| `viewer.block.payloadsByHash(hashes)` | Payloads from the same gateway store; unresolved hashes are silently omitted |
+| `createRestDataLakeViewer(endpoint).get(hashes)` | Off-chain bodies from **your** datalake, by hash — the explicit second step |
 
-**The two-step pattern.** When you walk blocks and need the off-chain content of a transaction in that block, do not assume `block[1]` already contains it. Pick one:
+**The two-step pattern.** When you walk blocks and need the off-chain content of a transaction in that block, do not assume `block[1]` (or `transaction.byHash`) contains it:
 
-1. For each `TransactionBoundWitness` in `block[1]`, call `viewer.transaction.byHash(txBw._hash)` — returns the tx with its off-chain payloads hydrated.
-2. Collect the payload hashes you care about from each `TransactionBoundWitness.payload_hashes[]` (filtering by the parallel `payload_schemas[]` is usually how you decide which ones to keep), then call `viewer.block.payloadsByHash(hashes)` to fetch them in one batch.
+1. Walk blocks via `viewer.block.*` and collect the payload hashes you care about from each `TransactionBoundWitness.payload_hashes[]` (filtering by the parallel `payload_schemas[]` is usually how you decide which ones to keep).
+2. Fetch them in one batch with `createRestDataLakeViewer(endpoint).get(hashes)` against the datalake the content was written to (see [Accessing the Datalake](#accessing-the-datalake)).
 
-Pattern 2 is the canonical shape for indexer block walks because it issues one combined datalake fetch per block instead of one per transaction. See [Chain Data Indexing — Step 3](../xl1-patterns/chain-data-indexing-protocol.md#step-3-query-by-schema) for the full block-walk recipe.
-
-**Tripwire.** A test in the SDK pins this shallow behavior. The intended end-state is deep hydration at the block level — a consistent return-value contract regardless of which entrypoint a caller used. When that lands, the test flips and these docs can be simplified back to "either entrypoint hydrates everything." Until then, teach the two-step pattern.
+This is the canonical shape for indexer block walks — one combined datalake fetch per block instead of one per transaction. See [Chain Data Indexing — Step 3](../xl1-patterns/chain-data-indexing-protocol.md#step-3-query-by-schema) for the full block-walk recipe.
 
 ### Transaction Queries — `connection.viewer.transaction`
 
@@ -242,7 +241,8 @@ Pattern 2 is the canonical shape for indexer block walks because it issues one c
 ```ts
 const tx = await gateway?.connection.viewer?.transaction.byHash(txHash)
 // tx: SignedHydratedTransactionWithHashMeta | null
-// tx[0] = TransactionBoundWitness, tx[1] = resolved payloads (including off-chain)
+// tx[0] = TransactionBoundWitness, tx[1] = payloads the gateway's store resolved
+// (on-chain only — fetch off-chain bodies from your datalake by tx[0].payload_hashes)
 ```
 
 ### Account Balances — `connection.viewer.account.balance`
@@ -294,8 +294,10 @@ stream.on('gap', ({ before, resumedAt, skipped }) => {
 stream.on('desynced', () => { /* terminal: previous-hash continuity failed */ })
 stream.on('stopped', () => { /* terminal: clean stop */ })
 
-// Durable indexers: cold replay from a checkpoint hash, then follow head
-// for await (const block of stream.blocks({ after: checkpointHash })) { … }
+// Durable indexers: cold replay from a checkpoint hash, then follow head.
+// Each item is a { block, head } event. Omitting `after` starts at the current
+// finalized head (yielded first) — no history replay.
+// for await (const { block } of stream.blocks({ after: checkpointHash })) { … }
 
 await stream.stop()
 ```
@@ -310,20 +312,28 @@ await stream.stop()
 
 Also available: `buildFinalizedBlockStream({ blocks, finalization }, options?)` and provider `SimpleFinalizedBlockStream`. See [Chain Data Indexing — Service](../xl1-patterns/chain-data-indexing-service.md#finalized-block-stream) for indexer wiring.
 
-### Chain Contract — `connection.viewer.chainContractViewer`
+### Chain ID — `connection.viewer.chainId` / `.block.chainId`
 
 XL1 chains fork, so chain id is a function of block height — see [Chain Forks](chain.md#chain-forks).
 
 | When you need to... | Use |
 |---------------------|-----|
-| Current (tip) chain id | `.chainContractViewer.chainId()` |
-| Chain id authoritative at a height (walks the fork lineage) | `.chainContractViewer.chainIdAtBlockNumber(n \| 'latest')` |
-| Where this chain forked from its parent | `.chainContractViewer.forkedAtBlockNumber()` / `.forkedAtHash()` |
-| The parent chain's id / contract viewer | `.chainContractViewer.forkedChainId()` / `.forkedChainContractViewer()` |
+| Current (tip) chain id | `.chainId()` or `.block.chainId()` (`'latest'` is the default) |
+| Chain id in force at a height | `.chainId(n)` / `.block.chainId(n)` — reads block `n`'s own `chain` field |
+| Chain id of the finalized head | `.finalization.chainId()` |
 
-`viewer.block.chainId(n)` is an equivalent height lookup that reads the block's
-own `chain` field directly; both return the id in force at block `n`. Prefer
-`chainIdAtBlockNumber` for the semantic, lineage-aware call.
+All resolve to a `ChainId`. Every block records the `chain` in force at its
+height, so the height lookup is authoritative across forks without walking any
+lineage.
+
+The fork-lineage reads — `chainIdAtBlockNumber`, `forkedAtBlockNumber()` /
+`forkedAtHash()`, `forkedChainId()`, `forkedChainContractViewer()` — belong to
+`ChainContractViewer`, which is **not** on the typed `connection.viewer`. It is
+reachable only through a provider locator
+(`locator.getInstance<ChainContractViewer>(ChainContractViewerMoniker)`) in
+node/server-side provider code. `viewer.forkHistory()` is declared on
+`XyoViewer`, but the node's `SimpleXyoViewer` throws "not implemented" — do not
+depend on it.
 
 ### Mempool — `connection.viewer.mempool`
 
@@ -440,7 +450,9 @@ const viewer = await createRestDataLakeViewer('https://api.archivist.xyo.network
 const results = await viewer.get(hashes)
 ```
 
-For the typical read flow you do not need to construct a viewer at all — `gateway.connection.viewer.transaction.byHash(...)` hydrates a transaction's off-chain payloads through `ViewerWithDataLake`, and `gateway.connection.viewer.block.payloadsByHash(...)` fetches off-chain payloads by hash through the same path. Block reads (`block.blockByNumber` and friends) return on-chain payloads only — pair them with `payloadsByHash` when walking blocks for application content. See [What `block.blockByNumber` returns](#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) above for the full hydration semantics. Construct a `RestDataLakeViewer` only when you have hashes from outside the gateway path.
+**Reads:** gateway reads never hydrate from a datalake. `gateway.connection.viewer.transaction.byHash(...)`, `block.payloadsByHash(...)`, and block reads return only what the gateway's own payload store holds — the on-chain payloads. Off-chain (Path-A) bodies are fetched from your datalake by hash: take the hashes from the chain (`TransactionBoundWitness.payload_hashes[]`) and call `viewer.get(hashes)` on a `createRestDataLakeViewer(endpoint)` instance. See [What `block.blockByNumber` returns](#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) above for the full read semantics.
+
+**Writes:** a write-capable gateway built with a datalake endpoint (a Node `GatewayBuilder` with `.dataLakeEndpoint(url)` before `.buildRunner()`, or a browser system launched with `dataLakeEndpoint`) registers a `RestDataLakeRunner`, and `addPayloadsToChain` / `addTransactionToChain` write the transaction's full content — including every `offChain` payload — to that datalake before broadcasting. An explicit `runner.insert(...)` is needed only when the gateway has no datalake runner (e.g. a wallet gateway, which writes only to the wallet's own configured datalake, if any) or when the content must also land in a different datalake.
 
 The wallet and dApp are independent datalake clients — they may point to different endpoints, or either may have no datalake at all. For the full breakdown (factory internals, two-client semantics, endpoint independence), see [Datalakes](datalakes.md).
 
@@ -542,7 +554,11 @@ nothing fails startup with `UnknownProviderError`. From the
 `@xyo-network/xl1-sdk` release after 5.7.1 its message lists the ids that do
 satisfy the moniker. A CLI built on 5.7.1 or earlier takes ids from bundled
 class names, which the bundler can rename (`SimpleChainContractViewer$1`), so
-drop the pin there instead of chasing the renamed id.
+drop the pin there instead of chasing the renamed id. On `@xyo-network/xl1-cli`
+5.6.x the pin matches again and is **required** for a dev chain that publishes
+chain state to S3: without an `evm-rpc`-backed `ChainContractViewer`, startup
+refuses to plan `S3ChainStatePublishRunner` unless the binding explicitly pins
+`SimpleChainContractViewer` with no connection.
 
 ---
 
@@ -550,10 +566,10 @@ drop the pin there instead of chasing the renamed id.
 
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
-| Calling XL1 RPC methods by name (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, etc. — whether via `fetch` to `/rpc` or a hand-rolled JSON-RPC client) | Loses type safety, off-chain payload hydration, provenance, validators, and transport abstraction. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
+| Calling XL1 RPC methods by name (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, etc. — whether via `fetch` to `/rpc` or a hand-rolled JSON-RPC client) | Loses type safety, params/result validation, provenance, validators, and transport abstraction. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
 | Calling Ethereum RPC methods (`eth_getBalance`, `eth_blockNumber`, `eth_call`, `eth_sendTransaction`, `personal_sign`, etc.) against the XL1 gateway | XL1 is not an EVM chain — these methods do not exist on the gateway. Address compatibility (shared BIP44 path) is the *only* thing XL1 borrows from Ethereum. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use the XL1 viewer/runner equivalents — `connection.viewer.account.balance`, `connection.viewer.block.*`, `gateway.send`, etc. |
 | Using Ethereum SDKs (`ethers`, `viem`, `web3.js`, `@ethersproject/*`, EIP-1193 providers) to talk to XL1 | These speak the Ethereum JSON-RPC protocol — XL1 does not. They will never work | Use `@xyo-network/xl1-sdk` (`GatewayBuilder` in Node, `useProvidedGateway` in browser) |
 | `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use `createRestDataLakeRunner` / `createRestDataLakeViewer` |
-| `gateway.connection.storage.insert(...)` | `connection.storage` is read-only (`DataLakeViewer`) and may not point to the dApp's desired endpoint | Use `createRestDataLakeRunner` |
+| `gateway.connection.storage.insert(...)` | `connection.storage` is typed `DataLakeRunner \| DataLakeViewer` — a viewer with no `insert` on read-only gateways or when no datalake runner was configured — and may not point to the dApp's desired endpoint | Use `createRestDataLakeRunner`, or a datalake-configured runner gateway, which writes transaction content itself |
 | Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |
 | `datalakeViewer.next(...)` to browse or scan a remote XL1 datalake | XL1 datalakes have no cursor pagination — `.next()` is an unbounded scan with no chain context | Iterate the chain via `viewer.block.*`, then read the datalake by hash. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) and [Datalakes — How to read](datalakes.md) |

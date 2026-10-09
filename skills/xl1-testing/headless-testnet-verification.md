@@ -120,6 +120,7 @@ A headless verification script is a deterministic happy-path replay of one user 
 
 ```ts
 import type { BrandedHash } from '@ariestools/sdk'
+import { createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
 
 // 1. Pre-flight: confirm both accounts have balance
 const balance1 = await runner1.connection.viewer?.account.balance.accountBalance(player1Account.address)
@@ -133,9 +134,14 @@ const [txHash] = await submitMove(runner1, { game: 'rps', choice: 'rock', salt }
 //    pass explicit options when the network's block cadence is slower than local devnet.
 const confirmed = await runner1.confirmSubmittedTransaction(txHash, { attempts: 30, delay: 10_000 })
 
-// 4. Read back through the viewer to verify shape
+// 4. Read back: the viewer returns the transaction, but tx[1] holds only on-chain
+//    payloads. The off-chain bodies are in the datalake the runner wrote them to
+//    before broadcast (its .dataLakeEndpoint) — read them from there to verify shape.
 const tx = await runner1.connection.viewer?.transaction.byHash(txHash)
 if (!tx) throw new Error('transaction not found after confirmation')
+const datalakeViewer = await createRestDataLakeViewer(NetworkDataLakeUrls[id])
+const moves = (await datalakeViewer.get(tx[0].payload_hashes)).filter(isMovePayload)
+if (moves.length === 0) throw new Error('move payload not found in the datalake')
 
 // 5. If the flow is multi-party, drive the counterparty through runner2 and assert outcome
 ```
@@ -148,9 +154,9 @@ if (!tx) throw new Error('transaction not found after confirmation')
 
 ## Verifying Derived State Through the Service
 
-The script in the previous section proves the chain accepted the transaction and that `connection.viewer` can read it back. That is the **chain edge** of the dApp. If the UI reads from a service (indexer REST API, GraphQL endpoint, WebSocket subscription) rather than calling `connection.viewer` directly, the chain edge is *not* the user-facing surface. The verification script must round-trip through the service too, or the path the user actually exercises remains untested.
+The script in the previous section proves the chain accepted the transaction and that it reads back — the transaction through `connection.viewer`, its off-chain bodies from the datalake. That is the **chain edge** of the dApp. If the UI reads from a service (indexer REST API, GraphQL endpoint, WebSocket subscription) rather than calling `connection.viewer` directly, the chain edge is *not* the user-facing surface. The verification script must round-trip through the service too, or the path the user actually exercises remains untested.
 
-**The escape hatch this section forbids.** When the indexer's API returns empty for state you know is on chain, **do not** reach for `viewer.block.payloadsByHash([appPayloadHash])` to confirm "the data is really there" and call verification done. That synthesizes the indexer's output from chain primitives the indexer also has access to — it proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI takes. Bypassing it via direct hash lookups defeats the purpose.
+**The escape hatch this section forbids.** When the indexer's API returns empty for state you know is on chain, **do not** reach for a direct hash lookup — `datalakeViewer.get([appPayloadHash])`, or `viewer.block.payloadsByHash`, which only returns on-chain payloads anyway — to confirm "the data is really there" and call verification done. That synthesizes the indexer's output from chain primitives the indexer also has access to — it proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI takes. Bypassing it via direct hash lookups defeats the purpose.
 
 ### The two-gate poll
 
@@ -214,15 +220,15 @@ If addresses do not line up, the script bypassed the canonical helpers — the f
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
 | Re-implementing transaction logic inside the verification script | Verifies the script, not the dApp — false confidence | Import the dApp's domain functions; pass the runner in |
-| `Account.create({ mnemonic })` for the headless signer | Produces an address that won't match MetaMask / XYO extension on the same seed | Use `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` |
+| `Account.create({ mnemonic })` (or `HDWallet.fromPhrase`) for the headless signer | Account 0 matches MetaMask (both default to `m/44'/60'/0'/0/0`), but the wallet is rooted at that leaf — further derivation goes deeper (`m/44'/60'/0'/0/0/1`), not sideways, so it cannot produce the counterparty accounts MetaMask / the XYO extension show as accounts 2, 3, … | Use `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` |
 | Passing `DEFAULT_WALLET_PATH` (or any full BIP44 path string) to `derivePath()` | `generateXyoBaseWalletFromPhrase` already roots the wallet at that path; passing it again double-derives | Pass a bare account index string: `'0'`, `'1'`, `'2'`, … |
 | Calling `.build()` and expecting to submit transactions | `build()` takes no arguments and returns a read-only `XyoGateway` — no `send` / `addPayloadsToChain` on it | Set a signing origin and call `.buildRunner()` |
 | Wrapping the account with `buildSimpleXyoSigner` before building a runner | Unnecessary since 5.0 — the builder takes the `AccountInstance` itself; the wrap is a leftover from the removed `build(signer)` API | Pass the account straight to `.account(account)` |
 | Generating a fresh random wallet at script start | Identity changes every run; impossible to fund or reproduce | Load seed from `.env` and derive deterministically |
 | Logging or committing the seed phrase | Catastrophic if the repo or CI logs are exposed | Treat the seed like any other secret; load via `dotenv/config`; never `console.log` |
 | Building one runner and pretending it represents both parties | Multi-party flows (commit-reveal, atomic exchange) need distinct signing identities to be meaningful | Derive each party from a different index; build a runner per account |
-| Skipping the read-back step after submission | Confirms the chain accepted the tx, not that the data is queryable as the UI expects | Always round-trip via `connection.viewer` to assert the shape the UI will read |
-| Reporting "verified" when only `connection.viewer` was exercised but the UI reads from a service | The chain edge passes; the user-facing flow is untested. Indexer bugs that drop or mis-derive payloads slip through | Round-trip through the service surface the UI uses — see [Verifying Derived State Through the Service](#verifying-derived-state-through-the-service). Do not skip the indexer step just because `viewer.transaction.byHash` returns the data |
+| Skipping the read-back step after submission | Confirms the chain accepted the tx, not that the data is queryable as the UI expects | Always round-trip — `connection.viewer` for the transaction, the datalake for its off-chain bodies — to assert the shape the UI will read |
+| Reporting "verified" when only `connection.viewer` was exercised but the UI reads from a service | The chain edge passes; the user-facing flow is untested. Indexer bugs that drop or mis-derive payloads slip through | Round-trip through the service surface the UI uses — see [Verifying Derived State Through the Service](#verifying-derived-state-through-the-service). Do not skip the indexer step just because `viewer.transaction.byHash` and a datalake fetch return the data |
 | Confirming "the indexer just hasn't caught up" by reaching into the chain to fetch the payload manually | Synthesizes derived state from primitives the indexer also has access to — proves the agent can do the indexer's job, not that the indexer is doing it. "Sequence is slow" becomes a free pass | Wait for the two-gate poll (`finalization.headNumber()` AND `indexer.lastIndexedBlock` both past the tx block), then assert the service surface. If both gates pass and the service is empty, fail loudly — that is an indexer bug |
 | Pointing the script at `mainnet` for routine verification | Real funds, real chain pressure | Default to `sequence` in `.env`; require an explicit override for mainnet runs |
 | Calling `confirmSubmittedTransaction(txHash)` with no options on Sequence | Defaults are `attempts: 20`, `delay: 1_000` — a 20-second total budget. Sequence finalization regularly takes minutes, so the call rejects before the block lands | Pass `{ attempts: 30, delay: 10_000 }` (the verified-working baseline) or tune for your network's cadence |

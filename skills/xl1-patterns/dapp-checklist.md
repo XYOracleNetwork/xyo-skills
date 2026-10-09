@@ -32,11 +32,11 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 
 ## Datalake
 
-- [ ] Datalake clients are standalone `RestDataLakeRunner` / `RestDataLakeViewer` — not accessed via `gateway.datalake` (doesn't exist) or `gateway.connection.storage` (read-only, may point elsewhere)
+- [ ] Datalake clients are standalone `RestDataLakeRunner` / `RestDataLakeViewer` — not accessed via `gateway.datalake` (doesn't exist) or `gateway.connection.storage` (a `DataLakeViewer` or `DataLakeRunner` depending on how the gateway was built, and it may point elsewhere)
 - [ ] Datalake clients are constructed with the `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` factories from `@xyo-network/xl1-sdk` — not by calling `.create({ context, endpoint })` directly
 - [ ] Off-chain payloads are inserted into the dApp's datalake **before** submitting the transaction — the wallet does not do this automatically
 - [ ] The dApp does not assume the wallet's datalake covers its persistence needs — wallet and dApp are independent datalake clients
-- [ ] Block-walk indexers do not assume `viewer.block.blockByNumber(n)` hydrates off-chain payloads — they scan each `TransactionBoundWitness` for matching `payload_schemas[]`, gather the parallel `payload_hashes[]`, and fetch via `viewer.block.payloadsByHash(hashes)`. (Block reads are on-chain only; only `viewer.transaction.byHash` hydrates off-chain payloads in one shot.)
+- [ ] Off-chain payloads are read back from the dApp's datalake, never assumed hydrated by the gateway — block-walk indexers scan each `TransactionBoundWitness` for matching `payload_schemas[]`, gather the parallel `payload_hashes[]`, and fetch the bodies with `createRestDataLakeViewer(endpoint).get(hashes)` on the endpoint the submit path writes to. (No `connection.viewer` read — block reads, `transaction.byHash`, `block.payloadsByHash` — returns off-chain bodies; they return only the gateway store's on-chain payloads.)
 
 **Source:** [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake), [Datalakes](../xl1-knowledge/datalakes.md)
 
@@ -104,10 +104,11 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] `InPageGatewaysProvider` sets `transport="rest"` — not left to the `'rpc'` default
 - [ ] Only one browser system per network — a React app does not launch `launchXl1BrowserGatewaySystem` alongside `InPageGatewaysProvider`
 - [ ] App strictly requires wallet? Uses `WalletGatewayProvider`
-- [ ] Read-only components (history, leaderboards, explorers) are placed outside the wallet connection gate — they work with just the in-page gateway
+- [ ] Read-only components (history, leaderboards, explorers) are placed outside the wallet connection gate — they need no wallet
+- [ ] **Multi-user derived views (game history, leaderboards, market listings) read the companion service's index** via relative `fetch('/api/…')` — not a browser chain walk. The in-page gateway serves only bounded lookups — a transaction by hash, a block by number, the finalized head — with off-chain payloads fetched from the dApp's datalake by hash. Any browser-side block walk that remains (a `blockByNumber` / `blocksByNumber` loop in the app package) is labelled prototype-only and bounded below at `VITE_INDEXER_FLOOR_BLOCK`
 - [ ] Wallet-gated components (submit move, create game) check write capability before rendering action controls
 
-**Source:** [In-Page Data Lakes](in-page-datalakes.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
+**Source:** [In-Page Data Lakes](in-page-datalakes.md), [Chain Data Indexing — Client](chain-data-indexing-client.md), [Browser ↔ Service Wiring](browser-service-wiring.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
 ---
 
@@ -132,8 +133,8 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Domain functions accept a runner/gateway as a parameter so the same code runs in both browser and Node contexts
 - [ ] The signing account is derived via `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` and passed to `.account(account)` — addresses match what MetaMask / XYO extension show on the same seed
 - [ ] Multi-party flows derive distinct signers (`derivePath('0')`, `derivePath('1')`, …) and build one runner per signer
-- [ ] The script reads back through `connection.viewer` after submission — confirming the chain accepted the tx and the data shape is correct. This proves the **chain edge**; if the UI also reads from a service surface, see the next two items
-- [ ] If the dApp exposes derived state through a service (REST API, GraphQL, WebSocket — anything the UI calls that is not directly `connection.viewer`), the verification script also reads back through that service surface. **Do not synthesize derived state via direct `viewer.block.payloadsByHash` lookups in the verify script** — that proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI exercises
+- [ ] The script reads back through `connection.viewer` after submission, and fetches the off-chain bodies from the dApp's datalake by the tx's `payload_hashes` — confirming the chain accepted the tx and the data shape is correct. This proves the **chain edge**; if the UI also reads from a service surface, see the next two items
+- [ ] If the dApp exposes derived state through a service (REST API, GraphQL, WebSocket — anything the UI calls that is not directly `connection.viewer`), the verification script also reads back through that service surface. **Do not synthesize derived state via direct hash lookups (datalake `get(hashes)`, `viewer.block.payloadsByHash`) in the verify script** — that proves the agent can do the indexer's job, not that the indexer is doing it. The whole point of the service round-trip is to exercise the path the UI exercises
 - [ ] Before declaring "the service is just behind, not buggy," the script asserts BOTH `viewer.finalization.headNumber() ≥ blockContaining(txHash)` AND `indexer.lastIndexedBlock ≥ blockContaining(txHash)` (read from the indexer's progress endpoint — see [Chain Data Indexing — Service § Progress Endpoint](chain-data-indexing-service.md#progress-endpoint)). If both watermarks are past the tx block and the service still returns empty, that is a bug. "Sequence is slow" is not a valid explanation when both watermarks have advanced
 - [ ] `confirmSubmittedTransaction` calls pass explicit options for non-local networks (e.g., `{ attempts: 30, delay: 10_000 }` for Sequence) — defaults time out before finalization
 - [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
@@ -187,6 +188,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] No client-side processing buffer is added to deadline checks (matches `TransactionDurationValidator` semantics)
 - [ ] Salts are persisted locally (e.g., `StorageArchivist` with `type: 'local'`) for retrieval during the reveal phase
 - [ ] New application commit-reveal verification uses `PayloadBuilder.hash` over the agreed exact preimage; deployed commitment algorithms change only under an explicit migration
+- [ ] The commitment preimage binds the committer (the commit transaction's `from`) and the session topic; verification requires reveal-transaction `from` === commit-transaction `from` and recomputes with that address — no `from`/`committer` field in commit or reveal payloads, and indexers key commits/reveals by `(topic, signer)`, not by payload hash alone
 - [ ] Commits `$sources` to the market/session terms; reveals `$sources` to their commit — building a traversable audit DAG
 
 **Source:** [Commit-Reveal Primitive](commit-reveal.md)
@@ -200,7 +202,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Winners/recipients are *derived* from the settlement BW + verified reveals — not stored inline on the outcome payload
 - [ ] Any cached results view (e.g., `MarketResultsViewPayload`) is clearly marked non-authoritative; `$sources` to the settlement payload it derives from
 - [ ] Settlement gate re-runs the entry gate before signing — never trusts caller-supplied verified state
-- [ ] Settlement gate re-verifies every reveal against its committed exact preimage (`PayloadBuilder.hash` for new application contracts) before bundling it into the settlement BW
+- [ ] Settlement gate re-verifies every reveal against its committed exact preimage (`PayloadBuilder.hash` for new application contracts) before bundling it into the settlement BW — against its signer's own commit (reveal-tx `from` === commit-tx `from`)
 
 **Source:** [Commit-Reveal Prediction Markets — Validation Gates](commit-reveal-prediction-markets.md#validation-gates), [Atomic Exchange — Validation Gates](atomic-exchange.md#validation-gates)
 
@@ -209,8 +211,9 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 ## Multi-Party Co-Signing (if applicable)
 
 - [ ] Joint commitments use a single multi-signer BoundWitness (`.signers([a, b, ...])`) — not parallel single-signer BWs that a verifier would have to correlate
-- [ ] "All parties must agree" checks use `addressesContainsAll(bw, parties)` from `@xyo-network/sdk`
-- [ ] "Any authorized authority may sign" checks use `addressesContainsAny(bw, authorities)`
+- [ ] Every multi-signer BW is signature-checked with `BoundWitnessValidator` (`(await new BoundWitnessValidator(bw).validate()).length === 0`) before any membership check — `addressesContainsAll` / `addressesContainsAny` test membership in `addresses` only, not signatures
+- [ ] "All parties must agree" checks use `addressesContainsAll(bw, parties)` from `@xyo-network/sdk`, on a validated BW
+- [ ] "Any authorized authority may sign" checks use `addressesContainsAny(bw, authorities)` on a validated BW, with a non-empty `authorities` list (an empty list returns `true`)
 - [ ] Multi-sig parties (a party with several addresses) require *all* of that party's addresses to co-sign their secret reveal — not any one of them
 
 **Source:** [Protocol Primitives — Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses), [Atomic Exchange](atomic-exchange.md)

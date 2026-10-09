@@ -50,12 +50,20 @@ import type { Payload, Schema } from '@xyo-network/sdk'
 function useChainData(schemas: Schema[], intervalMs = 5000) {
   const { defaultGateway } = useProvidedGateway()
   const [data, setData] = useState<Payload[]>([])
-  const lastBlockRef = useRef(0)
+  const lastBlockRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     if (!defaultGateway) return
 
     const poll = async () => {
+      if (lastBlockRef.current === undefined) {
+        // A new-arrivals feed starts at the current head — seeding with 0
+        // would make the first poll walk the whole chain from genesis
+        const viewer = defaultGateway.connection.viewer
+        if (!viewer) return
+        lastBlockRef.current = Number(await viewer.block.currentBlockNumber())
+        return
+      }
       const { payloads, latestBlock } = await pollForNewData(
         defaultGateway,
         lastBlockRef.current,
@@ -95,10 +103,20 @@ The right shape: walk **backward** from `currentBlockNumber()`, accumulate match
 For a bounded dApp (one querying its own self-authored schemas — see [Floor Block](chain-data-indexing-protocol.md#floor-block)), the walk also bounds at the floor. Without it, a UI for a connected wallet that has zero matching payloads runs an unbounded scan toward genesis — slow, RPC-quota-burning, and at risk of rendering pre-deployment matches that cannot be this dApp's data. The same `INDEXER_FLOOR_BLOCK` the service indexer reads from `.env` is exposed to the browser via Vite as `VITE_INDEXER_FLOOR_BLOCK`.
 
 ```ts
-import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
+import type { Hash } from '@ariestools/sdk'
 import type { Payload, Schema } from '@xyo-network/sdk'
+import { isAnyPayload } from '@xyo-network/sdk'
+import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
+import {
+  asXL1BlockNumber, createRestDataLakeViewer, isTransactionBoundWitness, MainNetwork, NetworkDataLakeUrls,
+} from '@xyo-network/xl1-sdk'
 
 const FLOOR_BLOCK = Number(import.meta.env.VITE_INDEXER_FLOOR_BLOCK ?? 0)
+
+// Off-chain bodies come from the dApp's own datalake — the endpoint its submit
+// path writes to (see In-Page Data Lakes § Datalake Client Setup)
+const DATALAKE_ENDPOINT = import.meta.env.VITE_DATALAKE_ENDPOINT ?? NetworkDataLakeUrls[MainNetwork.id]
+const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
 
 async function fetchRecent(
   gateway: XyoGateway | XyoGatewayRunner,
@@ -115,20 +133,33 @@ async function fetchRecent(
   const results: Payload[] = []
 
   for (let n = head; n >= stopBlock && results.length < count; n--) {
-    const hydrated = await viewer.block.blockByNumber(n)
+    const hydrated = await viewer.block.blockByNumber(asXL1BlockNumber(n, true))
     if (!hydrated) continue
     const [, payloads] = hydrated
+
+    // Two-step: block payloads are on-chain only. Match `schemas` on each
+    // TransactionBoundWitness, then fetch the referenced payloads by hash
+    // from the datalake — no gateway read returns them.
+    const hashes: Hash[] = []
     for (const p of payloads) {
-      if (schemas.includes(p.schema as Schema)) results.push(p)
-      if (results.length >= count) break
+      if (!isTransactionBoundWitness(p)) continue
+      for (let i = 0; i < p.payload_hashes.length; i++) {
+        if (schemas.includes(p.payload_schemas[i])) hashes.push(p.payload_hashes[i])
+      }
     }
+    if (hashes.length === 0) continue
+
+    const fetched = (await datalakeViewer.get(hashes)).filter(isAnyPayload)
+    results.push(...fetched.slice(0, count - results.length))
   }
 
   return results
 }
 ```
 
-For an unbounded browser view (e.g., a recent-transfers feed), `VITE_INDEXER_FLOOR_BLOCK` is set to `0` and the floor safety net falls away — only the time-bound applies. The structural filter on accumulated matches is the dApp's Zod-factory guard — `payloads.filter(isMovePayload)` instead of a schema-string check — which validates shape and rejects most collisions on its own. See [Chain Data Indexing — Protocol § The honor question](chain-data-indexing-protocol.md#the-honor-question) for when authorship discriminators (signer scoping, sentinel filtering) layer on top.
+Filtering `blockByNumber(n)[1]` by `p.schema` finds nothing for Path-A application data: that array holds only the block's on-chain payloads, and the app payloads are referenced by hash from each `TransactionBoundWitness`, with their bodies in the datalake — see [Protocol § Via Block Walk](chain-data-indexing-protocol.md#via-block-walk--schema-discovery-from-the-chain).
+
+For an unbounded browser view (e.g., a recent-transfers feed), `VITE_INDEXER_FLOOR_BLOCK` is set to `0` and the floor safety net falls away — only the time-bound applies. The `payload_schemas[]` match only decides which hashes to fetch; the structural filter on the fetched payloads is the dApp's Zod-factory guard — `payloads.filter(isMovePayload)` instead of a schema-string check — which validates shape and rejects most collisions on its own. See [Chain Data Indexing — Protocol § The honor question](chain-data-indexing-protocol.md#the-honor-question) for when authorship discriminators (signer scoping, sentinel filtering) layer on top.
 
 ### React hook wrapper
 
@@ -173,12 +204,16 @@ For multi-user or durable-state views, neither hook is the answer — see [Chain
 
 ## Capability Detection in Components
 
-A component that *reads* indexed data only needs the read-capable gateway. A component that *submits* data needs the write-capable runner. See [Browser UX — Capability-Aware Components](browser-ux.md) for the full pattern.
+A component that *reads* indexed data needs no wallet: public, multi-user views fetch the service indexer's API, and bounded chain reads need only the read-capable gateway. A component that *submits* data needs the write-capable runner. See [Browser UX — Capability-Aware Components](browser-ux.md) for the full pattern.
 
 ```tsx
 function GameHistory() {
-  const moves = useChainData([MoveSchema, ResultSchema])
-  return <List items={moves} />  // works for any visitor, no wallet needed
+  // Public history is a multi-user view — read the service indexer, not useChainData
+  const [games, setGames] = useState<GameSummary[]>([])
+  useEffect(() => {
+    void fetch('/api/games').then(res => res.json() as Promise<GameSummary[]>).then(setGames)
+  }, [])
+  return <List items={games} />  // works for any visitor, no wallet needed
 }
 
 function SubmitMoveButton({ payloads }: { payloads: Payload[] }) {
@@ -189,7 +224,7 @@ function SubmitMoveButton({ payloads }: { payloads: Payload[] }) {
 }
 ```
 
-This split makes the read view available pre-wallet (in a hybrid `GatewayProvider` + `InPageGatewaysProvider transport="rest"` setup) and gates writes on the wallet.
+This split makes the read view available pre-wallet (the same-origin `/api/*` route needs no gateway — see [Browser ↔ Service Wiring](browser-service-wiring.md); bounded chain reads use the in-page gateway in a hybrid `GatewayProvider` + `InPageGatewaysProvider transport="rest"` setup) and gates writes on the wallet.
 
 ---
 

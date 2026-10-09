@@ -58,7 +58,7 @@ Blocks are tuples pairing the BoundWitness with its resolved payloads:
 type HydratedBlock = [BlockBoundWitness, Payload[]]
 ```
 
-9 type variants exist, combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta`.
+9 type variants exist, combining signing state (`Signed` / `Unsigned` / default) with metadata (`WithHashMeta` / `WithStorageMeta` / plain). The naming is predictable: `SignedHydratedBlockWithHashMeta`, etc. Gateway viewer methods typically return `SignedHydratedBlockWithHashMeta`. Hydration is shallow: a viewer fills `Payload[]` only from the gateway's own payload store — a block's transaction bound witnesses and on-chain payloads — never with the off-chain bodies those transactions reference, which come from a datalake by hash (see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
 
 ---
 
@@ -175,7 +175,7 @@ Consequently **`ChainId` is a function of block height.** Every
 `BlockBoundWitness` records the `chain` in force at its height, so the chain id
 at block `n` is the `chain` field of block `n`.
 
-The chain-contract viewer exposes the fork lineage:
+The chain-contract viewer (`ChainContractViewer`) exposes the fork lineage. It is **not** on the typed `connection.viewer` — dApp code gets the chain id at a height from `connection.viewer.chainId(n)` / `.block.chainId(n)`; the lineage methods below are reachable only through a provider locator in node/server-side code (see [Gateway — Chain ID](gateway.md#chain-id--connectionviewerchainid--blockchainid)):
 - `chainId()` — the current (tip) chain id.
 - `chainIdAtBlockNumber(n | 'latest')` — the id authoritative at height `n`, walking the fork lineage. The canonical height→id lookup.
 - `forkedAtBlockNumber()` / `forkedAtHash()` — where this chain forked from its parent (null on the genesis chain).
@@ -186,4 +186,5 @@ Because a given height's id is fixed forever, any commitment bound to a
 finalized block height — an anchored transaction, a checkpoint, an application
 state hash — stays stable and independently verifiable across all future forks.
 When you stamp a height-bound artifact with a chain id, resolve it *at that
-height* (`chainIdAtBlockNumber(height)`), never with a bare "current chain id".
+height* (`connection.viewer.chainId(height)`, or `chainIdAtBlockNumber(height)`
+server-side), never with a bare "current chain id".

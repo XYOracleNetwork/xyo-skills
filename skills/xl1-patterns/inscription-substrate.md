@@ -8,7 +8,7 @@ This pattern is the substrate. Higher-layer protocols (fungible tokens, collecti
 - [Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md) — the foundational decomposition this pattern exploits
 - [Chain Data Indexing](chain-data-indexing-protocol.md) — schema-based payload submission and read models
 - [In-Page Data Lakes](in-page-datalakes.md) — read-only browse without a wallet
-- [Gateway](../xl1-knowledge/gateway.md) — `connection.viewer.finalization` for finalized state, `connection.viewer.block` for hydrated blocks
+- [Gateway](../xl1-knowledge/gateway.md) — `connection.viewer.finalization` for finalized state, `connection.viewer.block` for block reads (on-chain payloads only)
 - [Datalakes](../xl1-knowledge/datalakes.md) — off-chain payload storage referenced by on-chain hash
 
 ---
@@ -240,14 +240,22 @@ The `byOwner` side-index is maintained alongside `artifacts` during replay. It c
 
 A hydrated block is a tuple `[BlockBoundWitness, Payload[]]` where the payloads array contains the block's **on-chain** payloads only — system payloads and the `TransactionBoundWitness` instances that introduced application data. The off-chain inscription / transfer payloads referenced by each `TransactionBoundWitness.payload_hashes[]` are **not** in `payloads`, even with a datalake configured (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)).
 
-The `TransactionBoundWitness` is the structural carrier of authorship — its `from` field is the signer, its `payload_hashes[]` lists the wrapped payload hashes, and its parallel `payload_schemas[]` tells you what each one is *without* fetching it. The replay does a three-pass scan: build a hash→signer index from the transactions in the block, fetch the off-chain inscription/transfer payloads via `payloadsByHash`, then attribute the fetched payloads through the index.
+The `TransactionBoundWitness` is the structural carrier of authorship — its `from` field is the signer, its `payload_hashes[]` lists the wrapped payload hashes, and its parallel `payload_schemas[]` tells you what each one is *without* fetching it. The replay does a three-pass scan: build a hash→signer index from the transactions in the block, fetch the off-chain inscription/transfer bodies from the datalake with `datalakeViewer.get(...)` (no gateway read returns them), then attribute the fetched payloads through the index.
 
 ```ts
 import type { XyoGateway } from '@xyo-network/xl1-sdk'
-import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+import {
+  createRestDataLakeViewer, isTransactionBoundWitness, NetworkDataLakeUrls,
+} from '@xyo-network/xl1-sdk'
 import type { Address, Hash } from '@xyo-network/sdk'
+import { isAnyPayload, PayloadBuilder } from '@xyo-network/sdk'
 
 const SUBSTRATE_SCHEMAS = new Set<string>([InscriptionSchema, OrdinalTransferSchema])
+
+// Bodies are read from the datalake the inscribe/transfer path writes to
+// (datalakeRunner's endpoint): the dApp's configured endpoint, defaulting to the network's
+const DATALAKE_ENDPOINT = appConfig.dataLakeEndpoint ?? NetworkDataLakeUrls[networkId]
+const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
 
 async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
   const viewer = gateway.connection.viewer
@@ -279,16 +287,20 @@ async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
     }
 
     // Pass 2: fetch the off-chain payloads from the datalake by hash. This is
-    // the step that actually retrieves the inscription/transfer bodies — the
-    // block reader does not do it for you.
-    const offChain = offChainHashes.length > 0
-      ? await viewer.block.payloadsByHash(offChainHashes)
+    // the step that actually retrieves the inscription/transfer bodies — no
+    // gateway read (block reader or payloadsByHash) does it for you. The
+    // datalake is untrusted storage: addHashMeta recomputes `_hash` / `_dataHash`
+    // from each body, so pass 3 only attributes content that hashes to a hash
+    // a transaction in this block committed to.
+    const fetched = offChainHashes.length > 0
+      ? await datalakeViewer.get(offChainHashes)
       : []
+    const offChain = await PayloadBuilder.addHashMeta(fetched.filter(isAnyPayload))
 
     // Pass 3: process inscription/transfer payloads with structural authorship
     for (const p of offChain) {
       const signer = hashToSigner.get(p._hash)
-      if (!signer) continue // hash mismatch — defensive only
+      if (!signer) continue // body doesn't hash to a referenced hash — drop
 
       if (isInscription(p)) {
         registerArtifact(state, p, signer, n)
@@ -302,7 +314,7 @@ async function replayFinalizedBlocks(gateway: XyoGateway, state: IndexerState) {
 }
 ```
 
-The `hashToSigner` index covers every off-chain hash a transaction in this block referenced; the schema filter in pass 1 keeps the `payloadsByHash` call narrow to substrate-relevant payloads only.
+The `hashToSigner` index covers every off-chain hash a transaction in this block referenced; the schema filter in pass 1 keeps the datalake `get` call narrow to substrate-relevant payloads only.
 
 ### A note on `tx.from` vs `transfer.from`
 
@@ -379,16 +391,17 @@ Four browse paths, picked by what the UI needs and what infrastructure is availa
 
 ### All inscriptions of a given content type
 
-Walk the chain and use the two-step pattern: each block read returns the on-chain `TransactionBoundWitness` instances, you scan their `payload_schemas[]` for the inscription schema, then fetch the matching `payload_hashes[]` from the datalake via `payloadsByHash`. Inscription payload bodies live in the datalake — they are not in `block[1]` (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). For an explorer-style "all inscriptions ever" view, persist `lastSeenBlock` between sessions so each load only walks new blocks; for a recent-window view, walk from `head - WINDOW`.
+Walk the chain and use the two-step pattern: each block read returns the on-chain `TransactionBoundWitness` instances, you scan their `payload_schemas[]` for the inscription schema, then fetch the matching `payload_hashes[]` from the datalake with `datalakeViewer.get(...)`. Inscription payload bodies live in the datalake — they are not in `block[1]` (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). For an explorer-style "all inscriptions ever" view, persist `lastSeenBlock` between sessions so each load only walks new blocks; for a recent-window view, walk from `head - WINDOW`.
 
 ```ts
 import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
 
+// datalakeViewer — RestDataLakeViewer on the dApp's DATALAKE_ENDPOINT (see Replay loop)
 const viewer = defaultGateway.connection.viewer
 if (!viewer) throw new Error('Gateway has no viewer attached')
 
 const head = Number(await viewer.finalization.headNumber())
-const inscriptions: Payload[] = []
+const inscriptions: Inscription[] = []
 for (let n = lastSeenBlock + 1; n <= head; n++) {
   const hydrated = await viewer.block.blockByNumber(n)
   if (!hydrated) continue
@@ -405,7 +418,7 @@ for (let n = lastSeenBlock + 1; n <= head; n++) {
   }
   if (inscriptionHashes.length === 0) continue
 
-  const fetched = await viewer.block.payloadsByHash(inscriptionHashes)
+  const fetched = await datalakeViewer.get(inscriptionHashes)
   inscriptions.push(...fetched.filter(isInscription))
 }
 ```
@@ -418,25 +431,27 @@ Query the indexer (or its diviner equivalent). The indexer's `artifacts` map plu
 
 ### Free chain-native per-address browsing (sentinel transfers)
 
-If inscriptions were submitted with the dual-sentinel pattern from [Step 2](#step-2-inscribe), per-address browse is free without any indexer infrastructure. Query `accountBalanceHistory(userAddress)`, filter the returned transactions for ones whose `Transfer` has `ORDINAL_SENTINEL` as a recipient, then walk the transaction's `payload_hashes` to recover the inscription:
+If inscriptions were submitted with the dual-sentinel pattern from [Step 2](#step-2-inscribe), per-address browse is free without any indexer infrastructure. Query `accountBalanceHistory(userAddress)`, filter the returned transactions for ones whose `Transfer` has `ORDINAL_SENTINEL` as a recipient, then take the inscription hash from the transaction's `payload_hashes` and read the off-chain body from the datalake:
 
 ```ts
 const history = await defaultGateway.connection.viewer?.account.balance
   .accountBalanceHistory(userAddress)
 
-const myInscriptions = []
+const myInscriptions: Inscription[] = []
 for (const [, tx, transfer] of history ?? []) {
   if (!transfer.transfers[ORDINAL_SENTINEL]) continue
-  const payloads = await defaultGateway.connection.viewer?.block.payloadsByHash(tx.payload_hashes)
-  myInscriptions.push(...(payloads ?? []).filter(isInscription))
+  // The inscription is off-chain — fetch it from the datalake by the hash this tx lists
+  const hashes = tx.payload_hashes.filter((_, i) => tx.payload_schemas[i] === InscriptionSchema)
+  const payloads = await datalakeViewer.get(hashes)
+  myInscriptions.push(...payloads.filter(isInscription))
 }
 ```
 
-Anyone can run this against the chain — it's a chain-native query, no diviner trust required.
+Anyone can run this against the chain plus a datalake holding the bodies — the discovery is a chain-native query, no diviner trust required.
 
 ### Read-only without a wallet
 
-Wrap the dApp in `InPageGatewaysProvider transport="rest"` + `GatewayProvider` ([In-Page Data Lakes](in-page-datalakes.md)). The indexer reads chain state through `useProvidedGateway()`'s `defaultGateway`, which works without a wallet connection. Inscriptions, transfers, and ownership are all browsable for unauthenticated visitors.
+Wrap the dApp in `InPageGatewaysProvider transport="rest"` + `GatewayProvider` ([In-Page Data Lakes](in-page-datalakes.md)). The ownership ledger is a multi-user derived view, so the indexer runs in the companion [service](chain-data-indexing-service.md) and the browser reads it with a relative `fetch('/api/…')`, which needs no wallet. The in-page gateway (`useProvidedGateway()`'s `defaultGateway`) covers bounded chain lookups — a single transaction, a block — and the dApp's datalake viewer returns one inscription's body by hash, so inscriptions, transfers, and ownership are all browsable for unauthenticated visitors.
 
 ---
 
@@ -516,7 +531,7 @@ type CoWitnessedArtifactRecord = ArtifactRecord & {
 
 function registerCoWitnessedArtifact(
   state: IndexerState,
-  payload: WithHashMeta<BoundWitness>,  // from payloadsByHash — carries `_hash`
+  payload: WithHashMeta<BoundWitness>,  // from the datalake fetch — `_hash` recomputed by addHashMeta
   gasPayer: Address,
   blockHeight: XL1BlockNumber,
 ) {

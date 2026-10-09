@@ -41,7 +41,7 @@ Each network exposes its datalake as a standalone HTTP archivist endpoint, separ
 | **Sequence** (beta) | `https://beta.api.archivist.xyo.network/dataLake` |
 | **Local** | `http://localhost:8080/dataLake` — carried by `NetworkDataLakeUrls`, but a plain `xl1 start` does not serve this route; see [xl1-testing — local chain + Aries data store](../xl1-testing/local-chain-datalake.md) |
 
-**The datalake is not a direct property on the gateway JS object.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Do not use `defaultGateway.datalake` (which does not exist). Note: `gateway.connection.storage` exists as a read-only `DataLakeViewer` when the connection is configured with a datalake endpoint, but it is not the recommended path for dApp code — it is read-only, and it may not point to the endpoint the dApp intends to use. Always create standalone datalake clients. See [Gateway — Accessing the Datalake](gateway.md#accessing-the-datalake).
+**The datalake is not a direct property on the gateway JS object.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Do not use `defaultGateway.datalake` (which does not exist). Note: `gateway.connection.storage` exists when the connection is configured with a datalake endpoint — a `DataLakeRunner` on a write-capable gateway, a read-only `DataLakeViewer` otherwise — but it is not the recommended path for dApp code: what it can do depends on how the gateway was built, and it may not point to the endpoint the dApp intends to use. Always create standalone datalake clients. See [Gateway — Accessing the Datalake](gateway.md#accessing-the-datalake).
 
 ### Two Independent Datalake Clients
 
@@ -81,17 +81,20 @@ The factory functions wrap a default `BaseConfig` provider context and return th
 
 ### Off-chain payload storage
 
-The **dApp is responsible for persisting off-chain payloads to its own datalake.** The browser wallet's `addPayloadsToChain(onChain, offChain)` submits a transaction whose BoundWitness references off-chain payloads by hash — but the wallet only writes those payloads to whatever datalake the *wallet* is configured for (if any). The dApp cannot rely on the wallet's datalake being the same endpoint it reads from, or being configured at all.
+The chain stores only the hash of each off-chain payload, so **the payload body must land in a datalake the dApp reads from.** Who writes it depends on the gateway that submits:
 
-The correct flow for application data:
+- **A runner gateway built with a datalake endpoint** (a Node `GatewayBuilder` with `.dataLakeEndpoint(url)` before `.buildRunner()`, or a browser system launched with `dataLakeEndpoint`) registers a `RestDataLakeRunner`, and `addPayloadsToChain` / `addTransactionToChain` write the transaction's full content — the bound witness plus every `onChain` and `offChain` payload — to that datalake *before* broadcasting. No separate insert is needed when that is the datalake the dApp reads from.
+- **A runner with no dApp-side datalake** — e.g. the browser wallet gateway — writes nothing to the dApp's datalake. The wallet's `addPayloadsToChain(onChain, offChain)` writes those payloads only to whatever datalake the *wallet* is configured for (if any); the dApp cannot rely on that being the endpoint it reads from, or being configured at all.
+
+In the second case (or when the content must also land in a different datalake), the flow for application data is:
 
 1. **Build** the application payloads (game state, attestations, etc.)
 2. **Insert** them into the dApp's datalake via the runner's `.insert()` method — this is plain HTTP, no wallet needed. This ensures the dApp can read back its own data.
-3. **Submit** the transaction via `addPayloadsToChain` — this requires the browser wallet. The transaction's BoundWitness references the payloads by hash, linking on-chain proof to off-chain data.
+3. **Submit** the transaction via `addPayloadsToChain` — with the wallet gateway this triggers the wallet. The transaction's BoundWitness references the payloads by hash, linking on-chain proof to off-chain data.
 
 Custom payloads go in the `offChain` parameter because they are not `AllowedBlockPayload` system types. The chain stores the cryptographic reference (hash); the datalake stores the actual payload data.
 
-When querying *that specific transaction* later via `viewer.transaction.byHash`, the gateway's `ViewerWithDataLake` transparently resolves the off-chain payloads from the datalake — but only if someone (wallet or dApp) stored them in a datalake that the viewer is configured to read from. Block-level reads do not do this; see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow).
+Reading them back is always by hash from that datalake (`viewer.get(hashes)` on a `RestDataLakeViewer`). Gateway reads — `viewer.transaction.byHash`, `viewer.block.payloadsByHash`, block reads — return only what the gateway's own payload store holds, which is the on-chain payloads, not the off-chain bodies; see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow).
 
 ---
 
@@ -118,14 +121,14 @@ The XL1 datalake is a content-addressed blob store. The chain is the index. The 
 1. **Iterate the chain** (via `gateway.connection.viewer.block.*` and `viewer.finalization.headNumber()`) to discover what payload hashes exist and in what order. The `TransactionBoundWitness.payload_hashes` on each transaction tells you which off-chain payloads the transaction references.
 2. **Fetch payload bytes by hash** via `viewer.get(hashes)`.
 
-The two-step pattern in practice splits across two viewer methods:
+The two-step pattern in practice splits across the gateway and the datalake client:
 
-- **`viewer.block.blockByNumber(n)`** is the chain-iterate step — it returns the block's on-chain payloads (`BlockBoundWitness`, `TransactionBoundWitness` instances, `transfer`, `time`). It does **not** fetch the off-chain payloads referenced inside those nested transactions.
-- **`viewer.block.payloadsByHash(hashes)`** is the hash-fetch step — it goes through `ViewerWithDataLake` and returns the off-chain payloads from the datalake.
+- **`gateway.connection.viewer.block.blockByNumber(n)`** is the chain-iterate step — it returns the block's on-chain payloads (`BlockBoundWitness`, `TransactionBoundWitness` instances, `transfer`, `time`). It does **not** include the off-chain payloads referenced inside those nested transactions.
+- **`RestDataLakeViewer.get(hashes)`** (from `createRestDataLakeViewer(endpoint)`) is the hash-fetch step — it returns the off-chain payloads from the datalake they were written to.
 
-Walk the chain to discover what hashes exist (read each `TransactionBoundWitness.payload_hashes[]` and the parallel `payload_schemas[]` to filter), then call `payloadsByHash` to fetch them. See [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for why the asymmetry exists and the canonical block-walk shape. Reach for `RestDataLakeViewer.get()` directly only when you have hashes from outside the gateway path (e.g., a hash you stored client-side or received out-of-band).
+Walk the chain to discover what hashes exist (read each `TransactionBoundWitness.payload_hashes[]` and the parallel `payload_schemas[]` to filter), then fetch them from the datalake by hash. See [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the gateway read semantics and the canonical block-walk shape.
 
-`viewer.transaction.byHash(txHash)` is the exception: it *does* hydrate its own off-chain payloads, because those hashes live in the transaction's own `payload_hashes[]` (which is what `addDataLakePayloads` actually inspects). Use it when you already have a tx hash and want everything that transaction wrapped in one round-trip.
+`viewer.block.payloadsByHash(hashes)` and `viewer.transaction.byHash(txHash)` are not substitutes for the datalake fetch: both read the gateway's own payload store, which holds the on-chain payloads, not off-chain bodies. `transaction.byHash` returns the transaction bound witness plus whichever of its payloads that store holds; take its `payload_hashes[]` to the datalake for the rest.
 
 **Do not use `.next()` to browse a remote XL1 datalake.** The method exists on the standard `ArchivistFunctions` interface, but remote XL1 datalakes do not implement cursor pagination — `.next()` against a `RestDataLakeViewer` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee). It will appear to "work" on small datasets and silently scale poorly. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the chain-walk patterns that replace it.
 
@@ -147,27 +150,23 @@ interface DataLakeRunnerMethods {
 
 ## Configuration
 
-Datalakes support multiple backend configurations:
-
-### RestDataLakeConfig
-For connecting to a remote datalake over HTTP:
+A remote datalake is a **named `rest` connection** (`{ type: 'rest', baseUrl }`) plus `providerBindings` that point the `DataLakeViewer` / `DataLakeRunner` monikers at it. This is the shape `createRestDataLakeViewer` / `createRestDataLakeRunner` and `GatewayBuilder().dataLakeEndpoint(url)` build internally:
 
 ```ts
-interface RestDataLakeConfig {
-  uri: string                    // HTTP endpoint
-  // ... additional connection options
-}
+import { ConfigZod } from '@xyo-network/xl1-sdk'
+
+const config = ConfigZod.parse({
+  connections: {
+    'rest-data-lake': { type: 'rest', baseUrl: 'https://api.archivist.xyo.network/dataLake' },
+  },
+  providerBindings: {
+    DataLakeViewer: { connection: 'rest-data-lake' },
+    DataLakeRunner: { connection: 'rest-data-lake' }, // omit for read-only access
+  },
+})
 ```
 
-### RouterDataLakeConfig
-For routing requests to multiple backends based on rules:
-
-```ts
-interface RouterDataLakeConfig {
-  routes: DataLakeRouteConfig[]  // Routing rules
-  // Supports lazy circular references between configs
-}
-```
+The connection name is arbitrary. The pre-migration `RestDataLakeConfig` (`uri`), `RouterDataLakeConfig`, and `DataLakeRouteConfig` types no longer exist — there is no datalake router config.
 
 ---
 
@@ -197,6 +196,6 @@ are gone — every backing store, RPC endpoint, EVM RPC, and S3 bucket lives und
 
 ## Querying Datalake Data via Gateway
 
-For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data — and `viewer.block.payloadsByHash(hashes)` goes through `ViewerWithDataLake` to fetch off-chain payloads from the datalake, so once you have hashes from a chain walk you do not have to touch the datalake client directly. Chain-side block reads (`viewer.block.blockByNumber(n)` and friends) return on-chain payloads only — see [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full hydration semantics.
+For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) to discover hashes rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data, but they never read from a datalake — block reads, `viewer.transaction.byHash`, and `viewer.block.payloadsByHash` return only what the gateway's own payload store holds (the on-chain payloads). See [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full read semantics.
 
-When you do need to read the datalake directly, use `viewer.get(hashes)` with hashes you obtained from the chain. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the supported scan strategies.
+To read off-chain payloads, use the datalake viewer's `get(hashes)` with hashes you obtained from the chain. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the supported scan strategies.

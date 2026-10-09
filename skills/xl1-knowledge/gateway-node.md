@@ -85,7 +85,7 @@ The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendM
 |--------|---------|
 | `.rpcUrl(url)` | HTTP transport — point at a gateway RPC endpoint |
 | `.postMessage(networkId, sessionId)` | PostMessage transport — for browser wallet ↔ dApp wiring (rarely used in Node) |
-| `.dataLakeEndpoint(url)` | Optional datalake URL for resolving off-chain payloads |
+| `.dataLakeEndpoint(url)` | Optional datalake URL — backs `connection.storage` (a `DataLakeViewer` from `.build()`, a `DataLakeRunner` from `.buildRunner()`) and the runner's pre-broadcast write of each transaction's full content, `offChain` payloads included. Viewer reads never consult it — fetch off-chain bodies with `createRestDataLakeViewer(url).get(hashes)` |
 | `.name(name)` | Actor name used for diagnostics (default `'gateway-client'`) |
 | `.validators(validators)` | Custom block validators |
 | `.additionalProviders(factories)` | Extra `CreatableProviderFactory` entries (read path) |

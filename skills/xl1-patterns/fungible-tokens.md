@@ -244,7 +244,7 @@ type TokenState = {
 function applyTokenDeploy(
   substrate: IndexerState,
   state: TokenState,
-  payload: WithHashMeta<TokenDeploy>,  // from payloadsByHash — carries `_hash`
+  payload: WithHashMeta<TokenDeploy>,  // from the datalake fetch — hash meta recomputed by addHashMeta
   signer: Address,
   blockHeight: XL1BlockNumber,
 ) {
@@ -323,10 +323,10 @@ function safeBigInt(decimal: string): bigint | undefined {
 
 ### Wiring into the substrate replay
 
-Inside the second pass of the substrate indexer's `replayFinalizedBlocks` (the per-payload loop after the hash→signer index is built), add discriminated dispatch on the token schemas. The signer is recovered from the same `hashToSigner` index used by the substrate pass — authorship discipline applies uniformly:
+Add `TokenDeploySchema`, `TokenMintSchema`, and `TokenTransferSchema` to the substrate's pass-1 schema filter (`SUBSTRATE_SCHEMAS`) so pass 2 fetches their off-chain bodies from the datalake too — no gateway read returns them. Then, inside the substrate indexer's per-payload loop over those fetched bodies (`offChain` in `replayFinalizedBlocks`, after the hash→signer index is built), add discriminated dispatch on the token schemas. The signer is recovered from the same `hashToSigner` index used by the substrate pass — authorship discipline applies uniformly:
 
 ```ts
-for (const p of payloads) {
+for (const p of offChain) {
   const signer = hashToSigner.get(p._hash)
   if (!signer) continue // payload not wrapped by a transaction in this block
 
