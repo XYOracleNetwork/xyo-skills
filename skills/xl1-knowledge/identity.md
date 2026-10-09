@@ -33,7 +33,7 @@ A single seed phrase produces the **same default address** across every environm
 - **XYO Chrome extension wallet** — first account on import
 - **Node backends** — using the snippet above
 
-This is a hard guarantee, not a side effect. If a developer imports their seed phrase into MetaMask to inspect balances, the address they see there will match the signer their backend uses. If you bypass these helpers and call `Account.create({ mnemonic })` directly, the resulting address will **not** match — that path constructs a key without applying BIP44 derivation, so the same seed yields a different address from what MetaMask or the extension wallet show.
+This is a hard guarantee, not a side effect. If a developer imports their seed phrase into MetaMask to inspect balances, the address they see there will match the signer their backend uses. The lower-level `Account.create({ mnemonic })` and `HDWallet.fromPhrase(mnemonic)` also default to `m/44'/60'/0'/0/0` (ethers' `defaultPath`), so they yield the same account-0 address — but they are rooted at that *leaf*. Derivation from a leaf (`derivePath`, or the `path` option of `Account.create`) goes deeper (`m/44'/60'/0'/0/0/1`), not sideways, so it cannot reach the sibling accounts (`m/44'/60'/0'/0/1`, …) that MetaMask shows as accounts 2, 3, and so on. The base wallet at `m/44'/60'/0'/0` can.
 
 **Always route backend wallet creation through `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')`** unless you have a specific reason to deviate (see below).
 
@@ -57,7 +57,7 @@ These addresses match what MetaMask shows for accounts 1, 2, 3 on the same seed.
 
 ## Anti-Patterns
 
-- **Don't** call `Account.create({ mnemonic })` for backend XL1 wallets. It produces an address that won't match MetaMask or the XYO browser extension for the same seed.
+- **Don't** call `Account.create({ mnemonic })` (or `HDWallet.fromPhrase(mnemonic)`) for backend XL1 wallets. Its account-0 address matches MetaMask, but it is rooted at the leaf `m/44'/60'/0'/0/0`, so any further derivation lands *below* that leaf — those addresses won't match MetaMask or the XYO browser extension's other accounts on the same seed.
 - **Don't** pass `DEFAULT_WALLET_PATH` (or `"m/44'/60'/0'/0/0"`) as the argument to `derivePath()`. `generateXyoBaseWalletFromPhrase` already roots the base wallet at `DEFAULT_WALLET_PATH`, so passing it again double-derives. Use a bare account index like `'0'`, `'1'`, etc.
 - **Don't** wrap the result of `derivePath('0')` in a signer before building a runner. It is an `AccountInstance`, which is exactly what `GatewayBuilder.account(...)` takes; the wrapping step is a leftover from the removed `build(signer)` API.
 - **Don't** generate a fresh random wallet at process start for production signers. Load the seed phrase from a secret store and derive deterministically — restarts must produce the same identity.

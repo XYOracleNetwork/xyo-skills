@@ -247,17 +247,31 @@ This is the right shape for any "all parties agree to X" attestation — joint t
 
 #### Verifying multi-signer witnesses
 
-`@xyo-network/sdk` exposes two predicates:
+`addressesContainsAll` and `addressesContainsAny` check **membership** in
+`addresses` only — they never read `$signatures`, so a BW with a `null` or
+invalid signature in a listed slot still passes. Pair them with
+`BoundWitnessValidator`, whose `validate()` verifies every `$signatures` entry
+against the BW's data hash (plus the structural checks) and resolves to an
+`Error[]` that is empty when the BW is valid:
 
 ```ts
-import { addressesContainsAll, addressesContainsAny } from '@xyo-network/sdk'
+import {
+  addressesContainsAll, addressesContainsAny, BoundWitnessValidator,
+} from '@xyo-network/sdk'
 
-// All listed parties must have signed this BW
-addressesContainsAll(bw, [addrA, addrB, addrC])
+const errors = await new BoundWitnessValidator(bw).validate()
+const isValid = errors.length === 0
 
-// At least one of the listed parties must have signed
-addressesContainsAny(bw, authorityAddresses)
+// All listed parties signed this BW
+const isJointlySigned = isValid && addressesContainsAll(bw, [addrA, addrB, addrC])
+
+// At least one of the listed parties signed
+const isAuthoritySigned = isValid && addressesContainsAny(bw, authorityAddresses)
 ```
+
+`isFullySigned(bw)` (also from `@xyo-network/sdk`) is only a shape guard — every
+address slot holds a signature string — and does not verify them. Use it to
+narrow or reject early, never in place of `validate()`.
 
 Use `addressesContainsAll` when every party's signature is required (joint commitment, atomic exchange). Use `addressesContainsAny` when any one of a set of authorized signers suffices (oracle attestation, authority signoff).
 

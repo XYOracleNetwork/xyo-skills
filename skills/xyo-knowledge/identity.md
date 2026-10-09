@@ -13,7 +13,7 @@ For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in ea
 
 ---
 
-> **Building on XL1?** For backend (Node) wallet creation, route through `generateXyoBaseWalletFromPhrase` + `derivePath('<index>')` from `@xyo-network/xl1-sdk` — see [XL1 Identity & Wallets](../xl1-knowledge/identity.md). The bare `Account.create({ mnemonic })` and `HDWallet.fromPhrase` calls below skip the standard BIP44 derivation, so the resulting address will **not** match MetaMask or the XYO browser extension wallet for the same seed. Use those primitives only for non-XL1 XYO contexts or when you explicitly need a non-standard derivation.
+> **Building on XL1?** For backend (Node) wallet creation, use the XL1 helpers in [XL1 Identity & Wallets](../xl1-knowledge/identity.md).
 
 ---
 
@@ -36,7 +36,7 @@ import { Account } from '@xyo-network/sdk'
 // Random account (testing)
 const account = await Account.random()
 
-// From a mnemonic (deterministic)
+// From a mnemonic (deterministic) — BIP44 m/44'/60'/0'/0/0, MetaMask's first account
 const account = await Account.create({ mnemonic: 'twelve word mnemonic phrase ...' })
 
 // `phrase` is an alias for the same path — it is ALSO parsed as a BIP-39
@@ -92,16 +92,31 @@ Derive child keys for different purposes:
 const child = await wallet.derivePath('1')
 ```
 
-`HDWallet.random()` and `HDWallet.fromPhrase()` return a wallet already rooted at
-`m/44'/60'/0'/0/0`, so an **absolute** path that is not a descendant of it throws:
+`HDWallet.random()` and `HDWallet.fromPhrase(phrase)` return a wallet already rooted at
+`m/44'/60'/0'/0/0` — the standard BIP44 Ethereum path, so the address matches
+MetaMask's first account for the same seed. That path is a leaf, so `derivePath`
+cannot reach sibling accounts from it: a relative path goes deeper
+(`derivePath('1')` → `m/44'/60'/0'/0/0/1`), and an **absolute** path that is not
+a descendant throws:
 
 ```ts
 // Throws: Invalid absolute path m/44'/60'/0'/0/1 for wallet with path m/44'/60'/0'/0/0
 await wallet.derivePath("m/44'/60'/0'/0/1")
 ```
 
-For XL1 work, use `generateXyoBaseWalletFromPhrase` + a bare account index instead —
-see [XL1 Identity & Wallets](../xl1-knowledge/identity.md).
+To derive accounts 0..n, root the wallet at the BIP44 base path and derive the
+bare account index:
+
+```ts
+const base = await HDWallet.fromPhrase(phrase, "m/44'/60'/0'/0")
+const account0 = await base.derivePath('0') // m/44'/60'/0'/0/0 — same as fromPhrase(phrase)
+const account1 = await base.derivePath('1') // m/44'/60'/0'/0/1
+```
+
+`HDWallet.create({ mnemonic, path })` also takes an absolute path from the seed.
+`Account.create({ mnemonic, path })` does not: it applies `path` below the
+`m/44'/60'/0'/0/0` leaf, so an `m/…` path throws and `'1'` lands on
+`m/44'/60'/0'/0/0/1`.
 
 ### Additional Properties
 
@@ -110,10 +125,10 @@ Beyond Account's interface, Wallet provides:
 - `depth` — derivation depth
 - `index` — child index at current depth
 - `fingerprint` / `parentFingerprint` — key fingerprints
-- `extendedKey` — the full extended private key
+- `extendedKey` — the full extended private key (`xprv…`)
 - `path` — the derivation path (e.g., `"m/44'/60'/0'/0/0"`)
 - `mnemonic` — the BIP39 mnemonic if available
-- `neuter()` — returns a public-only wallet (strips private key)
+- `neuter()` — **not supported**; always throws, because the private key cannot be removed. For a public-only key, derive the `xpub` from `extendedKey` with an xpub-capable consumer (e.g. ethers' `HDNodeWallet.neuter()`)
 - `privateKey` / `publicKey` — raw key hex values
 
 ---
