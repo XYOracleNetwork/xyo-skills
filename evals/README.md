@@ -83,7 +83,7 @@ formatting-brittle regex since fixed, judge 3/3. Every case clears 0.8.
 | — | `stack` | `rps-evaluation-prompt`† · `conventions-in-code` | The CLAUDE.md prompt as a scaffold-phase plan, weighted toward pack facts (floor block, REST, DoD, schema namespace, canonical signer, stamp); root-barrel imports with no deprecated names on generated code. |
 | L3 | `xyo-knowledge` | `schema-naming` · `root-hash-default`† · `reserved-namespace-refused` · `concept-question-stays-in-knowledge` | `com.<org>.<app>.*` unversioned; `PayloadBuilder.hash` as root hash; `network.xyo.*` reserved; concept questions never wake build or scaffold. |
 | L6 | `xl1-dapp-kit` | `distinguishes-vocabulary` · `ports-not-rest`† · `local-conformance-not-hosted` | Vocabulary kept distinct; frames over WebSocket/MessagePort with HTTP for health/static/unary only; local conformance earns a local label. |
-| L1–2 | `xy-toolchain` · `xy-development` | `redirects-to-ariestools` ×2 | Both stubs defer to ariestools-skills rather than invent. |
+| L1–2 | `xy-toolchain` · `xy-development` | `redirects-to-ariestools` ×2 | With only this pack loaded (the plugins no longer ship the stubs), both questions defer to ariestools-skills rather than invent. |
 
 ## Writing cases
 

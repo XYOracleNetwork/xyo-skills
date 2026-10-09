@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isRedirectStub, parseMetadata } from '../skill-layers.mjs';
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 
@@ -54,18 +56,43 @@ async function writeJson(file, obj) {
   await fs.writeFile(file, JSON.stringify(obj, null, 2) + '\n');
 }
 
+// Redirect stubs (`metadata.status: redirect` or `metadata.internal: true` in
+// SKILL.md) exist only so older Skills.sh installs keep resolving. Their
+// canonical copies ship in ariestools-skills' own plugins, so the Claude and
+// Codex trees omit them; validate-plugins.yml asserts that.
+async function listRedirectStubs(skillsDir) {
+  const stubs = [];
+  for (const entry of await fs.readdir(skillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    let content;
+    try {
+      content = await fs.readFile(path.join(skillsDir, entry.name, 'SKILL.md'), 'utf8');
+    } catch {
+      continue;
+    }
+    if (isRedirectStub(parseMetadata(content))) stubs.push(entry.name);
+  }
+  return stubs.sort();
+}
+
 async function copyStaticTree(sourceRoot, outDir, copies) {
-  for (const { from, to } of copies) {
+  const skipped = [];
+  for (const { from, to, excludeRedirectStubs } of copies) {
     const src = path.join(sourceRoot, from);
     const dest = path.join(outDir, to);
     const stat = await fs.stat(src);
     if (stat.isDirectory()) {
-      await fs.cp(src, dest, { recursive: true });
+      const stubs = excludeRedirectStubs ? await listRedirectStubs(src) : [];
+      const stubDirs = stubs.map((name) => path.join(src, name));
+      const filter = (file) => !stubDirs.some((dir) => file === dir || file.startsWith(dir + path.sep));
+      await fs.cp(src, dest, { recursive: true, filter });
+      skipped.push(...stubs.map((name) => `${from}/${name}`));
     } else {
       await fs.mkdir(path.dirname(dest), { recursive: true });
       await fs.copyFile(src, dest);
     }
   }
+  return skipped;
 }
 
 export async function runRenderer({ name, managedPaths, copies, generate }) {
@@ -76,7 +103,7 @@ export async function runRenderer({ name, managedPaths, copies, generate }) {
     const metadata = await loadMetadata(source, args.version);
 
     await resetManaged(out, managedPaths);
-    await copyStaticTree(source, out, copies);
+    const skipped = await copyStaticTree(source, out, copies);
 
     const files = generate({ metadata });
     for (const [relPath, obj] of Object.entries(files)) {
@@ -88,6 +115,7 @@ export async function runRenderer({ name, managedPaths, copies, generate }) {
     console.log(`  out:       ${out}`);
     console.log(`  version:   ${metadata.version}`);
     console.log(`  manifests: ${Object.keys(files).join(', ')}`);
+    if (skipped.length > 0) console.log(`  skipped:   ${skipped.join(', ')} (redirect stubs; Skills.sh only)`);
   } catch (err) {
     console.error(`✗ ${err.message}`);
     process.exit(1);

@@ -73,6 +73,38 @@ jobs:
           done
           echo "✓ Rendered trees include expected static content"
 
+      - name: Assert redirect stubs ship to Skills.sh only
+        run: |
+          set -euo pipefail
+          # xy-development and xy-toolchain are redirect stubs; their canonical
+          # copies ship in ariestools-skills' own plugins. lib.mjs drops every
+          # skill whose SKILL.md metadata has `status: redirect` or
+          # `internal: true`. This pins that, so a stub cannot leak back into
+          # the mirrors and shadow the canonical skill, and checks that the
+          # filter did not take a real skill with it.
+          expected="xyo-knowledge xl1-knowledge xl1-patterns xl1-dapp-kit xl1-testing xl1-scaffold xl1-build"
+          for skills in /tmp/render/claude/skills /tmp/render/codex/plugins/xyo-skills/skills; do
+            for stub in xy-development xy-toolchain; do
+              if [ -e "$skills/$stub" ]; then
+                echo "✗ $skills/$stub exists - redirect stubs must not ship in the plugins"
+                exit 1
+              fi
+            done
+            for skill in $expected; do
+              test -f "$skills/$skill/SKILL.md" || { echo "✗ $skills is missing $skill/SKILL.md"; exit 1; }
+            done
+            echo "✓ $skills: $(find "$skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') skills, no redirect stubs"
+          done
+
+      - name: Validate rendered skills (no link dangles into an excluded stub)
+        run: |
+          set -euo pipefail
+          # Errors go to stderr and fail the step; stdout (the upward-link
+          # warning table, already reported by validate-skills.yml) is dropped.
+          node scripts/validate-skills.mjs /tmp/render/claude/skills > /dev/null
+          node scripts/validate-skills.mjs /tmp/render/codex/plugins/xyo-skills/skills > /dev/null
+          echo "✓ Rendered skill trees validate on their own"
+
   validate-scaffold-sync:
     name: Verify scaffold bin/ is in sync with source
     runs-on: ubuntu-latest

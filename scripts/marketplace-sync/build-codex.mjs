@@ -7,7 +7,7 @@ await runRenderer({
   name: 'Codex',
   managedPaths: ['plugins', '.agents', 'LICENSE'],
   copies: [
-    { from: 'skills', to: `${PLUGIN_DIR}/skills` },
+    { from: 'skills', to: `${PLUGIN_DIR}/skills`, excludeRedirectStubs: true },
     { from: 'assets', to: `${PLUGIN_DIR}/assets` },
     { from: 'LICENSE', to: 'LICENSE' },
   ],

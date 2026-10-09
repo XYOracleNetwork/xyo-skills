@@ -4,19 +4,19 @@ XL1 / XYO development skills for AI coding assistants. The same skill content is
 
 ## What's Included
 
-This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, `xy-toolchain`) are **not** authored here — install them from [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). Temporary redirect stubs under those names remain in this tree so older relative links still resolve; they are not documentation.
+This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, `xy-toolchain`) are **not** authored here — install them from [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). Temporary redirect stubs under those names remain in this tree so older Skills.sh installs and deep links still resolve; they are not documentation. Only Skills.sh, which installs from this repo, can pick them up — the Claude Code and Codex plugins ship the seven XYO / XL1 skills without them.
 
 | Layer | Skill | Covers | Source |
 |-------|-------|--------|--------|
 | 9 | `xl1-build` | Planning wizard — refines a vague build request into a concrete dApp spec | this repo |
-| 8 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo) | this repo |
-| 7 | `xl1-testing` | Local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI | this repo |
+| 8 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo; dapp-kit runtime route) | this repo |
+| 7 | `xl1-testing` | dApp Definition of Done gate, local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI | this repo |
 | 6 | `xl1-dapp-kit` | Headless application contracts — `xl1.dapp.json`, ports, effects/recovery, hosting | this repo |
-| 5 | `xl1-patterns` | Commit-reveal, indexing, inscriptions, Statement Graph, Event Kit wakes, tokens | this repo |
+| 5 | `xl1-patterns` | Architecture principles, commit-reveal, indexing, inscriptions, Statement Graph, Event Kit wakes, tokens | this repo |
 | 4 | `xl1-knowledge` | XL1 chain, datalakes, gateway (`FinalizedBlockStream`), browser wallet | this repo |
 | 3 | `xyo-knowledge` | XYO payloads, bound witnesses, modules, identity | this repo |
-| 2 | `xy-toolchain` | @ariestools/toolchain, ESLint, TypeScript config, Vitest | **[ariestools-skills](https://github.com/ariestools/ariestools-skills)** (redirect stub here) |
-| 1 | `xy-development` | TypeScript, Git workflow, testing, definition of done | **[ariestools-skills](https://github.com/ariestools/ariestools-skills)** (redirect stub here) |
+| 2 | `xy-toolchain` | @ariestools/toolchain, ESLint, TypeScript config, Vitest | **[ariestools-skills](https://github.com/ariestools/ariestools-skills)** (redirect stub here, Skills.sh only) |
+| 1 | `xy-development` | TypeScript, Git workflow, testing, definition of done | **[ariestools-skills](https://github.com/ariestools/ariestools-skills)** (redirect stub here, Skills.sh only) |
 
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs the agent to read sub-files on demand based on task context.
 

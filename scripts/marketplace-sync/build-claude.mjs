@@ -5,7 +5,7 @@ await runRenderer({
   name: 'Claude',
   managedPaths: ['skills', 'assets', 'LICENSE', '.claude-plugin'],
   copies: [
-    { from: 'skills', to: 'skills' },
+    { from: 'skills', to: 'skills', excludeRedirectStubs: true },
     { from: 'assets', to: 'assets' },
     { from: 'LICENSE', to: 'LICENSE' },
   ],

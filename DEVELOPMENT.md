@@ -110,10 +110,10 @@ Each skill is a directory under `skills/` containing a `SKILL.md` router and top
 
 ```
 skills/
-├── xy-development/       ← REDIRECT STUB only (canonical: ariestools/ariestools-skills)
+├── xy-development/       ← REDIRECT STUB only (canonical: ariestools/ariestools-skills; Skills.sh only, not rendered into the plugins)
 │   ├── SKILL.md
 │   └── workflow.md       ← deep-link shim
-├── xy-toolchain/         ← REDIRECT STUB only (canonical: ariestools/ariestools-skills)
+├── xy-toolchain/         ← REDIRECT STUB only (canonical: ariestools/ariestools-skills; Skills.sh only, not rendered into the plugins)
 │   ├── SKILL.md
 │   └── testing.md        ← deep-link shim
 ├── xyo-knowledge/
@@ -124,17 +124,23 @@ skills/
 └── ...
 ```
 
-**Never restore full body docs under `xy-development` or `xy-toolchain` here.** Edit those skills in [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). `node scripts/validate-skills.mjs skills` enforces the stub allowlist and size caps.
+**Never restore full body docs under `xy-development` or `xy-toolchain` here.** Edit those skills in [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). `node scripts/validate-skills.mjs skills` enforces the stub allowlist and size caps, and rejects any relative link into a stub (link the ariestools-skills URL instead).
 
-`SKILL.md` files require YAML frontmatter with a `description` field. Claude uses this to decide when to activate the skill:
+`SKILL.md` files require YAML frontmatter with `name`, a `description` field, and the skill's stack layer in `metadata.layer` (`metadata.version` is owned by release-please). Claude uses the description to decide when to activate the skill:
 
 ```yaml
 ---
+name: xl1-example
 description: When and why Claude should activate this skill.
+metadata:
+  version: 1.2.3 # x-release-please-version
+  layer: 5
 ---
 ```
 
-The body is a table of contents linking to sub-files with guidance on when to read each one. Claude loads sub-files on demand, not all at once.
+The body is a table of contents linking to sub-files with guidance on when to read each one. Claude loads sub-files on demand, not all at once. Every non-stub router also carries a `## Skill layers` section: a `- **Builds on:**` bullet linking only lower-layer routers (`../<skill>/SKILL.md`) and a `- **Hands off to:**` bullet linking only higher-layer routers. See [CLAUDE.md](./CLAUDE.md#distribution-model) for the layer map and the full rule set.
+
+After editing, run `pnpm validate:skills`. It fails on broken relative links or `#anchors`, layer-direction violations, and links into the stubs, and prints upward cross-layer links in body text as a non-fatal warning table. `pnpm test:scripts` runs the validator's unit tests.
 
 ### Verifying Skills Load
 
@@ -142,8 +148,8 @@ The body is a table of contents linking to sub-files with guidance on when to re
 
 After starting Claude Code or running `/reload-plugins`:
 
-- Run `/help` — skills appear as `/xyo-skills:<name>` (e.g., `/xyo-skills:xy-development`)
-- Check the reload output for the skill count: `Reloaded: 1 plugins · 5 skills · ...`
+- Run `/help` — skills appear as `/xyo-skills:<name>` (e.g., `/xyo-skills:xl1-patterns`). `xy-development` and `xy-toolchain` do not appear: the renderer drops the redirect stubs, and their canonical copies come from the `ariestools-skills` plugin.
+- Check the reload output for the skill count: `Reloaded: 1 plugins · 7 skills · ...`
 - Invoke a skill directly: `/xyo-skills:xl1-patterns`
 
 #### Codex
@@ -163,7 +169,7 @@ After editing, re-render and diff to confirm the change shows up where you expec
 pnpm sync:claude --out .preview/claude
 pnpm sync:codex  --out .preview/codex
 jq . .preview/claude/.claude-plugin/marketplace.json
-jq . .preview/codex/.codex-plugin/plugin.json
+jq . .preview/codex/plugins/xyo-skills/.codex-plugin/plugin.json
 ```
 
 ### Validating Manifest Generation
@@ -172,7 +178,7 @@ jq . .preview/codex/.codex-plugin/plugin.json
 
 ```shell
 pnpm sync:claude --out .preview/claude && jq empty .preview/claude/.claude-plugin/*.json
-pnpm sync:codex  --out .preview/codex  && jq empty .preview/codex/.agents/plugins/marketplace.json .preview/codex/.codex-plugin/plugin.json
+pnpm sync:codex  --out .preview/codex  && jq empty .preview/codex/.agents/plugins/marketplace.json .preview/codex/plugins/xyo-skills/.codex-plugin/plugin.json
 ```
 
 ## Releases

@@ -1,6 +1,7 @@
-# Validate skill frontmatter and concrete schema examples on relevant PRs.
-# Catches malformed SKILL.md before merge so sync-skills.yml doesn't fail
-# after the change has already landed in `develop`.
+# Validate skill frontmatter, concrete schema examples, relative links and
+# anchors, and the skill-stack layering rules on relevant PRs. Catches
+# malformed SKILL.md and layer drift before merge so the release sync doesn't
+# fail after the change has already landed in `develop`.
 
 name: Validate skills
 
@@ -8,9 +9,7 @@ on:
   pull_request:
     paths:
       - 'skills/**'
-      - 'scripts/validate-skills.mjs'
-      - 'scripts/schema-literals.mjs'
-      - 'scripts/schema-literals.test.mjs'
+      - 'scripts/*.mjs'
       - '.github/workflows/validate-skills.yml'
 
 permissions:
@@ -24,5 +23,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - run: node --test scripts/schema-literals.test.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+      # Unit tests for the validator's pure helpers (schema literals, GitHub
+      # slugger, code-span masking, layer direction). The shell expands the glob.
+      - run: node --test scripts/*.test.mjs
+      # Errors fail the job; upward cross-layer links print as a ::warning table.
       - run: node scripts/validate-skills.mjs skills
