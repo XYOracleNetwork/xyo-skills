@@ -37,16 +37,23 @@ The in-page gateway does not mean the browser walks the chain to build those pag
 │  (one browser-system gateway per network, REST reads)     │
 │                                                           │
 │  ┌─ GatewayProvider ───────────────────────────────────┐  │
-│  │  (merges wallet + in-page into single context)      │  │
+│  │  (publishes wallet + in-page in one context)        │  │
 │  │                                                     │  │
-│  │  defaultGateway = wallet gateway ?? in-page gateway │  │
+│  │  defaultGateway:                                    │  │
+│  │    wallet installed  → wallet runner, granted       │  │
+│  │                        account or not               │  │
+│  │    no wallet found   → in-page gateway              │  │
+│  │    discovery pending → undefined                    │  │
+│  │  gateways.inPageGateway → in-page gateway           │  │
 │  │                                                     │  │
 │  │  ┌──────────────────────────────────────────────┐   │  │
 │  │  │ Your Components                              │   │  │
 │  │  │                                              │   │  │
 │  │  │ Index read:      service /api/* (always)     │   │  │
-│  │  │ Chain read:      in-page gateway (always)    │   │  │
-│  │  │ Chain write:     wallet gateway (wallet req) │   │  │
+│  │  │ Chain read:      gateways.inPageGateway      │   │  │
+│  │  │                  (always, wallet or not)     │   │  │
+│  │  │ Chain write:     wallet runner + a granted   │   │  │
+│  │  │                  account (wallet required)   │   │  │
 │  │  │                                              │   │  │
 │  │  │ dApp datalake:   RestDataLakeRunner/Viewer   │   │  │
 │  │  │   read + write   (HTTP, always available)    │   │  │
@@ -58,7 +65,12 @@ The in-page gateway does not mean the browser walks the chain to build those pag
 └───────────────────────────────────────────────────────────┘
 ```
 
-`GatewayProvider` (from `@xyo-network/xl1-react-client-sdk`) combines the in-page gateway and wallet gateway into a single `defaultGateway`. It prefers the wallet when connected and falls back to the in-page gateway for read-only chain access. It requires `InPageGatewaysProvider` as an ancestor to supply the in-page gateways.
+`GatewayProvider` (from `@xyo-network/xl1-react-client-sdk`) publishes the wallet gateway and the in-page gateway through one context. Its `defaultGateway` is the wallet's write-capable runner whenever the extension is installed — even before the user has granted this site an account — and the in-page gateway only when no wallet is found. While wallet discovery is still running, `defaultGateway` and both `gateways` entries are `undefined`; render a loading state. It requires `InPageGatewaysProvider` as an ancestor to supply the in-page gateways.
+
+Two rules follow, and the examples below use both:
+
+- **Public reads go to `gateways.inPageGateway`**, from `useProvidedGateway()` — not `defaultGateway`. That keeps every visitor on the same REST-backed in-page source whether or not they have the wallet installed.
+- **`'addPayloadsToChain' in defaultGateway` detects an installed wallet, not a connected one.** Gate chain writes on a granted account (lifted from `ConnectAccountsStack`'s `onAccountsChanged`) *and* a write-capable runner.
 
 **Note:** `WalletGatewayProvider` is a separate, wallet-only provider with no in-page fallback. Use `GatewayProvider` (not `WalletGatewayProvider`) when your app needs read-only access without a wallet.
 
@@ -71,11 +83,18 @@ The in-page gateway does not mean the browser walks the chain to build those pag
 `GatewayProvider` requires `InPageGatewaysProvider` as an ancestor — it reads in-page gateways from that context. Both providers are in `@xyo-network/xl1-react-client-sdk`:
 
 ```tsx
+import type { XyoAddress } from '@xyo-network/sdk'
 import { InPageGatewaysProvider, GatewayProvider, ConnectAccountsStack } from '@xyo-network/xl1-react-client-sdk'
 import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { useCallback, useState } from 'react'
 
 function App() {
-  const [address, setAddress] = useState<string>()
+  const [address, setAddress] = useState<XyoAddress>()
+
+  // Keep the chosen account while it is still granted; [] (revoked) clears it
+  const onAccountsChanged = useCallback((accounts: readonly XyoAddress[]) => {
+    setAddress(current => (current !== undefined && accounts.includes(current) ? current : accounts[0]))
+  }, [])
 
   return (
     <InPageGatewaysProvider transport="rest">
@@ -85,7 +104,7 @@ function App() {
         <Leaderboard />
 
         {/* Always render — handles connection prompt and connected state */}
-        <ConnectAccountsStack onAccountConnected={setAddress} />
+        <ConnectAccountsStack onAccountsChanged={onAccountsChanged} />
         {address && <GameBoard address={address} />}
       </GatewayProvider>
     </InPageGatewaysProvider>
@@ -134,7 +153,7 @@ const datalakeRunner = await createRestDataLakeRunner(DATALAKE_ENDPOINT)
 const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
 ```
 
-The examples below use `datalakeRunner` for writes, `gateway.connection.viewer` for chain reads (transactions, blocks, the finalized head), and `datalakeViewer` for the off-chain payloads those reads reference.
+The examples below use `datalakeRunner` for writes, the in-page gateway's `connection.viewer` (`gateways.inPageGateway` from `useProvidedGateway()`) for chain reads (transactions, blocks, the finalized head), and `datalakeViewer` for the off-chain payloads those reads reference.
 
 ---
 
@@ -145,7 +164,7 @@ Components that only read work immediately — no wallet prompt. Pick the source
 | Read | Source | Why |
 |---|---|---|
 | Multi-user derived views — game history, leaderboards, market listings | Companion service: `fetch('/api/…')` | The service indexes finalized blocks once, from `INDEXER_FLOOR_BLOCK`, and serves the result. A browser walk re-derives it in every tab, and its cost grows with history — see [Load from indexes, not from replay](../xl1-dapp-kit/architecture-principles.md#5-load-from-indexes-not-from-replay) |
-| Bounded lookups — one game's transaction or payloads by hash, a block by number, the finalized head | In-page gateway: `connection.viewer`, plus `datalakeViewer.get(hashes)` for off-chain payloads | Constant-cost reads — the same price on day one and day one thousand. See [Querying the In-Page Datalake](#querying-the-in-page-datalake) |
+| Bounded lookups — one game's transaction or payloads by hash, a block by number, the finalized head | In-page gateway: `gateways.inPageGateway?.connection.viewer`, plus `datalakeViewer.get(hashes)` for off-chain payloads | Constant-cost reads — the same price on day one and day one thousand. See [Querying the In-Page Datalake](#querying-the-in-page-datalake) |
 
 The service mounts its routes under `/api/*`, and the app calls them with relative URLs ([Browser ↔ Service Wiring](browser-service-wiring.md)). The service indexes; the browser displays:
 
@@ -178,25 +197,27 @@ The service builds `/api/games` in its sync loop, using the two-step block walk 
 
 ### Checking Gateway Capability
 
-When a component supports both reading and writing, check the gateway type before attempting **chain** transactions. The dApp's datalake (`RestDataLakeRunner`/`RestDataLakeViewer`) is the dApp's own HTTP client and doesn't depend on the gateway or wallet at all:
+When a component supports both reading and writing, read from the in-page gateway and check for a granted account **and** a write-capable runner before attempting **chain** transactions. The runner check alone is not enough: with the extension installed, `defaultGateway` is the wallet's runner before the user has granted this site anything. The dApp's datalake (`RestDataLakeRunner`/`RestDataLakeViewer`) is the dApp's own HTTP client and doesn't depend on the gateway or wallet at all:
 
 ```tsx
-function GameBoard({ address }: { address?: string }) {
-  const { defaultGateway } = useProvidedGateway()
+import type { XyoAddress } from '@xyo-network/sdk'
+import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
 
-  const canSubmitToChain = defaultGateway && 'addPayloadsToChain' in defaultGateway
-  const canRead = !!defaultGateway
+// address — the account chosen from ConnectAccountsStack's onAccountsChanged (see Setup)
+function GameBoard({ address }: { address?: XyoAddress }) {
+  const { defaultGateway, gateways } = useProvidedGateway()
+
+  // Chain reads work for all visitors — the in-page gateway, wallet or not
+  const reader = gateways.inPageGateway
+  // Chain writes need a granted account AND the wallet's write-capable runner
+  const runner = defaultGateway && 'addPayloadsToChain' in defaultGateway ? defaultGateway : undefined
   // The dApp's datalake (RestDataLakeRunner/Viewer) is independent —
   // it's the dApp's own HTTP client, not gated by the wallet or gateway
-
-  // Chain reads work for all visitors (in-page gateway)
-  // dApp datalake reads/writes work for all visitors (dApp's own HTTP client)
-  // Chain transactions require wallet connection
   return (
     <div>
-      {canRead && <GameState gateway={defaultGateway} />}
-      {canSubmitToChain
-        ? <MoveControls gateway={defaultGateway} address={address!} />
+      {reader && <GameState gateway={reader} />}
+      {address && runner
+        ? <MoveControls gateway={runner} address={address} />
         : <p>Connect wallet to play</p>}
     </div>
   )
@@ -207,7 +228,7 @@ function GameBoard({ address }: { address?: string }) {
 
 ## Querying the In-Page Datalake
 
-The in-page gateway exposes the same viewer API as the wallet gateway, minus write operations. All `connection.viewer` sub-viewer methods work. Use them for reads whose cost does not grow with history — a transaction by hash, a block by number, the finalized head — and pair them with `datalakeViewer.get(hashes)` for the off-chain payloads those reads reference.
+The in-page gateway exposes the same viewer API as the wallet gateway, minus write operations. All `connection.viewer` sub-viewer methods work. Reach it as `gateways.inPageGateway` from `useProvidedGateway()` — `defaultGateway` is the wallet's gateway whenever the extension is installed. Use them for reads whose cost does not grow with history — a transaction by hash, a block by number, the finalized head — and pair them with `datalakeViewer.get(hashes)` for the off-chain payloads those reads reference.
 
 The typical case is a detail view that checks one service-listed game against the chain. `transaction.byHash` returns the signed transaction — its signer and its `payload_hashes[]` — but not its off-chain payloads; read the result body from the dApp's datalake by the hash the transaction lists. Two constant-cost reads, no block walk:
 
@@ -217,11 +238,12 @@ import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
 
 // datalakeViewer — the dApp's RestDataLakeViewer, see Datalake Client Setup above
 function GameReceipt({ txHash }: { txHash: Hash }) {
-  const { defaultGateway } = useProvidedGateway()
+  // Public read — the in-page gateway, not defaultGateway (the wallet's, when installed)
+  const inPageGateway = useProvidedGateway().gateways.inPageGateway
   const [result, setResult] = useState<ResultPayload>()
 
   useEffect(() => {
-    const viewer = defaultGateway?.connection.viewer
+    const viewer = inPageGateway?.connection.viewer
     if (!viewer) return
     let cancelled = false
 
@@ -236,7 +258,7 @@ function GameReceipt({ txHash }: { txHash: Hash }) {
       if (!cancelled) setResult(bodies.find(isResultPayload))
     })()
     return () => { cancelled = true }
-  }, [defaultGateway, txHash])
+  }, [inPageGateway, txHash])
 
   return result ? <p>{result.winner} won — read from chain</p> : null
 }
@@ -280,11 +302,16 @@ function Leaderboard() {
 The typical pattern separates the UI into components by their access requirements:
 
 - **Service index reads (`/api/*`) + bounded chain reads + datalake reads/writes** — available to everyone, no wallet needed
-- **Chain writes** (`addPayloadsToChain`) — gated behind wallet connection
+- **Chain writes** (`addPayloadsToChain`) — gated behind wallet connection: a granted account plus the wallet's runner
 
 ```tsx
 function App() {
-  const [address, setAddress] = useState<string>()
+  const [address, setAddress] = useState<XyoAddress>()
+
+  // As in Setup: keep the chosen account while it is still granted; [] (revoked) clears it
+  const onAccountsChanged = useCallback((accounts: readonly XyoAddress[]) => {
+    setAddress(current => (current !== undefined && accounts.includes(current) ? current : accounts[0]))
+  }, [])
 
   return (
     <InPageGatewaysProvider transport="rest">
@@ -295,7 +322,7 @@ function App() {
         <Leaderboard />
 
         {/* Always render — handles both unconnected and connected states */}
-        <ConnectAccountsStack onAccountConnected={setAddress} />
+        <ConnectAccountsStack onAccountsChanged={onAccountsChanged} />
 
         {/* Wallet-gated — only chain transactions need the wallet */}
         {address && <ActiveGame address={address} />}
@@ -397,7 +424,8 @@ import { asXL1BlockNumber, isTransactionBoundWitness } from '@xyo-network/xl1-sd
 const FLOOR_BLOCK = Number(import.meta.env.VITE_INDEXER_FLOOR_BLOCK)
 if (!Number.isFinite(FLOOR_BLOCK)) throw new Error('VITE_INDEXER_FLOOR_BLOCK is required') // fail closed
 
-const viewer = defaultGateway.connection.viewer
+// The in-page gateway (useProvidedGateway().gateways.inPageGateway) — a public read
+const viewer = inPageGateway?.connection.viewer
 if (!viewer) return
 const head = Number(await viewer.finalization.headNumber())
 if (head <= lastSeenBlockRef.current) return
@@ -453,9 +481,9 @@ Hashes and addresses surface throughout in-page datalake views (game IDs, player
 | Decision | Guidance |
 |----------|----------|
 | Component shows a multi-user derived view (history, leaderboard, listings)? | `fetch('/api/…')` from the companion service's index — never a browser chain walk outside a floor-bounded prototype. See [Reading Chain Data Without Wallet](#reading-chain-data-without-wallet) |
-| Component needs to read chain data? | Use `useProvidedGateway()` for bounded lookups (transaction by hash, block by number, finalized head) — works with in-page gateway, no wallet needed. Fetch the off-chain payloads they reference with `datalakeViewer.get(hashes)` |
+| Component needs to read chain data? | Use `useProvidedGateway().gateways.inPageGateway` for bounded lookups (transaction by hash, block by number, finalized head) — works for every visitor, wallet or not; `defaultGateway` is the wallet's gateway whenever the extension is installed. Fetch the off-chain payloads they reference with `datalakeViewer.get(hashes)` |
 | Component needs to read/write the datalake? | Use `RestDataLakeRunner`/`RestDataLakeViewer` — the dApp's own HTTP datalake client. Works for any visitor, no wallet needed. |
-| Component needs to submit a chain transaction? | Guard with `'addPayloadsToChain' in defaultGateway` check, require wallet connection |
+| Component needs to submit a chain transaction? | Require a granted account (lifted from `ConnectAccountsStack`'s `onAccountsChanged`) **and** `'addPayloadsToChain' in defaultGateway` — the runner check alone only proves the extension is installed |
 | Does the wallet's datalake cover the dApp's needs? | **Don't assume so.** The wallet and dApp are independent datalake clients. They may point to the same, different, or no endpoints. Always write to the dApp's datalake explicitly. |
 | Display data to unauthenticated users? | Place read components outside the wallet connection gate |
 | Need to poll for updates? | Derived views: re-fetch the service's `/api/*` route. Ephemeral, single-user reads: the polling pattern from [Chain Data Indexing](chain-data-indexing-protocol.md) — works with in-page gateway |

@@ -216,9 +216,10 @@ function GameHistory() {
   return <List items={games} />  // works for any visitor, no wallet needed
 }
 
-function SubmitMoveButton({ payloads }: { payloads: Payload[] }) {
+function SubmitMoveButton({ address, payloads }: { address?: XyoAddress; payloads: Payload[] }) {
   const { defaultGateway } = useProvidedGateway()
-  const canSubmit = defaultGateway && 'addPayloadsToChain' in defaultGateway
+  // A runner means the wallet is installed; the lifted, granted account means it is connected
+  const canSubmit = address !== undefined && defaultGateway !== undefined && 'addPayloadsToChain' in defaultGateway
   if (!canSubmit) return null
   // ...
 }
