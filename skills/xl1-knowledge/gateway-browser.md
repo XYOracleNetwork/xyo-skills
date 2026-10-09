@@ -129,7 +129,7 @@ The XL1 wallet is a Chrome browser extension for interacting with the XYO Layer 
 - Similar UX to MetaMask — extension-based, popup-based signing
 - Uses **PostMessage RPC transport** for communication between the dApp page and the wallet extension
 
-For the dApp-facing permission surface — what the wallet will and will not grant, the one account permission a dApp requests (`xyoWallet_getAccounts`, whose grant also covers `xyoSigner_address`), and the hard rule against requesting datalake permissions — see [Wallet — Permissions](../xl1-patterns/wallet.md#permissions).
+A dApp requests one wallet permission — `xyoWallet_getAccounts`, during the connect flow; its grant also covers `xyoSigner_address` — and never includes `xyoDataLakes_get` or `xyoDataLakes_insert` in a permission request: it reaches datalakes directly over HTTP (see [Datalakes — Two Independent Datalake Clients](datalakes.md#two-independent-datalake-clients)). See also [Wallet — Permissions](../xl1-patterns/wallet.md#permissions) for the rest of the permission surface.
 
 ---
 

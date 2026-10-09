@@ -31,7 +31,9 @@ import { TimestampWitness } from '@xyo-network/witness-timestamp'
 
 Reach for the barrel first; add a named package only when the symbol genuinely is not on it.
 
-This applies to all XYO protocol development. See also the [XL1 root barrel](../xl1-knowledge/development.md) for XL1-specific imports.
+This applies to all XYO protocol development.
+
+Building on XL1? See [Development on XL1](../xl1-knowledge/development.md) for the XL1 root barrels and the chain-specific rules layered on these practices.
 
 ---
 
@@ -41,11 +43,9 @@ This applies to all XYO protocol development. See also the [XL1 root barrel](../
 
 ### Why this matters
 
-The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, signed, and transported. SDK classes implement these rules. Native browser or Node.js APIs do not:
+The XYO protocol defines precise rules for how data is serialized, hashed, signed, and transported. SDK classes implement these rules. Native browser or Node.js APIs do not:
 
 - **Hashing:** `PayloadBuilder.hash` is the default for application identity, references, commitments, caches, and deduplication: it includes client metadata and uses canonical serialization. Native `JSON.stringify` plus a digest is not the protocol algorithm. `PayloadBuilder.dataHash` additionally strips all client metadata, including `$version`; use it only where a specific protocol requires that projection. See [hash and version rules](payload-schema-evolution.md#root-hash-for-virtually-all-application-uses).
-- **Datalake access:** `RestDataLakeRunner` and `RestDataLakeViewer` implement the archivist HTTP contract (request format, hash-keyed reads, schema filtering on the request). Raw `fetch()` to the same endpoint may not match the expected request shape. Note: do not use `.next()` against a remote XL1 datalake — see [Datalakes — How to read](../xl1-knowledge/datalakes.md).
-- **Chain queries:** The gateway from `useProvidedGateway()` is the correct client for reading chain state. Access viewer methods via `connection.viewer` sub-viewers. Raw `fetch` to the gateway endpoint loses type safety and provenance.
 - **Payload construction:** `PayloadBuilder` validates the schema name and keeps meta fields in their lanes (`.fields()` drops `$*` / `_*` keys; client metadata goes through `.meta()`). It does **not** validate custom fields — pair `build()` with the payload's Zod `as…` factory ([Narrowing the built payload](primitives.md#narrowing-the-built-payload)). Raw object literals (`{ schema: '...', field: value }`) skip all of this and may produce invalid payloads.
 - **BoundWitness construction:** `BoundWitnessBuilder` computes parallel arrays (`addresses`, `payload_hashes`, `payload_schemas`, `previous_hashes`, `$signatures`) and maintains chain continuity. Manual construction risks breaking these invariants.
 
@@ -54,11 +54,8 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 | Anti-Pattern | Protocol Risk | Use Instead |
 |---|---|---|
 | `crypto.subtle.digest` on `JSON.stringify(payload)` | Hash will not match canonical protocol serialization | `PayloadBuilder.hash(payload)`; retain `dataHash` only for an explicit protocol contract |
-| Raw `fetch()` to datalake endpoint | May not match archivist HTTP contract | `RestDataLakeRunner` / `RestDataLakeViewer` from `@xyo-network/xl1-sdk` |
-| Calling gateway methods by string name or raw HTTP | The gateway has no `.call()` method — use the typed sub-viewer API | `defaultGateway.connection.viewer?.<sub-viewer>.<method>(...)` — see [Gateway](../xl1-knowledge/gateway.md) |
 | Manual BoundWitness field construction | Parallel array invariants easily broken | `BoundWitnessBuilder` |
 | Raw object literal `{ schema: '...', field: val }` | Skips schema-name and meta field handling | `PayloadBuilder`, narrowed with the payload's Zod factory |
-| Using `datalakeRunner`/`datalakeViewer` without creating them | These are not globals — they must be instantiated | `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` from `@xyo-network/xl1-sdk` — see [Gateway](../xl1-knowledge/gateway.md) |
 
 ### When native constructs are acceptable
 
@@ -91,8 +88,8 @@ Read [Payload Schema Evolution and Identity](payload-schema-evolution.md) for th
 
 | Tier | Namespace | Who authors it | Examples |
 |---|---|---|---|
-| 1. Protocol primitives | `network.xyo.*` | XYO Foundation, shipped in the SDK | `network.xyo.boundwitness`, `network.xyo.payload`, `network.xyo.node.manifest`, `network.xyo.transfer` |
-| 2. Canonical substrates | `network.xyo.*` | XYO Foundation, shipped in the SDK | `network.xyo.ordinal.*` (inscription), `network.xyo.ordinal.token.*` (XRC-20), `network.xyo.exchange.*` |
+| 1. Protocol primitives | `network.xyo.*` | XYO Foundation, shipped in the SDK | `network.xyo.boundwitness`, `network.xyo.payload`, `network.xyo.payload.bundle`, `network.xyo.node.manifest` |
+| 2. Canonical substrates | `network.xyo.*` | XYO Foundation, shipped in a Foundation SDK | Foundation-blessed schema families layered on the primitives — token, inscription, and exchange standards, for example. Import them from the SDK that ships them; never redefine them |
 | 3. Application schemas | `com.<your-org>.<app>.*` | The application author | `com.acme.auction.bid`, `com.partner.market.position` |
 | 4. Documentation examples | `com.example.*` | Tutorials, skill examples, scaffolds | `com.example.rps.move`, `com.example.market.commit` |
 
@@ -117,9 +114,8 @@ When you need a new schema:
 'network.xyo.payload.bundle'
 'network.xyo.node.manifest'
 
-// Tier 2 — canonical XYO Foundation substrates (shipped via @xyo-network/xl1-sdk)
-'network.xyo.ordinal.inscription'
-'network.xyo.ordinal.token.deploy'
+// Tier 2 — canonical XYO Foundation substrates: also network.xyo.*, imported
+// from the Foundation SDK that ships them, never redefined
 
 // Tier 3 — what a real application looks like
 'com.acme.auction.bid'           // Acme's sealed-bid auction app
@@ -133,7 +129,7 @@ When you need a new schema:
 
 ### Schema as Type Identity
 
-The canonical guard is the **Zod-factory pair** generated from each version-aware payload definition, as in [Authoring a payload type](primitives.md#authoring-a-payload-type). `zodIsFactory(MoveZod)` must validate schema name, supported effective `$version`, and shape together. Start from `PayloadZodOfSchema` (or `PayloadZodLooseOfSchema` / `PayloadZodStrictOfSchema` when the unknown-field policy requires it); a bare `z.literal(schema)` is not a payload envelope and does not check a revision. Use the complete guard whenever you read payloads from the chain or datalake.
+The canonical guard is the **Zod-factory pair** generated from each version-aware payload definition, as in [Authoring a payload type](primitives.md#authoring-a-payload-type). `zodIsFactory(MoveZod)` must validate schema name, supported effective `$version`, and shape together. Start from `PayloadZodOfSchema` (or `PayloadZodLooseOfSchema` / `PayloadZodStrictOfSchema` when the unknown-field policy requires it); a bare `z.literal(schema)` is not a payload envelope and does not check a revision. Use the complete guard whenever you read payloads from an archivist, a remote store, or another party.
 
 ```ts
 const moves = allPayloads.filter(isMovePayload)
@@ -141,11 +137,11 @@ const moves = allPayloads.filter(isMovePayload)
 
 `isPayloadOfSchemaType<T>()` checks the schema and supported version but not custom fields. Avoid treating it as a full validator at trust boundaries: the right tag/version with the wrong shape still passes that limited check.
 
-### Trust boundary on chain reads
+### Trust boundary on reads
 
-The gateway's RPC surface returns block envelopes, transaction structures, and signatures the chain has already validated — those can be trusted as the SDK presents them. The **application-level payload content** those transactions reference, however, is fetched from a datalake by hash, where anyone can write bytes (including bytes that match a schema name but not its shape). Trust but verify: Zod-validate every payload your code consumes, whichever store it came back from.
+A bound witness that passes `BoundWitnessValidator` is trustworthy structure: its `addresses`, `$signatures`, `payload_hashes`, and `payload_schemas` are what its signers committed to. The **payload bodies** those hashes point at are a separate read, usually from a store where anyone can write bytes — including bytes that carry a schema name but not its shape. Trust but verify: keep a body only if it hashes back (`PayloadBuilder.hash`) to the hash the bound witness lists, and Zod-validate every payload your code consumes, whichever store it came back from.
 
-In practice: you can trust `tx.payload_hashes`, `tx.from`, block numbers, and signatures without re-checking. You should not trust the dereferenced payload bodies until they've passed your Zod guards.
+In practice: once the bound witness has validated, trust its signers and its hash list without re-checking. Do not trust a dereferenced body until it has matched its committed hash and passed your Zod guard.
 
 ---
 
@@ -184,7 +180,7 @@ const payload = { schema: 'com.example.rps.move', move: 'rock' }
 
 **Payloads are pure declarative content. Authorship, ownership, and identity are structural — they live on the BoundWitness, not in payload fields.**
 
-This decomposition is foundational. Every protocol-correct application on XYO/XL1 obeys it, and most subtle bugs in higher-layer applications come from violating it.
+This decomposition is foundational. Every protocol-correct application on XYO obeys it, and most subtle bugs in higher-layer applications come from violating it.
 
 ### The decomposition
 
@@ -192,7 +188,7 @@ This decomposition is foundational. Every protocol-correct application on XYO/XL
 |---|---|---|
 | What the data says (content) | Payload fields | Content is declarative — it describes the world |
 | Who said it (authorship) | BoundWitness `addresses[]` + `$signatures[]` | Authorship is structural — it's the act of binding signed proof to that content |
-| When it was said (ordering) | Block height + intra-block payload index | Ordering is structural — assigned by the chain at inclusion time |
+| When it was said (ordering) | The signer's `previous_hashes` chain, plus the inclusion position of whatever ledger records the BoundWitness | Ordering is structural — assigned by signing and by inclusion, not declared in the payload |
 | Whether it can be trusted | Signature verification on the BoundWitness | Trust is structural — derived from cryptographic proof, not from a self-declared field |
 
 A payload that says `{ schema: '...', amount: 100, from: '0xABC...' }` mixes the two layers. The `from` field is *declarative* (anyone can write it) but is being asked to carry *structural* meaning (this came from 0xABC). The structural truth is that whoever signed the wrapping BoundWitness is the actor — and that's already cryptographically verifiable. The `from` field is at best redundant, at worst a footgun where an attacker writes a different address than the signer.
@@ -202,21 +198,18 @@ A payload that says `{ schema: '...', amount: 100, from: '0xABC...' }` mixes the
 When you find yourself reaching for a `from`, `signer`, `owner`, `author`, or `creator` field on a payload, **stop**. The information you need is already on the BoundWitness wrapping that payload:
 
 ```ts
-// For a transaction-wrapped payload (most application data)
-const signer = transactionBoundWitness.from
-
-// For a generic block-level BoundWitness (multi-signer scenarios)
+// The signers of the wrapping BoundWitness are the authors
 const signers = boundWitness.addresses // addresses[i] paired with $signatures[i]
 ```
 
-If your indexer / read model needs the actor for a payload, it should retrieve the wrapping BoundWitness and read `from` (or `addresses[0]`) — not trust a field inside the payload.
+If your indexer / read model needs the actor for a payload, it should retrieve the wrapping BoundWitness, validate it, and read the signer from its `addresses` — not trust a field inside the payload. A protocol built on XYO may designate one signer as the sender of a wrapping BoundWitness; that designation is still structural, so read it from the BoundWitness, never from a payload field.
 
 ### Why this matters in practice
 
 - **Eliminates a class of bug.** A `from`-in-payload field can disagree with the BoundWitness signer. Now you have two sources of truth and must choose which one to trust. By keeping `from` exclusively structural, there is only one source of truth — the cryptographically verified signer.
-- **Keeps payloads idempotent and content-addressable.** Two users submitting byte-identical declarative payloads naturally produce the same hash. That's a feature for artifacts (NFTs, deploys), and it composes cleanly with first-finalized-wins ownership semantics. Stuffing per-submitter fields into payloads breaks this.
+- **Keeps payloads idempotent and content-addressable.** Two users submitting byte-identical declarative payloads naturally produce the same hash. That's a feature for artifacts (NFTs, deploys), and it composes cleanly with first-recorded-wins ownership semantics. Stuffing per-submitter fields into payloads breaks this.
 - **Lets identical content be co-witnessed.** Multiple parties can co-sign the same payload (e.g., both players witnessing the same game outcome). If authorship were declarative, each party would need their own copy of the payload with their address baked in. Structural authorship lets one payload have many witnesses.
-- **Makes ownership models composable.** Inscription substrates, ownable assets, and signed-event protocols all derive ownership from the BoundWitness chain — no schema-specific field plumbing.
+- **Makes ownership models composable.** Inscriptions, ownable assets, and signed-event protocols can all derive ownership from the BoundWitness chain — no schema-specific field plumbing.
 
 ### When a field that *looks* like authorship is actually content
 
@@ -224,7 +217,7 @@ Sometimes a payload legitimately has a field like `recipient`, `target`, or `del
 
 ```ts
 // Content — recipient is a fact the actor is declaring
-{ schema: 'network.xyo.transfer', to: '0xRecipient...', amount: 100 }
+{ schema: 'com.example.market.payout', recipient: '0xRecipient...', amount: 100 }
 
 // Authorship — never in the payload
 { schema: '...', from: '0xSelf...' }  // Wrong — derive from BoundWitness signer

@@ -82,6 +82,23 @@ interface TransactionBoundWitness extends BoundWitness {
 }
 ```
 
+### `from` is the author
+
+`from` must be a valid address listed in the transaction's `addresses`
+(`TransactionFromValidator`), so it is always one of the transaction's signers.
+It is the structural author of every payload the transaction carries or
+references: read the actor from `tx[0].from` on a validated transaction, never
+from a `from` / `owner` / `author` field inside an application payload. This is
+XYO's structural-authorship rule applied to XL1 — see
+[Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md#declarative-payloads-structural-authorship).
+
+The chain's own `network.xyo.transfer` payload (`from`, `epoch`, `transfers`,
+optional `context`) is a protocol-owned exception: its `from` names the account
+being debited, which need not be the signer. The transfer-authorization
+validator (`TransactionTransfersValidatorFactory`) accepts it only when
+`tx.from` is authorized for that address — by default, only the address itself.
+Do not copy that shape into application payloads.
+
 ### Transaction Fees
 
 Fees are hex-encoded AttoXL1 values (no `0x` prefix):

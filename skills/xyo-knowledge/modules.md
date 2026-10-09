@@ -31,7 +31,7 @@ Modules communicate via **signed queries**: the caller creates a `QueryBoundWitn
 
 ### Archivist — Storage
 
-Archivists store and retrieve payloads. An archivist is the most constrained of three storage tiers — database (arbitrary keys), datalake (keys cryptographically derivable from values), archivist (same key guarantee, values constrained to payloads). See [Datalakes — Tiered Data Storage](../xl1-knowledge/datalakes.md#tiered-data-storage-database-vs-datalake-vs-archivist).
+Archivists store and retrieve payloads. An archivist is content-addressed storage constrained to payloads: every key is a hash cryptographically derivable from the stored value, so a reader can verify what came back without trusting the store — unlike a database, whose keys bear no relationship to its values.
 
 The archivist surface is split by capability — there is no single
 `ArchivistFunctions` interface. `archivist-model` defines four function groups;
@@ -65,7 +65,9 @@ already present is skipped and not returned.
 - Standalone 8.0.x packages: `IndexedDbArchivist` (`@xyo-network/archivist-indexeddb`), `StorageArchivist` (`archivist-storage`), `CookieArchivist` (`archivist-cookie`), `FilesystemArchivist` (`archivist-filesystem`), `S3Archivist` (`archivist-s3`), `LevelDbArchivist` (`archivist-leveldb`), `LmdbArchivist` (`archivist-lmdb`), `MongoDBArchivist` (`archivist-mongodb`), `FirebaseArchivist` (`archivist-firebase`)
 - `@xyo-network/archivist-express` is not an archivist: it exports `archivistRestMiddleware`, Express middleware that serves an archivist over REST
 
-**`.next()` is implementation-dependent.** Local browser archivists (IndexedDbArchivist, MemoryArchivist) implement real cursor pagination. The XL1 remote datalake does not — for XL1 chain reads, iterate the chain to discover hashes, then fetch by hash via `get()`. See [Datalakes — How to read](../xl1-knowledge/datalakes.md).
+**`.next()` is implementation-dependent.** Local browser archivists (IndexedDbArchivist, MemoryArchivist) implement real cursor pagination. A remote, HTTP-backed store may not — confirm its implementation supports cursors before paging it. Otherwise discover the hashes you need from a structure you trust (such as the `payload_hashes` of validated bound witnesses) and fetch them by hash with `get()`.
+
+Building on XL1? Its remote datalake has no cursor pagination — see [XL1 Datalakes — How to read](../xl1-knowledge/datalakes.md#how-to-read--iterate-the-chain-fetch-by-hash).
 
 #### Browser Archivist Selection
 

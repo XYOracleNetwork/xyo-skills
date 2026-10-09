@@ -87,7 +87,7 @@ grep -rE '"jsonrpc"\s*:' src/
 grep -rE "\b(eth|net|web3|personal|engine)_[a-zA-Z]+\b" src/
 ```
 
-A clean grep is part of the Definition of Done — see [dApp Checklist — Gateway & Chain Access](../xl1-patterns/dapp-checklist.md#gateway--chain-access).
+A clean grep is a precondition for calling any XL1 work done.
 
 ---
 
@@ -112,9 +112,10 @@ Node, [Node Gateway — REST/S3 gateway](gateway-node.md#rests3-gateway--reading
 
 † The local datalake URL is what the SDK's `NetworkDataLakeUrls` constant
 carries, but a plain `xl1 start` **does not serve it** — the local `api` actor
-mounts only `/rpc`, `/rpc/indexed`, and probe routes. For local datalake-backed
-reads, run the composed stack in
-[xl1-testing — local chain + Aries data store](../xl1-testing/local-chain-datalake.md).
+mounts only `/rpc`, `/rpc/indexed`, and probe routes. A local datalake is not
+part of the node: composing one beside a local chain is a test-stack concern,
+and local code that reads off-chain bodies must point at a datalake that is
+actually running.
 
 ‡ The local REST root is not a `DefaultNetworks` field. It is the
 `InPageGatewaysProvider` default (override with its `localEndpoint` prop), read
@@ -247,7 +248,20 @@ They **do not include the off-chain application payloads referenced by each `Tra
 1. Walk blocks via `viewer.block.*` and collect the payload hashes you care about from each `TransactionBoundWitness.payload_hashes[]` (filtering by the parallel `payload_schemas[]` is usually how you decide which ones to keep).
 2. Fetch them in one batch with `createRestDataLakeViewer(endpoint).get(hashes)` against the datalake the content was written to (see [Accessing the Datalake](#accessing-the-datalake)).
 
-This is the canonical shape for indexer block walks — one combined datalake fetch per block instead of one per transaction. See [Chain Data Indexing — Step 3](../xl1-patterns/chain-data-indexing-protocol.md#step-3-query-by-schema) for the full block-walk recipe.
+```ts
+import { asXL1BlockNumber, createRestDataLakeViewer, isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+
+const dataLake = await createRestDataLakeViewer(dataLakeUrl) // construct once, reuse
+
+const block = await viewer.block.blockByNumber(asXL1BlockNumber(n, true))
+const hashes = (block?.[1] ?? [])
+  .filter(isTransactionBoundWitness)
+  .flatMap(tx => tx.payload_hashes.filter((_, i) => tx.payload_schemas[i] === MySchema))
+const bodies = hashes.length > 0 ? await dataLake.get(hashes) : []
+// validate each body before use — see Datalakes — How to read (trust boundary)
+```
+
+This is the canonical shape for indexer block walks — one combined datalake fetch per block instead of one per transaction. See also [Chain Data Indexing — Step 3](../xl1-patterns/chain-data-indexing-protocol.md#step-3-query-by-schema) for the full recipe (incremental walks, read models, scan strategies).
 
 ### Transaction Queries — `connection.viewer.transaction`
 
@@ -678,10 +692,10 @@ explicitly pins `SimpleChainContractViewer` with no connection.
 
 | Anti-Pattern | Why it fails | Do this instead |
 |---|---|---|
-| Calling XL1 RPC methods by name (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, etc. — whether via `fetch` to `/rpc` or a hand-rolled JSON-RPC client) | Loses type safety, params/result validation, provenance, validators, and transport abstraction. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
+| Calling XL1 RPC methods by name (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, etc. — whether via `fetch` to `/rpc`, a hand-rolled JSON-RPC client, or a string dispatch like `gateway.call(...)`, which does not exist) | Loses type safety, params/result validation, provenance, validators, and transport abstraction. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use `connection.viewer` sub-viewers for reads, gateway methods for writes |
 | Calling Ethereum RPC methods (`eth_getBalance`, `eth_blockNumber`, `eth_call`, `eth_sendTransaction`, `personal_sign`, etc.) against the XL1 gateway | XL1 is not an EVM chain — these methods do not exist on the gateway. Address compatibility (shared BIP44 path) is the *only* thing XL1 borrows from Ethereum. See [Never Issue Raw RPC Calls](#never-issue-raw-rpc-calls) | Use the XL1 viewer/runner equivalents — `connection.viewer.account.balance`, `connection.viewer.block.*`, `gateway.send`, etc. |
 | Using Ethereum SDKs (`ethers`, `viem`, `web3.js`, `@ethersproject/*`, EIP-1193 providers) to talk to XL1 | These speak the Ethereum JSON-RPC protocol — XL1 does not. They will never work | Use `@xyo-network/xl1-sdk` (`GatewayBuilder` in Node, `useProvidedGateway` in browser) |
 | `gateway.datalake` or `gateway.dataLake` | Does not exist on the gateway object | Use `createRestDataLakeRunner` / `createRestDataLakeViewer` |
 | `gateway.connection.storage.insert(...)` | `connection.storage` is typed `DataLakeRunner \| DataLakeViewer` — a viewer with no `insert` on read-only gateways or when no datalake runner was configured — and may not point to the dApp's desired endpoint | Use `createRestDataLakeRunner`, or a datalake-configured runner gateway, which writes transaction content itself |
 | Using `datalakeRunner` / `datalakeViewer` without creating them | These are not globals — they must be instantiated | See [Accessing the Datalake](#accessing-the-datalake) above |
-| `datalakeViewer.next(...)` to browse or scan a remote XL1 datalake | XL1 datalakes have no cursor pagination — `.next()` is an unbounded scan with no chain context | Iterate the chain via `viewer.block.*`, then read the datalake by hash. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) and [Datalakes — How to read](datalakes.md) |
+| `datalakeViewer.next(...)` to browse or scan a remote XL1 datalake | XL1 datalakes have no cursor pagination — `.next()` is an unbounded scan with no chain context | Iterate the chain via `viewer.block.*`, then read the datalake by hash — the [two-step pattern](#what-blockblockbynumber-and-friends-returns--hydration-is-shallow). See [Datalakes — How to read](datalakes.md#how-to-read--iterate-the-chain-fetch-by-hash) |

@@ -93,8 +93,28 @@ for ASCII naming, immutable definitions, compatibility, root-hash references, an
 cache keys. Chain validation can enforce available primitive rules; it cannot
 infer a third-party field's semantics, namespace ownership, or compatibility from
 the label alone. A BoundWitness's own unbound `$version` cannot select weaker
-signature/consensus rules. Adding SDK helpers does not deploy a network upgrade or
-migrate existing Statement Graph/Event Kit data-hash contracts.
+signature/consensus rules.
+
+XL1-layer protocols that intentionally use data hashes keep them: Statement
+Graph object references, ordinal/inscription IDs and burn derivation, exchange
+commitments, and Event Kit contracts. Import their builders/validators and
+preserve their algorithms rather than switching them to root hashes. Adding SDK
+helpers does not deploy a network upgrade or migrate those contracts.
+
+### XL1's `network.xyo.*` schemas
+
+XL1 ships XYO Foundation–owned schemas under the reserved `network.xyo.*`
+namespace (see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)),
+defined in `@xyo-network/xl1-protocol/protocol-model` and re-exported by the
+`@xyo-network/xl1-sdk` root barrel:
+
+- **Chain system payloads** — `network.xyo.transfer` (`TransferSchema`) and
+  `network.xyo.time` (`TimeSchema`), among the `AllowedBlockPayload` types
+- **Canonical substrates** (Tier 2) — `network.xyo.ordinal.*` (inscription),
+  `network.xyo.ordinal.token.*` (XRC-20), and `network.xyo.exchange.*`
+
+Import these; never redefine them. Schemas your application builds on top of
+them belong under your own `com.<your-org>.<app>.*` namespace.
 
 ---
 

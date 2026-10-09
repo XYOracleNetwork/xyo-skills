@@ -54,7 +54,7 @@ Each network exposes its datalake as a standalone HTTP archivist endpoint, separ
 |---------|-------------|
 | **Mainnet** | `https://api.archivist.xyo.network/dataLake` |
 | **Sequence** (beta) | `https://beta.api.archivist.xyo.network/dataLake` |
-| **Local** | `http://localhost:8080/dataLake` — carried by `NetworkDataLakeUrls`, but a plain `xl1 start` does not serve this route; see [xl1-testing — local chain + Aries data store](../xl1-testing/local-chain-datalake.md) |
+| **Local** | `http://localhost:8080/dataLake` — carried by `NetworkDataLakeUrls`, but a plain `xl1 start` does not serve this route (the local `api` actor mounts only `/rpc`, `/rpc/indexed`, and probe routes). A local datalake is not part of the node; composing one beside a local chain is a test-stack concern |
 
 **The datalake is not a direct property on the gateway JS object.** The gateway RPC (`/rpc`) and the datalake (`/dataLake`) are separate services. Do not use `defaultGateway.datalake` (which does not exist). Note: `gateway.connection.storage` exists when the connection is configured with a datalake endpoint — a `DataLakeRunner` on a write-capable gateway, a read-only `DataLakeViewer` otherwise — but it is not the recommended path for dApp code: what it can do depends on how the gateway was built, and it may not point to the endpoint the dApp intends to use. Always create standalone datalake clients. See [Gateway — Accessing the Datalake](gateway.md#accessing-the-datalake).
 
@@ -76,7 +76,7 @@ These two configurations are **independent**. The relationship between them is a
 
 **Do not assume one covers the other.** The wallet may or may not write to a datalake the dApp can see, and vice versa. If the dApp needs payload data to be available for querying, it must write to its own datalake — regardless of what the wallet does.
 
-**There is no public wallet permission for datalake access.** A dApp that needs to read or write the datalake does it directly over HTTP via the factories below — it does not request a permission from the wallet. The wallet does have a typed, internal datalake surface: a `DataLakesClient` (`requestAccess` / `list` / `lakes` / `get` / `insert`) injected as `xyo.dataLakes`, whose `lakes()` hands back `DataLakePageViewer` / `DataLakePageRunner` providers over the wallet's `xyoDataLakes_get` / `xyoDataLakes_insert` methods. Lakes only exist there once the user adds them in the wallet's Data Lakes settings page, which appears only after the **Enable Data Lakes** debug setting is switched on — and the Debug page itself is only reachable in development or debug builds. It is not for dApps, whatever the types suggest. See [Wallet — Permissions](../xl1-patterns/wallet.md#permissions) for the full rule.
+**There is no public wallet permission for datalake access.** A dApp that needs to read or write the datalake does it directly over HTTP via the factories below — it does not request a permission from the wallet. The wallet does have a typed, internal datalake surface: a `DataLakesClient` (`requestAccess` / `list` / `lakes` / `get` / `insert`) injected as `xyo.dataLakes`, whose `lakes()` hands back `DataLakePageViewer` / `DataLakePageRunner` providers over the wallet's `xyoDataLakes_get` / `xyoDataLakes_insert` methods. Lakes only exist there once the user adds them in the wallet's Data Lakes settings page, which appears only after the **Enable Data Lakes** debug setting is switched on — and the Debug page itself is only reachable in development or debug builds. It is not for dApps, whatever the types suggest: a dApp requests only `xyoWallet_getAccounts` from the wallet (that grant also covers `xyoSigner_address`) and never puts `xyoDataLakes_get` or `xyoDataLakes_insert` in a permission request. See also [Wallet — Permissions](../xl1-patterns/wallet.md#permissions) for the rest of the wallet's permission surface.
 
 ```ts
 import { createRestDataLakeRunner, createRestDataLakeViewer } from '@xyo-network/xl1-sdk'
@@ -87,12 +87,14 @@ await runner.insert(payloads)
 
 const viewer = await createRestDataLakeViewer('https://api.archivist.xyo.network/dataLake')
 
-// Read by hash. Hashes come from the chain — see Chain Data Indexing
+// Read by hash. Hashes come from the chain — see "How to read" below
 // for how to discover them by walking blocks/transactions.
 const results = await viewer.get(hashes)
 ```
 
 The factory functions wrap a default `BaseConfig` provider context and return the `RestDataLakeRunner` / `RestDataLakeViewer` instance directly — dApp code no longer needs to construct a provider context manually.
+
+Use them rather than raw `fetch()` to the endpoint: `RestDataLakeRunner` and `RestDataLakeViewer` implement the archivist HTTP contract (request format, hash-keyed reads, schema filtering on the request), which a hand-rolled request may not match.
 
 ### Off-chain payload storage
 
@@ -145,7 +147,9 @@ Walk the chain to discover what hashes exist (read each `TransactionBoundWitness
 
 `viewer.block.payloadsByHash(hashes)` and `viewer.transaction.byHash(txHash)` are not substitutes for the datalake fetch: both read the gateway's own payload store, which holds the on-chain payloads, not off-chain bodies. `transaction.byHash` returns the transaction bound witness plus whichever of its payloads that store holds; take its `payload_hashes[]` to the datalake for the rest.
 
-**Do not use `.next()` to browse a remote XL1 datalake.** The method exists on the standard `ArchivistFunctions` interface, but remote XL1 datalakes do not implement cursor pagination — `.next()` against a `RestDataLakeViewer` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee). It will appear to "work" on small datasets and silently scale poorly. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the chain-walk patterns that replace it.
+**Trust boundary.** What the gateway's viewers return — block envelopes, `TransactionBoundWitness` fields (`from`, `payload_hashes`, `payload_schemas`), block numbers, signatures — the chain has already validated; trust it as the SDK presents it. A body fetched from a datalake has not been: anyone can write bytes there, including bytes that carry a schema name without its shape. Keep a body only if it hashes back (`PayloadBuilder.hash`) to the hash the transaction lists and passes the payload's Zod guard.
+
+**Do not use `.next()` to browse a remote XL1 datalake.** The method exists on the standard `ArchivistFunctions` interface, but remote XL1 datalakes do not implement cursor pagination — `.next()` against a `RestDataLakeViewer` returns an unbounded scan with no chain context (no block number, no signer, no finalization guarantee). It will appear to "work" on small datasets and silently scale poorly. The two-step read above — walk blocks, collect `payload_hashes` filtered by `payload_schemas`, `get()` the bodies by hash — replaces it. See also [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the full block-walk recipe and scan strategies.
 
 `.next()` *is* still valid on **local browser archivists** (`IndexedDbArchivist`, `MemoryArchivist`) — they implement real cursor pagination and they are caches, not the chain-of-record. See [Module System — Browser Archivist Selection](../xyo-knowledge/modules.md).
 
@@ -218,4 +222,4 @@ are gone — every backing store, RPC endpoint, EVM RPC, and S3 bucket lives und
 
 For dApp development, use the gateway's viewer API (see [Gateway](gateway.md)) to discover hashes rather than scanning the datalake with `.next()`. The `connection.viewer` sub-viewers provide typed, validated access to chain data, but they never read from a datalake — block reads, `viewer.transaction.byHash`, and `viewer.block.payloadsByHash` return only what the gateway's own payload store holds (the on-chain payloads). See [Gateway — What `block.blockByNumber` returns](gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for the full read semantics.
 
-To read off-chain payloads, use the datalake viewer's `get(hashes)` with hashes you obtained from the chain. See [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md) for the supported scan strategies.
+To read off-chain payloads, use the datalake viewer's `get(hashes)` with hashes you obtained from the chain — each `TransactionBoundWitness.payload_hashes[]`, filtered by the parallel `payload_schemas[]` (see [How to read](#how-to-read--iterate-the-chain-fetch-by-hash)). For scan strategies beyond a forward block walk, see also [Chain Data Indexing](../xl1-patterns/chain-data-indexing-protocol.md#scan-strategies--reading-indexed-data).

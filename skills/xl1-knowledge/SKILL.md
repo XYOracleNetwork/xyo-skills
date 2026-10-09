@@ -3,23 +3,23 @@ name: xl1-knowledge
 description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), website integration via @xyo-network/xl1-browser-system and the REST-over-RPC transport rule, identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, integrating XL1 into a website, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 4
 ---
 
 # XL1 Blockchain Knowledge
 
 This skill covers the XL1 blockchain (XYO Layer One) — a data-focused Layer 1 designed for high-throughput data applications. XL1 extends the XYO protocol with blockchain primitives: blocks, transactions, fees, staking, and consensus.
 
+When you need to look up exact type definitions, install the relevant `@xyo-network/xl1-*` package and read the TypeScript declarations at `dist/neutral/index.d.ts`. The [XL1 Protocol Yellow Paper](https://docs.xyo.network) provides the full protocol specification.
+
 **Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
 
-## Lower Layer Skills
+## Skill layers
 
-XL1 builds on the full skill stack. When working on XL1 projects, also consult:
+This is **Layer 4** of the XYO skill stack: `xy-development` (1) → `xy-toolchain` (2) → `xyo-knowledge` (3) → `xl1-knowledge` (4) → `xl1-patterns` (5) → `xl1-dapp-kit` (6) → `xl1-testing` (7) → `xl1-scaffold` (8) → `xl1-build` (9).
 
-- **[XYO Knowledge](../xyo-knowledge/SKILL.md)** — for protocol primitives (payloads, bound witnesses, modules, accounts, wallets)
-- **[XY Toolchain](../xy-toolchain/SKILL.md)** — for build tooling (@ariestools/toolchain, ESLint, TypeScript config, Vitest)
-- **[Development](../xy-development/SKILL.md)** — for coding conventions (TypeScript, Git, testing, workflow)
-
-When you need to look up exact type definitions, install the relevant `@xyo-network/xl1-*` package and read the TypeScript declarations at `dist/neutral/index.d.ts`. The [XL1 Protocol Yellow Paper](https://docs.xyo.network) provides the full protocol specification.
+- **Builds on:** [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) — protocol primitives (payloads, bound witnesses, modules, accounts, wallets); `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2) — build tooling (`@ariestools/toolchain`, ESLint, TypeScript config, Vitest) and coding conventions (TypeScript, Git, testing, workflow)
+- **Hands off to:** [xl1-patterns](../xl1-patterns/SKILL.md) (5) — when building application features, including the Statement Graph (append-only signed relationship claims, `@xyo-network/xl1-statement-graph-*`) and other application substrates that are not core chain; [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) (6) — when adopting the portable headless application contracts (`@xyo-network/dapp-kit*`); [xl1-testing](../xl1-testing/SKILL.md) (7) — when verifying chain interactions against a local chain or Sequence; [xl1-scaffold](../xl1-scaffold/SKILL.md) (8) — when starting a new XL1 project
 
 ## Payload schema and identity rules
 
@@ -32,7 +32,7 @@ The XL1 gateway is reached exclusively through the SDK. Two rules apply to every
 1. **Never call XL1 JSON-RPC methods by name** (`blockViewer_blocksByNumber`, `transactionViewer_byHash`, and any other `<viewer>_<method>` pair — whether via raw `fetch` to `/rpc` or a hand-rolled JSON-RPC client). Go through `gateway.connection.viewer.*` for reads and gateway methods for writes.
 2. **Never use Ethereum RPC methods** (`eth_getBalance`, `eth_blockNumber`, `eth_call`, `eth_sendTransaction`, `personal_sign`, etc.) or Ethereum SDKs (`ethers`, `viem`, `web3.js`) against XL1. XL1 is not an EVM chain. Address compatibility via shared BIP44 derivation is the *only* thing XL1 shares with Ethereum.
 
-See [Gateway — Never Issue Raw RPC Calls](gateway.md#never-issue-raw-rpc-calls) for the rationale, the XL1 equivalents for each Ethereum method, and the structural grep self-check that gates "done." Enforced by [dApp Checklist — Gateway & Chain Access](../xl1-patterns/dapp-checklist.md#gateway--chain-access).
+See [Gateway — Never Issue Raw RPC Calls](gateway.md#never-issue-raw-rpc-calls) for the rationale, the XL1 equivalents for each Ethereum method, and the structural grep self-check that gates "done." For dApps, the completion gate in xl1-testing walks the same check: [dApp Definition of Done — Gateway & Chain Access](../xl1-testing/dapp-checklist.md#gateway--chain-access).
 
 ## Table of Contents
 
@@ -57,8 +57,5 @@ Read when integrating XL1 into any website — React dApps, plain pages, workers
 ### [Node Gateway](gateway-node.md)
 Read when constructing a gateway in any non-browser context — backend services, indexers, CLIs, scheduled jobs, tests, and headless verification of dApps. Covers the canonical `GatewayBuilder` entry point (read-only and write-capable), owned gateway sessions (`buildSession()` / `buildRunnerSession()` and `stop()` for clean shutdown), the seed-phrase signer pattern, the lazy-promise caching pattern, and the `basicRemoteViewerLocator` escape hatch.
 
-### Application substrates (not core chain)
-
-- **[Statement Graph](../xl1-patterns/statement-graph.md)** — append-only signed relationship claims (`network.xyo.statement.claim` carrying `{ source, subject, hashes }`); application-layer package family `@xyo-network/xl1-statement-graph-*`.
-- **[XL1 dApp Kit](../xl1-dapp-kit/SKILL.md)** — portable headless application contracts (`@xyo-network/dapp-kit*`).
-- **[Finalized block stream](gateway.md#finalized-block-stream)** — ordered finalized delivery for indexers (`FinalizedBlockStream` / `finalizedBlockStreamFromGateway`); prefer over deprecated `headUpdated`.
+### [Finalized block stream](gateway.md#finalized-block-stream)
+Read when an indexer or service needs ordered finalized delivery (`FinalizedBlockStream` / `finalizedBlockStreamFromGateway`); prefer it over the deprecated `headUpdated`. A section of [Gateway](gateway.md).
