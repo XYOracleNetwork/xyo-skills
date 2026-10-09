@@ -17,7 +17,7 @@ Gate 1 always applies. Walk this checklist (Gate 2) when the project is a dApp. 
 - [ ] A gateway provider wraps the app — either `WalletGatewayProvider` (wallet-required) or `GatewayProvider` + `InPageGatewaysProvider` (read-only fallback)
 - [ ] **In-page gateways are configured for REST.** `InPageGatewaysProvider` carries `transport="rest"` — the prop defaults to `'rpc'`, so omitting it silently puts every anonymous read on a live gateway node. `grep -n 'InPageGatewaysProvider' src/` shows `transport="rest"` on every occurrence. Reaching for `'rpc'` is allowed only with a stated reason (no published static layout, or a read that must observe unfinalized state)
 - [ ] Non-React browser targets (plain pages, workers, service workers, extensions) integrate through `@xyo-network/xl1-browser-system` — not a hand-rolled gateway — and retain the session so the owning realm can stop it
-- [ ] `gatewayName` is set on the provider (e.g., `MainNetwork.id`) — without it, `defaultGateway` is always `undefined`
+- [ ] `gatewayName` is set on the provider (the target network's id, e.g. `SequenceNetwork.id` during development, `MainNetwork.id` in production) — without it, `defaultGateway` is always `undefined`
 - [ ] Chain state is read through `connection.viewer` sub-viewers — no raw HTTP calls to the gateway endpoint
 - [ ] `connection.viewer` is guarded before use (`?.` or null check) — it is `XyoViewer | undefined`
 - [ ] Transactions are submitted through gateway methods (`addPayloadsToChain`, `send`, `sendMany`) — no manual `TransactionBoundWitness` construction

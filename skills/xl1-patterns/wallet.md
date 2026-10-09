@@ -51,7 +51,7 @@ For the standard connect-accounts flow, do not call the permission RPC directly.
 ```tsx
 import type { XyoAddress } from '@xyo-network/sdk'
 import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/xl1-react-client-sdk'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { SequenceNetwork } from '@xyo-network/xl1-sdk'
 import { useState } from 'react'
 
 function App() {
@@ -59,7 +59,7 @@ function App() {
   const [accounts, setAccounts] = useState<readonly XyoAddress[]>([])
 
   return (
-    <WalletGatewayProvider gatewayName={MainNetwork.id}>
+    <WalletGatewayProvider gatewayName={SequenceNetwork.id}>
       <ConnectAccountsStack onAccountsChanged={setAccounts} />
       {/* rest of app — the dApp picks the account it acts as from `accounts` */}
     </WalletGatewayProvider>

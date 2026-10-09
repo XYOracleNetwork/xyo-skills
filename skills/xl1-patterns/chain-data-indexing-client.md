@@ -108,14 +108,14 @@ import type { Payload, Schema } from '@xyo-network/sdk'
 import { isAnyPayload } from '@xyo-network/sdk'
 import type { XyoGateway, XyoGatewayRunner } from '@xyo-network/xl1-sdk'
 import {
-  asXL1BlockNumber, createRestDataLakeViewer, isTransactionBoundWitness, MainNetwork, NetworkDataLakeUrls,
+  asXL1BlockNumber, createRestDataLakeViewer, isTransactionBoundWitness, NetworkDataLakeUrls, SequenceNetwork,
 } from '@xyo-network/xl1-sdk'
 
 const FLOOR_BLOCK = Number(import.meta.env.VITE_INDEXER_FLOOR_BLOCK ?? 0)
 
 // Off-chain bodies come from the dApp's own datalake — the endpoint its submit
 // path writes to (see In-Page Data Lakes § Datalake Client Setup)
-const DATALAKE_ENDPOINT = import.meta.env.VITE_DATALAKE_ENDPOINT ?? NetworkDataLakeUrls[MainNetwork.id]
+const DATALAKE_ENDPOINT = import.meta.env.VITE_DATALAKE_ENDPOINT ?? NetworkDataLakeUrls[SequenceNetwork.id]
 const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
 
 async function fetchRecent(

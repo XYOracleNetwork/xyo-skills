@@ -85,7 +85,7 @@ Two rules follow, and the examples below use both:
 ```tsx
 import type { XyoAddress } from '@xyo-network/sdk'
 import { InPageGatewaysProvider, GatewayProvider, ConnectAccountsStack } from '@xyo-network/xl1-react-client-sdk'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { SequenceNetwork } from '@xyo-network/xl1-sdk'
 import { useCallback, useState } from 'react'
 
 function App() {
@@ -98,7 +98,7 @@ function App() {
 
   return (
     <InPageGatewaysProvider transport="rest">
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <GatewayProvider gatewayName={SequenceNetwork.id}>
         {/* These components load immediately — no wallet needed (they read the service's /api/*) */}
         <GameHistory />
         <Leaderboard />
@@ -138,12 +138,12 @@ The datalake is independent of the gateway — it is the dApp's own HTTP client,
 
 ```ts
 import {
-  createRestDataLakeRunner, createRestDataLakeViewer, MainNetwork, NetworkDataLakeUrls,
+  createRestDataLakeRunner, createRestDataLakeViewer, NetworkDataLakeUrls, SequenceNetwork,
 } from '@xyo-network/xl1-sdk'
 
 // The dApp's own datalake — configured per deployment, defaulting to the network's.
 // Writes and reads use the same endpoint, so the dApp reads back what it wrote.
-const DATALAKE_ENDPOINT = import.meta.env.VITE_DATALAKE_ENDPOINT ?? NetworkDataLakeUrls[MainNetwork.id]
+const DATALAKE_ENDPOINT = import.meta.env.VITE_DATALAKE_ENDPOINT ?? NetworkDataLakeUrls[SequenceNetwork.id]
 
 // Write — no wallet needed, dApp can insert payloads for any visitor
 const datalakeRunner = await createRestDataLakeRunner(DATALAKE_ENDPOINT)
@@ -315,7 +315,7 @@ function App() {
 
   return (
     <InPageGatewaysProvider transport="rest">
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <GatewayProvider gatewayName={SequenceNetwork.id}>
         {/* Always visible — service index reads, bounded chain reads, datalake reads/writes; no wallet */}
         <Header />
         <GameHistory />

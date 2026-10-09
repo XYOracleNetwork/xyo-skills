@@ -18,6 +18,12 @@
 
 The chain, the signer, and the app-level surface are the same as
 [local dev-chain verification](local-chain.md); only the *lifecycle* differs.
+This doc covers the choice, the adoption gotchas, and a first green spec. The
+full reference — installer catalog, `installers` shapes and per-installer
+overrides, `optInOnly` resolution order, `runActorScript`, exports — is the
+package README. The package is restricted and its source is private, so that
+README is readable only from an install (XYO-internal):
+`node_modules/@xyo-network/xl1-vitest-config/README.md`.
 
 ## Which route to take
 
@@ -30,7 +36,7 @@ The chain, the signer, and the app-level surface are the same as
 | RPC URL | fixed `http://localhost:8080/rpc` | per-file port (`localXl1RpcUrl()`) | per-file port (test global) |
 | Who | anyone | **preferred public default** | XYO-internal only |
 
-Neither is Sequence qualification — see
+None of these is Sequence qualification — see
 [What the local chain is (and isn't)](local-chain.md#what-the-local-chain-is-and-isnt).
 Everything in that section applies verbatim here: simplified dev consensus,
 in-memory storage, no EVM staking layer, ephemeral chain id.
@@ -51,14 +57,7 @@ npm view @xyo-network/xl1-vitest-config version    # 5.6.1 when authenticated
 ```
 
 The response does mention permissions, but only below the `E404` line most
-readers stop at:
-
-```
-npm error code E404
-npm error 404 Not Found - GET https://registry.npmjs.org/@xyo-network%2fchain-test - Not found
-npm error 404
-npm error 404  The requested resource '@xyo-network/chain-test@*' could not be found or you do not have permission to access it.
-```
+readers stop at: `... could not be found or you do not have permission to access it.`
 
 ## Install
 
@@ -74,7 +73,8 @@ declare it directly: nothing in your own source imports it, so `xy deplint`
 reports a direct declaration as an unused devDependency.
 
 Peer ranges at `@xyo-network/xl1-vitest-config` 5.6.1: `@ariestools/vitest-config`
-`^10.0`, `vitest` `^5.0`.
+`^10.0`, `vitest` `^5.0`. The spec below imports `@xyo-network/xl1-sdk`, which
+declares Node `>=26` — run on Node 26.
 
 ## ⚠️ Two silent topology changes on adoption
 
@@ -90,18 +90,16 @@ xyo-chain conventions, not upgrades.
 - **`browserOnly`** is the dangerous one. If the repo keeps cross-realm specs
   under plain `spec/` (the [shared-preset routing](browser-mode.md#preferred-ariestoolsvitest-config)),
   the browser project stops re-running them and — with no `spec/browser/**`
-  directory at all — matches zero files. Measured on `event-kit`: leaving the
-  default in place took the suite from **511 tests / 42 files / 2 projects** to
-  **271 / 24 / 1**, with the footer reporting `browser — not run`. Exit code
-  stayed 0. Any coverage that depended on a spec executing in *both* realms
-  (ES256K verify/hash parity, in-page vs node gateway) silently stops being
-  evidence.
+  directory at all — matches zero files. Measured on `event-kit`: the suite went
+  from **511 tests / 42 files / 2 projects** to **271 / 24 / 1**, footer
+  `browser — not run`, exit code still 0. Any coverage that depended on a spec
+  executing in *both* realms (ES256K verify/hash parity, in-page vs node
+  gateway) silently stops being evidence.
 - **`nodeProjectName`** breaks every existing `--project node` invocation,
   package script, CI job, and doc line in the repo. The run still passes; the
   filter just matches nothing.
 
-A third difference is loud enough to notice but worth pre-empting: the default
-`include` is broader here (`src/**/spec/**`, `src/e2e/spec/**`,
+The default `include` is also broader here (`src/**/spec/**`, `src/e2e/spec/**`,
 `packages/**/src/**/spec/**`) than the ariestools default
 (`packages/*/src/**/spec/**`). Keep passing the repo's own `include` if it has
 one.
@@ -127,92 +125,40 @@ export default defineXl1VitestConfig({
 })
 ```
 
-Then wire the opt-in run as a script:
-
 ```json
 { "scripts": { "test": "vitest run", "test:api-local": "vitest run --project api-local" } }
 ```
 
-### `installers` shapes
-
-| Value | Effect |
-|---|---|
-| omitted / `false` | no installer projects |
-| `true` | every id in `XL1_VITEST_DEFAULT_INSTALLERS` (all but `apiLocalMongodbBeta`) |
-| `['apiLocal', 'hardhat']` | just those ids, each with catalog defaults |
-| `{ apiLocal: true, hardhat: false, apiLocalS3: { hookTimeout: 240_000 } }` | per-id enable / disable / override |
-
-Per-installer overrides (`Xl1InstallerProjectOptions`): `env`, `hookTimeout`,
-`include`, `optInOnly`, `runActorScript`, `setupFiles`, `test`, `testTimeout`.
-An unknown installer id throws at config load.
-
 ### `optInOnly` — keeping the default suite offline
 
-An enabled installer's globs are **always** stripped from the base node project,
-so its specs never run in the offline suite either way. `optInOnly` controls
-whether the installer *project* registers at all:
+**`apiLocal` is not opt-in by default here** (unlike every installer in the
+public preset). An enabled installer's globs are always stripped from the base
+node project; `optInOnly` controls whether the installer *project* registers:
 
 - `optInOnly: false` (the `apiLocal` catalog default) — registers on every run,
   so `pnpm test` boots a chain.
 - `optInOnly: true` — registers only when selected by project **name**:
-  `vitest run --project api-local`. This is what keeps `pnpm test` offline and
-  fast, and it records live qualification as a separate, deliberate run.
-
-Resolution order, highest first: per-installer `installers: { id: { optInOnly } }`
-→ top-level `optInOnly: { id: bool }` map → catalog default (`online` and
-`profile` are opt-in by default; everything else is not).
-
-The flag matches the project name, not the option id — `apiLocal` → `--project api-local`.
-
-### Post-run footer
-
-`defineXl1VitestConfig` appends a reporter that prints per-project results plus
-which installers registered, were skipped as opt-in, or were never enabled — with
-the reason for each. Read it to confirm a project actually ran rather than
-matching zero files:
-
-```
-Registered / eligible to run:
-  • node — 271 passed, 0 failed
-  • browser — not run
-Skipped (opt-in only; not selected via --project):
-  • api-local — opt-in only (per-installer override); pass --project api-local to run
-```
-
-Disable with `projectSelectionFooter: false`.
+  `vitest run --project api-local` (the name, not the option id `apiLocal`).
+  This keeps `pnpm test` offline and fast, and records live qualification as a
+  separate, deliberate run.
 
 ## Where specs must live
 
-The `apiLocal` project's include globs come from the catalog, **not** from your
-`include`:
-
-| Glob | Use |
-|---|---|
-| `src/**/spec/api-local/**/*.spec.ts` | single-package repo |
-| `src/e2e/spec/api-local/**/*.spec.ts` | root-level e2e package |
-| `packages/**/src/**/spec/api-local/**/*.spec.ts` | monorepo package specs |
-
-A live spec outside these paths is not picked up by `--project api-local`, and
-(having no matching exclude) still runs in the offline project — where no chain
-exists. Default `hookTimeout` for the project is 60 s.
+The `api-local` include globs come from the catalog, **not** from your
+`include`: put live specs in a `spec/api-local/` directory
+(`src/**/spec/api-local/**`, `src/e2e/spec/api-local/**`, or
+`packages/**/src/**/spec/api-local/**`). A live spec anywhere else is not picked
+up by `--project api-local` and still runs in the offline project — where no
+chain exists.
 
 ## What the installer does
 
 `installApiLocalSetup()` from `@xyo-network/chain-test` registers a
-`beforeAll` / `afterAll` pair, so **each spec file gets its own chain**:
-
-1. picks a port — `8080 + VITEST_WORKER_ID`, falling back to an OS-assigned
-   ephemeral port when that one is busy (it deliberately does *not* scan
-   upward, since neighboring ports are sibling workers' reserved bases);
-2. builds `api`, `producer`, `finalizer`, and `mempool` actors in-process from
-   the dev config (block-production check 50 ms, finalization check 25 ms,
-   `minCandidates: 1`), starts them, and waits for block > 0;
-3. assigns test globals and logs
-   `XL1 dev chain started: API on <port>, chain <id>`;
-4. stops the orchestrator in `afterAll` (`XL1 dev chain stopped`).
-
-A three-file live run on `event-kit` completed in 3.88 s wall clock, 1.56 s of
-that being chain boot across all three files.
+`beforeAll` / `afterAll` pair, so **each spec file gets its own chain**: it picks
+port `8080 + VITEST_WORKER_ID` (an OS-assigned port when that one is busy),
+builds `api`, `producer`, `finalizer`, and `mempool` in-process from the dev
+config, waits for block > 0, assigns the test globals, and stops the
+orchestrator in `afterAll`.
 
 ### Test globals
 
@@ -230,8 +176,8 @@ other ports, so a hardcoded URL either reaches a *different* file's chain or
 nothing at all.
 
 `@xyo-network/chain-test` does not ship its ambient `globals.d.ts` (it is not in
-the published `dist`), so declare the globals you use — same shape as the
-harness's own, in a `.d.ts` beside your specs:
+the published `dist`), so declare the globals you use in a `.d.ts` beside your
+specs:
 
 ```ts
 // src/spec/api-local/globals.d.ts
@@ -300,6 +246,20 @@ pnpm test:api-local                    # the same, via the package script
 Vitest project filters also accept path filters, so a large monorepo can scope a
 live run to the packages that have live specs:
 `vitest run --project api-local packages/xl1`.
+
+**Verify it ran.** Setup logs `XL1 dev chain started: API on <port>, chain <id>`
+per spec file (`XL1 dev chain stopped` on teardown). `defineXl1VitestConfig`
+also appends a post-run footer listing each project's results and why each
+installer registered, was skipped as opt-in, or was never enabled — read it to
+confirm a project ran rather than matched zero files:
+
+```
+Registered / eligible to run:
+  • node — 271 passed, 0 failed
+  • browser — not run
+Skipped (opt-in only; not selected via --project):
+  • api-local — opt-in only (per-installer override); pass --project api-local to run
+```
 
 ## Cross-References
 

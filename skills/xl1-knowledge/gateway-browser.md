@@ -146,11 +146,11 @@ React dApps integrate through these providers rather than calling `@xyo-network/
 
 ```tsx
 import { WalletGatewayProvider } from '@xyo-network/xl1-react-client-sdk'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { SequenceNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   return (
-    <WalletGatewayProvider gatewayName={MainNetwork.id}>
+    <WalletGatewayProvider gatewayName={SequenceNetwork.id}>
       <YourDApp />
     </WalletGatewayProvider>
   )
@@ -161,12 +161,12 @@ function App() {
 
 ```tsx
 import { InPageGatewaysProvider, GatewayProvider } from '@xyo-network/xl1-react-client-sdk'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { SequenceNetwork } from '@xyo-network/xl1-sdk'
 
 function App() {
   return (
     <InPageGatewaysProvider transport="rest">
-      <GatewayProvider gatewayName={MainNetwork.id}>
+      <GatewayProvider gatewayName={SequenceNetwork.id}>
         <YourDApp />
       </GatewayProvider>
     </InPageGatewaysProvider>
@@ -213,7 +213,7 @@ recovers without a reload.
 
 ### gatewayName is required
 
-Without it, `defaultGateway` is always `undefined`. Use `MainNetwork.id` from `@xyo-network/xl1-sdk` (value: `'mainnet'`). Both providers use this name to look up the wallet gateway via `useGatewayFromWallet(gatewayName)`. `GatewayProvider` additionally resolves the in-page fallback gateway from `InPageGatewaysProvider`. When `gatewayName` is omitted, lookups return `undefined`.
+Without it, `defaultGateway` is always `undefined`. Use the target network's id from `@xyo-network/xl1-sdk` — `SequenceNetwork.id` (`'sequence'`) while developing and testing, `MainNetwork.id` (`'mainnet'`) for production. Both providers use this name to look up the wallet gateway via `useGatewayFromWallet(gatewayName)`. `GatewayProvider` additionally resolves the in-page fallback gateway from `InPageGatewaysProvider`. When `gatewayName` is omitted, lookups return `undefined`.
 
 ---
 

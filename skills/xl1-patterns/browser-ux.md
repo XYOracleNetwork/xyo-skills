@@ -105,7 +105,7 @@ A typical XL1 dApp layout:
 ```tsx
 import type { XyoAddress } from '@xyo-network/sdk'
 import { WalletGatewayProvider, ConnectAccountsStack } from '@xyo-network/xl1-react-client-sdk'
-import { MainNetwork } from '@xyo-network/xl1-sdk'
+import { SequenceNetwork } from '@xyo-network/xl1-sdk'
 import { useCallback, useState } from 'react'
 
 function App() {
@@ -117,7 +117,7 @@ function App() {
   }, [])
 
   return (
-    <WalletGatewayProvider gatewayName={MainNetwork.id}>
+    <WalletGatewayProvider gatewayName={SequenceNetwork.id}>
       <ConnectAccountsStack onAccountsChanged={onAccountsChanged} />
       <GameBoard address={address} />
       <GameHistory address={address} />
@@ -213,9 +213,9 @@ Whenever a UI surfaces an XL1 chain primitive, render it as a link to the corres
 Construct one `ExplorerLinks` per network from the same `NetworkBootstrap` that drives the gateway provider — this keeps the explorer the user lands on aligned with the network the dApp is talking to:
 
 ```tsx
-import { ExplorerLinks, MainNetwork } from '@xyo-network/xl1-sdk'
+import { ExplorerLinks, SequenceNetwork } from '@xyo-network/xl1-sdk'
 
-const explorer = new ExplorerLinks(MainNetwork.explorerUrl!, MainNetwork.id)
+const explorer = new ExplorerLinks(SequenceNetwork.explorerUrl!, SequenceNetwork.id) // the network the dApp targets
 
 function AddressDisplay({ value }: { value: string }) {
   const display = `${value.slice(0, 8)}...${value.slice(-8)}`
