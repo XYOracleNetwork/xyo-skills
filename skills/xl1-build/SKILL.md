@@ -1,8 +1,9 @@
 ---
 name: xl1-build
-description: Interactive planning wizard for new XL1 dApps. Refines a vague or exploratory build request into a concrete spec (archetype, patterns, network, multi-party roles, headless verification) before any scaffolding runs. Activates when the user wants to build, design, or plan something on XL1 but hasn't fully specified what — phrases like "I want to build something on XL1", "help me design a dApp", "what could I build", or any "build me X on XL1" prompt where X is under-specified. Do NOT activate when the user has already given a concrete, complete spec (e.g., names the archetype, the patterns, the network) — defer directly to [xl1-scaffold](../xl1-scaffold/SKILL.md) in that case.
+description: Interactive planning wizard for new XL1 dApps. Refines a vague or exploratory build request into a concrete spec (archetype, patterns, network, multi-party roles, runtime, headless verification) before any scaffolding runs. Activates when the user wants to build, design, or plan something on XL1 but hasn't fully specified what — phrases like "I want to build something on XL1", "help me design a dApp", "what could I build", or any "build me X on XL1" prompt where X is under-specified. Do NOT activate when the user has already given a concrete, complete spec (e.g., names the archetype, the patterns, the network) — defer directly to [xl1-scaffold](../xl1-scaffold/SKILL.md) in that case.
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 9
 ---
 
 # XL1 Build Wizard
@@ -12,6 +13,13 @@ This skill is the **planning front-end** to the scaffold. It runs a short, struc
 Run this skill **before** the scaffold, not in parallel with it. The deliverable of this skill is a *refined prompt*, not a scaffolded project.
 
 **Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
+
+## Skill layers
+
+This is **Layer 9** of the XYO skill stack: `xy-development` (1) → `xy-toolchain` (2) → `xyo-knowledge` (3) → `xl1-knowledge` (4) → `xl1-patterns` (5) → `xl1-dapp-kit` (6) → `xl1-testing` (7) → `xl1-scaffold` (8) → `xl1-build` (9).
+
+- **Builds on:** [xl1-scaffold](../xl1-scaffold/SKILL.md) (8), which executes the confirmed plan; [xl1-testing](../xl1-testing/SKILL.md) (7) for headless verification and the dApp Definition of Done; [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) (6) for the headless-runtime option; [xl1-patterns](../xl1-patterns/SKILL.md) (5) for archetype patterns and architecture principles; [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) and [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) for concept questions the wizard does not answer; `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2)
+- **Hands off to:** none — the top of the stack
 
 ## When this skill activates
 
@@ -33,7 +41,7 @@ If the trigger is ambiguous (concrete enough to scaffold, vague enough to refine
 
 ## How to run the wizard
 
-Four phases. Use `AskUserQuestion` for the question rounds. Keep the conversation tight — the user invoked this for guidance, not an interrogation.
+Four phases. Use the `AskUserQuestion` tool (or the agent's structured-question equivalent; otherwise ask inline) for the question rounds. Keep the conversation tight — the user invoked this for guidance, not an interrogation.
 
 ### Phase 1 — Identify the archetype
 
@@ -58,17 +66,21 @@ Each archetype has a fixed follow-up question set. Combine into a **single `AskU
 1. How many players per round? (2 / 3 / N)
 2. Are there stakes? (No / Equal stake on both sides / Asymmetric)
 3. Should anyone be able to browse past games without a wallet? (Yes — read-only history / No — players only)
-4. Reveal deadline behavior? (No-reveal forfeits / No-reveal blocks settlement)
+4. Runtime? (see [Runtime question](#runtime-question))
+
+Reveal-deadline behavior is not asked: use the [commit-reveal](../xl1-patterns/commit-reveal.md) default for games (an unrevealed commit forfeits), record it in `Notes:`, and let the user change it at the confirmation step.
 
 **Prediction market / betting**
 1. Who can resolve outcomes? (Configured authority list / DAO-style vote / Oracle)
 2. Stake currency? (XL1 native / XRC-20 / no stakes)
 3. Browse markets without wallet? (Yes / No)
+4. Runtime? (see [Runtime question](#runtime-question))
 
 **Atomic exchange / escrow / swap**
 1. How many parties? (2 / 3+)
 2. What's being exchanged? (Two fungible tokens / Token ↔ inscription / Custom payloads)
 3. Who authorizes appraisals/receipts? (Configured list / Counterparties only)
+4. Runtime? (see [Runtime question](#runtime-question))
 
 **Fungible token (XRC-20-style)**
 1. Open ticker registration or single canonical ticker?
@@ -92,9 +104,16 @@ Each archetype has a fixed follow-up question set. Combine into a **single `AskU
 **Custom / not listed**
 Ask the user to describe the flow in 2–3 sentences. Then map it manually to primitives in [xl1-patterns](../xl1-patterns/SKILL.md).
 
+#### Runtime question
+
+Ask it for the three multi-party archetypes above, and for any other archetype whose prompt already implies a long-lived backend (block-driven indexing, deadlines, scheduled jobs) — those sets have three questions or fewer, so it fits the round. If the need only shows up in the Phase 2 answers (or a custom flow), add it to the Phase 3 round. Not asked or unanswered means classic.
+
+- **Classic** (default) — React app + `xl1-service` indexer from the scaffold templates.
+- **dapp-kit headless runtime** — `@xyo-network/dapp-kit*` (3.x, `LGPL-3.0-only`), described by `xl1.dapp.json`; portable hosts, effect journals, conformance evidence. There is no scaffold template for it: the scaffold builds the shell and the manifests are written by hand per [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md).
+
 ### Phase 3 — Capture the environment
 
-One final `AskUserQuestion` round, two questions:
+One final `AskUserQuestion` round, two questions (plus the [runtime question](#runtime-question) if it moved here):
 
 1. **Network target?** (Mainnet / Sequence / Local devnet)
 2. **Headless verification?** (Yes — I want a `.env` seed phrase and a Node verification script / No — browser-only)
@@ -110,19 +129,20 @@ Build an XL1 dApp.
 
 Shape: <one-line archetype description, e.g. "two-player rock-paper-scissors with sealed moves">
 Network: <mainnet | sequence | local>
-Patterns: <comma-separated list of pattern doc names>
+Patterns: <comma-separated list of pattern doc names; multi-party plans include architecture-principles>
 Multi-party: <N parties; accounts 0 and 1 hold funds | n/a>
 History/browse: <public read-only via in-page datalake | wallet-gated | none>
-Backend: <monorepo with xl1-service indexer | react only>
+Runtime: <classic | dapp-kit>
+Backend: <monorepo with xl1-service indexer | react only | dapp-kit headless runtime (only, and always, when Runtime is dapp-kit)>
 Headless verification: <yes — .env seed phrase + Node script | no>
-Skills: <comma-separated xyo-skills plugin skill names that informed this plan or will guide scaffolding (e.g. "xl1-build, xl1-patterns, xl1-scaffold")>
-Version: <this plugin's version, formatted "xl1-build v<version>" — read from xl1-build's frontmatter metadata.version; all xyo-skills travel together so one stamp covers every entry in `Skills` above (e.g. "xl1-build v1.1.19")>
+Skills: <comma-separated xyo-skills plugin skill names that informed this plan or will guide scaffolding (e.g. "xl1-build, xl1-patterns, xl1-scaffold"; add xl1-dapp-kit when Runtime is dapp-kit)>
+Version: <this plugin's version, formatted "xl1-build v<version>" — read from xl1-build's frontmatter metadata.version; all xyo-skills travel together so one stamp covers every entry in `Skills` above (e.g. "xl1-build v<version>")>
 Notes: <any free-form constraint from the user that doesn't fit a slot>
 ```
 
-After the user confirms (or edits) the spec, **generate the project-specific acceptance criteria** following the guidance in [xy-development/workflow.md § Writing Project-Specific Acceptance Criteria](../xy-development/workflow.md#writing-project-specific-acceptance-criteria) — 5–10 observable bullets, split into positive and negative assertions, drawn from the user's answers + the loaded domain skills (patterns, knowledge layers). **No new user questions** — you have all the context you need from Phases 1–3 and the skill stack already in scope.
+After the user confirms (or edits) the spec, **generate the project-specific acceptance criteria** following the guidance in [xy-development/workflow.md § Writing Project-Specific Acceptance Criteria](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#writing-project-specific-acceptance-criteria) — 5–10 observable bullets, split into positive and negative assertions, drawn from the user's answers + the loaded domain skills (patterns, knowledge layers). **No new user questions** — you have all the context you need from Phases 1–3 and the skill stack already in scope.
 
-Then **write the PRD to `PRD.md` at the cwd**. The PRD is the durable, agent-readable record of the plan — it survives the chat, primes future sessions, lets [xl1-scaffold](../xl1-scaffold/SKILL.md) recover the spec if chat context is lost, and **carries Layer 3 of the completion gate** so the agent has a deterministic exit condition.
+Then **write the PRD to `PRD.md` at the cwd**. The PRD is the durable, agent-readable record of the plan — it survives the chat, primes future sessions, lets [xl1-scaffold](../xl1-scaffold/SKILL.md) recover the spec if chat context is lost, and **carries Gate 3 of the completion gate** so the agent has a deterministic exit condition.
 
 If `PRD.md` already exists at the cwd, ask the user with a single `AskUserQuestion`:
 
@@ -144,20 +164,25 @@ The PRD file shape:
 - **Patterns:** <comma-separated pattern doc names>
 - **Multi-party:** <N parties; accounts 0 and 1 hold funds | n/a>
 - **History/browse:** <public read-only via in-page datalake | wallet-gated | none>
-- **Backend:** <monorepo with xl1-service indexer | react only>
+- **Runtime:** <classic | dapp-kit>
+- **Backend:** <monorepo with xl1-service indexer | react only | dapp-kit headless runtime>
 - **Headless verification:** <yes — .env seed phrase + Node script | no>
+
+## Architecture review
+
+<multi-party plans only; omit otherwise. Answer each of the ten [review questions](https://github.com/XYOracleNetwork/xyo-skills/blob/main/skills/xl1-patterns/architecture-principles.md#review-questions) in one line from the spec; write `TBD` where implementation must decide>
 
 ## Acceptance criteria
 
-This project is complete when ALL of the following pass. If any item fails, fix it and re-walk; do not stop on partial pass. See [xy-development/workflow.md § Applying the Definition of Done](../xy-development/workflow.md#applying-the-definition-of-done) for the layering rules.
+This project is complete when ALL of the following pass. If any item fails, fix it and re-walk; do not stop on partial pass. See [xy-development/workflow.md § Applying the Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#applying-the-definition-of-done) for the gate rules (its Layers 1–3 are Gates 1–3 here).
 
-### Layer 1 — Generic DoD
-See [xy-development/workflow.md § Definition of Done](../xy-development/workflow.md#definition-of-done). Always applies.
+### Gate 1 — Generic DoD
+See [xy-development/workflow.md § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done). Always applies.
 
-### Layer 2 — Domain DoD
-See [xl1-patterns/dapp-checklist.md](../xl1-patterns/dapp-checklist.md). Applies when the project is a browser-facing dApp on XL1 (omit this layer for service-only / CLI-only projects).
+### Gate 2 — Domain DoD
+See [xl1-testing/dapp-checklist.md](https://github.com/XYOracleNetwork/xyo-skills/blob/main/skills/xl1-testing/dapp-checklist.md). Applies when the project is a browser-facing dApp on XL1 (omit this gate for service-only / CLI-only projects). With Runtime dapp-kit, also [dapp-kit conformance](https://github.com/XYOracleNetwork/xyo-skills/blob/main/skills/xl1-dapp-kit/conformance.md#minimum-agent-completion-expectations).
 
-### Layer 3 — Project-specific criteria
+### Gate 3 — Project-specific criteria
 
 Positive:
 - [ ] <observable behavior 1 derived from the spec, e.g. "Two players can each submit a sealed move (hash only) on-chain">
@@ -184,16 +209,21 @@ xl1-build v<version>
 
 The Build target / Skills referenced / Plugin version / Notes sections are **reshapings of the synthesized prompt** — no new questions. The Acceptance criteria section is **generated by the agent** at PRD-write time, following the criteria-writing guidance referenced above. Each criterion must be observable (UI flow, command exit code, file inspection, network response) so the loop can deterministically check it.
 
+For multi-party plans, `architecture-principles` is in `Patterns:` and the agent writes the Architecture review section the same way — no new questions. It is the design's answer to [Architecture principles — Review questions](../xl1-patterns/architecture-principles.md#review-questions); the implementing agent replaces every `TBD` before walking the completion gate.
+
+Every link written into `PRD.md` is an absolute GitHub URL: the file lives in the user's project, where this pack's relative `../` paths do not resolve.
+
 After the PRD is written, hand off explicitly:
 
 > Plan saved to `PRD.md`. I'll now invoke **xl1-scaffold** to bootstrap the project from this spec.
 
-Then follow [xl1-scaffold](../xl1-scaffold/SKILL.md) as if the user had originally pasted the synthesized prompt. The scaffold's "Interpreting the prompt" section will read the network, accounts, and headless cues directly out of the synthesized prompt — that's why the prompt shape mirrors what the scaffold expects. If the scaffold runs without the synthesized prompt in context (e.g. a fresh conversation), it will read `PRD.md` instead.
+Then follow [xl1-scaffold](../xl1-scaffold/SKILL.md) as if the user had originally pasted the synthesized prompt. The scaffold's "Interpreting the prompt" section will read the network, accounts, runtime, and headless cues directly out of the synthesized prompt — that's why the prompt shape mirrors what the scaffold expects. If the scaffold runs without the synthesized prompt in context (e.g. a fresh conversation), it will read `PRD.md` instead.
 
 ## What the wizard does **not** do
 
 - It does **not** scaffold. That's the scaffold's job; this skill stops at the synthesized prompt + hand-off line.
-- It does **not** implement features. After scaffold, the work follows [xl1-patterns](../xl1-patterns/SKILL.md).
+- It does **not** implement features. After scaffold, the work follows [xl1-patterns](../xl1-patterns/SKILL.md), plus [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) when `Runtime: dapp-kit`.
+- It does **not** write `xl1.dapp.json` / `xl1.deploy.json` or pick dapp-kit hosts. The wizard records `Runtime: dapp-kit`; the scaffold builds the shell and [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) guides the manifests.
 - It does **not** answer concept questions ("how does a bound witness work?"). Those go to [xyo-knowledge](../xyo-knowledge/SKILL.md) / [xl1-knowledge](../xl1-knowledge/SKILL.md) without running the wizard at all.
 - It does **not** re-run on an existing project. If the user wants to *add* something to a scaffolded dApp, the entry point is [xl1-patterns](../xl1-patterns/SKILL.md).
 

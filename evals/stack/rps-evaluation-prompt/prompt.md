@@ -23,6 +23,7 @@ Network: sequence
 Patterns: commit-reveal, chain-data-indexing-service, in-page-datalakes
 Multi-party: 2 parties; accounts 0 and 1 hold funds
 History/browse: public read-only via in-page datalake
+Runtime: classic
 Backend: monorepo with xl1-service indexer
 Headless verification: yes — .env seed phrase + Node script
 Notes: no stakes; a missing reveal forfeits after the reveal deadline

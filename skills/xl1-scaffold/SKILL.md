@@ -3,6 +3,7 @@ name: xl1-scaffold
 description: Bootstrap a new XL1 application — a single React dApp, a single xl1-service backend, a plain Node.js service/CLI, or a full-stack pnpm monorepo with React + xl1-service + a shared TypeScript library. Activates when the user wants to create, start, bootstrap, initialize, or scaffold a new XL1 project — including when the spec is already concrete (archetype, patterns, network named) and the user wants the scaffold plan laid out before anything runs. Do NOT activate for work in an existing project.
 metadata:
   version: 1.1.38 # x-release-please-version
+  layer: 8
 ---
 
 # XL1 Scaffold
@@ -10,6 +11,13 @@ metadata:
 Use this skill **only** when the user is starting a **new** XL1 project. For work in an existing repo — adding features, fixing bugs, or answering questions about XL1 concepts — use the appropriate lower-layer skill instead ([xl1-knowledge](../xl1-knowledge/SKILL.md) for the chain, [xl1-patterns](../xl1-patterns/SKILL.md) for design patterns).
 
 **Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
+
+## Skill layers
+
+This is **Layer 8** of the XYO skill stack: `xy-development` (1) → `xy-toolchain` (2) → `xyo-knowledge` (3) → `xl1-knowledge` (4) → `xl1-patterns` (5) → `xl1-dapp-kit` (6) → `xl1-testing` (7) → `xl1-scaffold` (8) → `xl1-build` (9).
+
+- **Builds on:** [xl1-testing](../xl1-testing/SKILL.md) (7) for headless verification and the dApp Definition of Done; [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md) (6) for `Runtime: dapp-kit` projects; [xl1-patterns](../xl1-patterns/SKILL.md) (5) for the feature recipes that follow the scaffold; [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) for gateway and chain wiring; [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) for schema naming and payloads; `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2)
+- **Hands off to:** [xl1-build](../xl1-build/SKILL.md) (9) for vague or exploratory requests
 
 ## How to recognize the trigger
 
@@ -40,23 +48,25 @@ Before invoking the scaffold, scan the prompt and the working directory for conv
 - **`.env` file with a seed phrase already in the empty repo.** The user expects the dApp to be **headless-verifiable end-to-end** by an agent or CI, using the same identity a browser user would have on that seed. Build the dApp normally — browser wallet wiring intact, React providers, the works — but also write a Node verification script that exercises the happy path through `GatewayBuilder.buildRunner()` and run it before reporting completion. The seed phrase is for verification only; it does not change the UX surface of the dApp. **Read [Headless dApp Verification](../xl1-testing/headless-testnet-verification.md) before planning** — it documents the prompt shape, signer derivation, and anti-patterns. The DoD's Headless Verification section becomes mandatory in this case.
 - **Prompt names which accounts hold funds** (e.g. "accounts 0 and 1"). Tells you how many signers to derive and how to assign roles in multi-party flows.
 - **Prompt names a network** (mainnet / sequence / local). Determines the `DefaultNetworks` entry the scaffold's gateway points at and which `INDEXER_FLOOR_BLOCK` is captured.
+- **Prompt says `Runtime: dapp-kit`** (or asks for the `@xyo-network/dapp-kit*` headless runtime or an `xl1.dapp.json` project). Use the [dapp-kit runtime](#dapp-kit-runtime) flow instead of the classic monorepo. `Runtime: classic`, or no `Runtime:` at all, keeps the classic default.
 
 Treat any of these cues as load-bearing. Surface them in your acknowledgement before scaffolding so the user can correct any misread, and open that acknowledgement with the skill identity line (`xl1-scaffold v<version>`, plus the skills it draws on).
 
 ### PRD.md fallback (read)
 
-If the prompt itself is missing the synthesized spec from [xl1-build](../xl1-build/SKILL.md) — for example, a fresh conversation where the wizard ran in a prior session — **check the cwd for a `PRD.md` file before asking the user to repeat themselves.** The PRD is written by `xl1-build` at the end of its Phase 4 and contains the same fields as the inline synthesized prompt (`Shape`, `Network`, `Patterns`, `Multi-party`, `History/browse`, `Backend`, `Headless verification`, `Notes`) under structured markdown headings, plus an `## Acceptance criteria` section that carries Layer 3 of the completion gate. Read it the same way you would read the inline prompt.
+If the prompt itself is missing the synthesized spec from [xl1-build](../xl1-build/SKILL.md) — for example, a fresh conversation where the wizard ran in a prior session — **check the cwd for a `PRD.md` file before asking the user to repeat themselves.** The PRD is written by `xl1-build` at the end of its Phase 4 and contains the same fields as the inline synthesized prompt (`Shape`, `Network`, `Patterns`, `Multi-party`, `History/browse`, `Runtime`, `Backend`, `Headless verification`, `Notes`) under structured markdown headings, plus an `## Acceptance criteria` section that carries Gate 3 of the completion gate. Read it the same way you would read the inline prompt; an older PRD without a `Runtime` field is classic.
 
 If both the chat prompt and `PRD.md` are absent, fall back to asking the user — or, if the request is exploratory enough, defer to [xl1-build](../xl1-build/SKILL.md) to generate a PRD first.
 
 ### Writing PRD.md from an inline prompt (advanced-user path)
 
-When the user gives a concrete spec inline (skipping the wizard) and **no `PRD.md` exists at the cwd**, write one before scaffolding. This closes the gap so every project has a Layer 3 completion gate regardless of how it was kicked off.
+When the user gives a concrete spec inline (skipping the wizard) and **no `PRD.md` exists at the cwd**, write one before scaffolding. This closes the gap so every project has a Gate 3 completion gate regardless of how it was kicked off.
 
-The shape mirrors what [xl1-build](../xl1-build/SKILL.md) Phase 4 produces — same sections, same headings. The data sources differ:
+The shape mirrors what [xl1-build](../xl1-build/SKILL.md) Phase 4 produces — same sections, same headings, same absolute links. The data sources differ:
 
-- **Build target fields** (Shape, Network, Patterns, Multi-party, History/browse, Backend, Headless verification) are derived from the inline prompt the same way you derive scaffold inputs.
-- **Acceptance criteria** are **generated by you** following [xy-development/workflow.md § Writing Project-Specific Acceptance Criteria](../xy-development/workflow.md#writing-project-specific-acceptance-criteria): 5–10 observable bullets, split into positive and negative assertions, drawn from the inline prompt + the loaded domain skills (`xl1-patterns/*` for the matched patterns, `dapp-checklist.md` for anti-patterns to convert into negative criteria).
+- **Build target fields** (Shape, Network, Patterns, Multi-party, History/browse, Runtime, Backend, Headless verification) are derived from the inline prompt the same way you derive scaffold inputs.
+- **Acceptance criteria** are **generated by you** following [xy-development/workflow.md § Writing Project-Specific Acceptance Criteria](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#writing-project-specific-acceptance-criteria): 5–10 observable bullets, split into positive and negative assertions, drawn from the inline prompt + the loaded domain skills (`xl1-patterns/*` for the matched patterns, `xl1-testing/dapp-checklist.md` for anti-patterns to convert into negative criteria).
+- **Architecture review** (multi-party dApps) answers the [review questions](../xl1-patterns/architecture-principles.md#review-questions), as in the wizard's PRD.
 - **Skills referenced** is the list of xyo-skills plugin skills that informed this plan (typically xl1-scaffold + the relevant pattern docs).
 - **Plugin version** uses `xl1-scaffold`'s `metadata.version` from this file's frontmatter (since the wizard didn't run, attribute to the scaffold).
 - **Notes** captures any free-form constraint from the prompt that doesn't fit a slot.
@@ -85,7 +95,7 @@ This skill scaffolds either a **single project** or a **full-stack monorepo**, b
 | `xl1-monorepo` | pnpm workspace root for a full-stack dApp. No source of its own — just `pnpm-workspace.yaml`, root scripts, and a README. | monorepo flow only (step 1 below) |
 | `xl1-shared` | TypeScript library for environment-neutral code (types, Zod schemas, constants) shared between `app` and `service`. Compiles to `dist/` so workspace consumers import compiled JS via `workspace:*`. | monorepo flow only (member at `packages/shared`) |
 
-**Default to the monorepo flow** (`xl1-monorepo` + `xl1-shared` + `react` + `xl1-service`). Drop to a single template only when the prompt is *clearly* read-only / browser-only (e.g. "wallet balance dashboard", "show recent transactions"). When in doubt, scaffold the monorepo — it's strictly a superset; an unused `service` is cheap to delete later, but retrofitting a service into a single-template scaffold is annoying.
+**Default to the monorepo flow** (`xl1-monorepo` + `xl1-shared` + `react` + `xl1-service`), unless the prompt says `Runtime: dapp-kit` ([dapp-kit runtime](#dapp-kit-runtime)). Drop to a single template only when the prompt is *clearly* read-only / browser-only (e.g. "wallet balance dashboard", "show recent transactions"). When in doubt, scaffold the monorepo — it's strictly a superset; an unused `service` is cheap to delete later, but retrofitting a service into a single-template scaffold is annoying.
 
 #### Full-stack monorepo (xl1-monorepo + react + xl1-service + xl1-shared)
 
@@ -118,6 +128,16 @@ The [xl1-patterns](../xl1-patterns/SKILL.md) skill catalogues patterns that impl
 Only drop to a single template (`react`) when the prompt is unambiguously read-only — wallet balance dashboards, one-shot contract interactions, simple display dApps. If you find yourself even slightly unsure, choose the monorepo.
 
 The clarifying question pattern ("does any logic need to run independently of a browser session?") is **discouraged** — it adds round-trip latency and the answer is almost always "yes, eventually." Skip it; default to monorepo and let the user prune if needed.
+
+#### dapp-kit runtime
+
+Use this flow only when the prompt or `PRD.md` says `Runtime: dapp-kit`. **There is no dapp-kit template** (and no public one to copy): scaffold the shell, then wire dapp-kit by hand following [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md).
+
+1. Run the monorepo flow below for the root, `xl1-shared` and `react` — **skip `xl1-service`** and its smoke test. The headless runtime is the backend; the React app is one of its clients and talks to it through [application ports](../xl1-dapp-kit/application-ports.md), not an `/api/*` REST layer.
+2. Hand-create a workspace package for the engine (e.g. `packages/runtime`). Install `@xyo-network/dapp-kit` and the host packages it needs there, and `@xyo-network/dapp-kit-cli` at the root (`pnpm add -Dw`) — one 3.x family version for all ([packages](../xl1-dapp-kit/project-manifest.md#packages-neutral-vs-hosts)).
+3. Write `xl1.dapp.json` at the root by hand per [Project manifest](../xl1-dapp-kit/project-manifest.md), with at least one `verification` entry per deployment. Add `xl1.deploy.json` only when deployable things are placed on targets ([Hosting](../xl1-dapp-kit/hosting.md)).
+4. From the root: `pnpm exec xl1-dapp init` (adds the `.xl1/` rule to `.gitignore` — it creates no manifest), `pnpm exec xl1-dapp validate`, `pnpm exec xl1-dapp plan --deployment <name>`.
+5. Verify with `pnpm exec xl1-dapp test --deployment <name>` and the `@xyo-network/dapp-kit-vitest-config` preset — see [dApp Kit Vitest](../xl1-testing/local-chain-dapp-kit-vitest.md) and [local dapp-kit stack](../xl1-testing/local-dapp-stack.md#dapp-kit).
 
 ### Target directory
 
@@ -250,18 +270,18 @@ After the scaffold reports success:
    1. Define shared types/schemas in `packages/shared/src/` based on what the feature needs and export them for consumers.
    2. Implement service routes/jobs in `packages/service/src/` (chain-watching, indexing, deadline handling).
    3. Implement app UI in `packages/app/src/` consuming the service routes via `fetch`.
-   Consult [xl1-patterns](../xl1-patterns/SKILL.md) for the canonical recipe (commit-reveal, indexing, etc.).
+   With `Runtime: dapp-kit`, step 2 is the engine in the runtime package (effects, ports — per [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md)) and step 3 consumes its application ports. Consult [xl1-patterns](../xl1-patterns/SKILL.md) for the canonical recipe (commit-reveal, indexing, etc.); for a multi-party dApp, also answer any `TBD` in the PRD's Architecture review ([review questions](../xl1-patterns/architecture-principles.md#review-questions)).
 4. Only pause if you need a clarifying decision that can't be inferred from the original request (e.g. "should players be able to rematch without re-committing stakes?").
-5. **Before reporting the work complete, walk the full three-layer completion gate** (see [xy-development/workflow.md § Applying the Definition of Done](../xy-development/workflow.md#applying-the-definition-of-done)):
-   - **Layer 1 — Generic DoD** ([xy-development/workflow.md](../xy-development/workflow.md)): builds, lints, tests, dev server, no placeholders, no regressions
-   - **Layer 2 — [dApp Definition of Done](../xl1-patterns/dapp-checklist.md)**: XL1/browser-specific gates
-   - **Layer 3 — `PRD.md` acceptance criteria** (in the cwd, if present): project-specific positive and negative assertions
+5. **Before reporting the work complete, walk all three completion gates** (see [xy-development/workflow.md § Applying the Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#applying-the-definition-of-done), which numbers them Layer 1–3):
+   - **Gate 1 — Generic DoD** ([xy-development/workflow.md § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done)): builds, lints, tests, dev server, no placeholders, no regressions
+   - **Gate 2 — [dApp Definition of Done](../xl1-testing/dapp-checklist.md)**: XL1/browser-specific checks; with `Runtime: dapp-kit`, also [dapp-kit conformance](../xl1-dapp-kit/conformance.md#minimum-agent-completion-expectations), including the evidence label you actually produced
+   - **Gate 3 — `PRD.md` acceptance criteria** (in the cwd, if present): project-specific positive and negative assertions
 
-   This is mandatory, not optional, and it is an **agent-facing completion gate** — it gates whether you stop and report done, independent of any later deploy or release. **If any item across any layer fails, keep iterating until it passes** — do not stop and report partial completion. Fix the failing item, re-walk the relevant layer, and only stop when every applicable layer is fully green. The Layer 2 checklist enumerates exactly the rules and anti-patterns the rest of the skill stack documents, and an unwalked DoD is the most common cause of completed dApps that violate them. In your completion summary, call out each relevant section across all three layers with explicit pass/fail and a one-line note on why. Sections marked "(if applicable)" can be skipped only when truly out of scope (e.g. no commit-reveal in a read-only dashboard); state that they were skipped and why. If the prompt included a seed-phrase `.env` (see "Interpreting the prompt"), the **Headless Verification** section is mandatory — you must have run the verification script and report its outcome, not just check the boxes. **The completion summary must distinguish "chain interactions verified" from "service-derived state verified" as separate facts.** If the dApp exposes derived state through a service (indexer REST API, GraphQL, etc.), the verify run must have round-tripped through that service surface — never via direct hash-lookup synthesis (datalake `get(hashes)`, `viewer.block.payloadsByHash`) — and gated on both `viewer.finalization.headNumber()` and the indexer's `lastIndexedBlock` watermark. Reporting "verified" when only the chain edge was exercised, or rationalizing an empty indexer as "Sequence is slow" without checking the watermark, is the failure mode the [service round-trip](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service) exists to prevent.
+   This is mandatory, not optional, and it is an **agent-facing completion gate** — it gates whether you stop and report done, independent of any later deploy or release. **If any item across any gate fails, keep iterating until it passes** — do not stop and report partial completion. Fix the failing item, re-walk the relevant gate, and only stop when every applicable gate is fully green. The Gate 2 checklist enumerates exactly the rules and anti-patterns the rest of the skill stack documents, and an unwalked DoD is the most common cause of completed dApps that violate them. In your completion summary, call out each relevant section across all three gates with explicit pass/fail and a one-line note on why. Sections marked "(if applicable)" can be skipped only when truly out of scope (e.g. no commit-reveal in a read-only dashboard); state that they were skipped and why. If the prompt included a seed-phrase `.env` (see "Interpreting the prompt"), the **Headless Verification** section is mandatory — you must have run the verification script and report its outcome, not just check the boxes. **The completion summary must distinguish "chain interactions verified" from "service-derived state verified" as separate facts.** If the dApp exposes derived state through a service (indexer REST API, GraphQL, etc.), the verify run must have round-tripped through that service surface — never via direct hash-lookup synthesis (datalake `get(hashes)`, `viewer.block.payloadsByHash`) — and gated on both `viewer.finalization.headNumber()` and the indexer's `lastIndexedBlock` watermark. Reporting "verified" when only the chain edge was exercised, or rationalizing an empty indexer as "Sequence is slow" without checking the watermark, is the failure mode the [service round-trip](../xl1-testing/headless-testnet-verification.md#verifying-derived-state-through-the-service) exists to prevent.
 
 ## Capture the indexer floor block
 
-If the dApp introduces its own payload schemas (the default — any custom dApp under a fresh `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)), capture a **sensible floor block** as part of dApp creation and record it in `.env` as `INDEXER_FLOOR_BLOCK`. The agent does this; the user never sees the step. This is part of the dApp Definition of Done — see [dApp Checklist](../xl1-patterns/dapp-checklist.md).
+If the dApp introduces its own payload schemas (the default — any custom dApp under a fresh `com.<your-org>.<app>.*` namespace; see [Schema Naming](../xyo-knowledge/best-practices.md#schema-naming)), capture a **sensible floor block** as part of dApp creation and record it in `.env` as `INDEXER_FLOOR_BLOCK`. The agent does this; the user never sees the step. This is part of the dApp Definition of Done — see [dApp Checklist](../xl1-testing/dapp-checklist.md).
 
 The reason: the chain accepts arbitrary bytes for any schema, including before the dApp existed. An indexer that walks from block 0 will (a) waste hours on blocks that provably contain none of the dApp's data and (b) honor pre-deployment matches that cannot be the dApp's data. Capturing a floor makes correctness and performance the default. See [Chain Data Indexing — Floor Block](../xl1-patterns/chain-data-indexing-protocol.md#floor-block) for the full framing.
 
@@ -308,4 +328,5 @@ Mixed dApps (some bounded schemas, some pre-existing) still set `INDEXER_FLOOR_B
 - After the scaffold completes and the user wants to implement a feature → [xl1-patterns](../xl1-patterns/SKILL.md) (commit-reveal, indexing, prediction markets, datalake access).
 - For questions about specific XL1 chain concepts (blocks, validators, fees, rewards) → [xl1-knowledge](../xl1-knowledge/SKILL.md).
 - For XYO primitives (payloads, bound witnesses, modules) → [xyo-knowledge](../xyo-knowledge/SKILL.md).
-- For toolchain-level questions (ESLint rules, TypeScript config, vitest setup) → [xy-toolchain](../xy-toolchain/SKILL.md).
+- Adopting or migrating to the dapp-kit headless runtime (`xl1.dapp.json`, ports, effect journals, hosts) → [xl1-dapp-kit](../xl1-dapp-kit/SKILL.md).
+- For toolchain-level questions (ESLint rules, TypeScript config, vitest setup) → [xy-toolchain](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/SKILL.md).
