@@ -9,6 +9,7 @@ metadata:
   version: 1.1.38 # x-release-please-version
   status: redirect
   canonical: ariestools/ariestools-skills
+  internal: true
 ---
 
 # Development Standards — moved

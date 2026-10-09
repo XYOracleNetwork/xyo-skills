@@ -18,8 +18,10 @@ Some XL1 code only exists — or only behaves correctly — in a real browser:
 jsdom/node fakes these badly. Vitest **browser mode** runs the specs inside an
 actual headless Chromium (driven by Playwright), so they exercise the real
 browser APIs. This is a fast unit/integration surface — for driving the fully
-rendered application UI end-to-end, use full-app Playwright e2e instead (the
-`xylabs-e2e-setup` skill).
+rendered application UI end-to-end, use full-app Playwright e2e instead: the
+repo's own e2e package (often `packages/e2e`) if it has one, otherwise
+[Full-app Playwright e2e](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/testing.md#full-app-playwright-e2e)
+in xy-toolchain. See [when to use which](#when-to-use-this-vs-full-app-e2e).
 
 ## Accessibility
 
@@ -30,13 +32,14 @@ Fully accessible — everything is public third-party tooling
 
 ## Setup
 
-Install the browser-mode toolchain and the Chromium binary Playwright drives:
+Install the browser-mode toolchain and the Chromium binary Playwright drives
+(at the repository root; add `-w` in a pnpm workspace):
 
 ```sh
 pnpm add -D vitest @vitest/browser-playwright playwright msw
 # monorepos: prefer the shared preset
 pnpm add -D @ariestools/vitest-config
-npx playwright install chromium
+pnpm exec playwright install chromium
 ```
 
 ### Preferred: `@ariestools/vitest-config`
@@ -161,20 +164,28 @@ debug).
 
 ## When to use this vs. full-app e2e
 
-| | Headless browser mode (this doc) | Full-app Playwright e2e (`xylabs-e2e-setup`) |
+| | Headless browser mode (this doc) | Full-app Playwright e2e (e2e workspace package) |
 |---|---|---|
 | Scope | browser-environment **units/integration** (hooks, in-page gateway, IndexedDB, transports) | the **rendered app** and real user journeys |
 | Speed | fast, per-module | slower, full app boot |
 | Network | mocked (MSW) | usually the real dev server / backend |
-| Browsers | headless Chromium (add instances as needed) | Chromium, Firefox, WebKit |
+| Browsers | headless Chromium (add instances as needed) | the projects in its `playwright.config.ts` (Chromium, Firefox, WebKit) |
+| Run with | `pnpm xy test` (or `pnpm vitest run --project browser`) | `pnpm --filter <e2e-package> test` |
 
 Use browser mode for the fast inner loop on browser-only code; use Playwright e2e
 to validate the assembled UI.
+
+Full-app e2e sits outside the `xy` CLI: `xy test` runs Vitest only, and the
+toolchain ships no Playwright Test preset. If the repo already has an e2e
+workspace package (often `packages/e2e`, with its own `playwright.config.ts`
+and a `test` script that runs `playwright test`), add journeys there and follow
+its README and scripts. Otherwise create one as described in
+[Full-app Playwright e2e](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/testing.md#full-app-playwright-e2e).
 
 ## Cross-References
 
 - [xl1-testing](SKILL.md) — the testing barrel this approach belongs to.
 - [Local chain via the vitest harness](local-chain-vitest.md) — the XL1 vitest preset, and the `browserOnly` default that silently narrows this project.
 - [xy-toolchain testing](../xy-toolchain/testing.md) — `@ariestools/vitest-config`, `spec/` layout, `xy test` / `xy retest`.
-- `xylabs-e2e-setup` skill — scaffolds a full-app Playwright e2e package (Chromium/Firefox/WebKit).
+- [Full-app Playwright e2e](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/testing.md#full-app-playwright-e2e) (xy-toolchain, canonical in ariestools-skills) — where a full-app e2e package lives and how to run it with pnpm. Prefer the repo's own e2e package (often `packages/e2e`) when one exists.
 - [Browser Gateway](../xl1-knowledge/gateway-browser.md) — the in-page gateway / `InPageGatewaysProvider` code this mode is well-suited to test.
