@@ -16,10 +16,10 @@ When two players both need to choose "rock", "paper", or "scissors" simultaneous
 
 **Commit-reveal** solves this by splitting the decision into two phases:
 
-1. **Commit** — each party submits `hash(choice + salt)`, hiding their actual choice
-2. **Reveal** — each party submits their actual `choice + salt`, which is verified against the commit
+1. **Commit** — each party submits `hash(committer + topic + choice + salt)`, hiding their actual choice
+2. **Reveal** — each party submits their actual `choice + salt` from the same account, which is verified against the commit
 
-Neither party can change their choice after committing (the hash locks it in), and neither can see the other's choice until both have revealed.
+Neither party can change their choice after committing (the hash locks it in), and neither can see the other's choice until both have revealed. Binding the committer and topic into the hash stops a copycat from committing someone else's commitment and replaying their reveal — see [Binding Commits to Identity](#binding-commits-to-identity).
 
 ---
 
@@ -46,7 +46,7 @@ export const CommitSchema = asSchema('com.example.rps.commit', true)
 export const CommitPayloadZod = z.extend(PayloadZodLooseOfSchema(CommitSchema), {
   /** Identifies the game/market/session this commit belongs to */
   topic: z.string(),
-  /** hash(choice + salt) — the hidden commitment */
+  /** hash(committer + topic + choice + salt) — the hidden commitment */
   commitment: z.string(),
 })
 
@@ -86,17 +86,38 @@ The committing party generates a random salt, computes the commitment hash, and 
 
 ### Generating the Commitment
 
+The preimage binds the committer's address and the session `topic` along with the choice and salt. The committer is the commit transaction's signer — the same address a verifier later reads from the transaction's `from` — so neither the commit nor the reveal payload carries an address. The preimage is built locally on both sides and never submitted; its `committer` field exists only inside the hash.
+
 ```ts
-import { PayloadBuilder } from '@xyo-network/sdk'
+import { asSchema, PayloadBuilder } from '@xyo-network/sdk'
+import type { XyoAddress } from '@xyo-network/sdk'
+
+/** Local-only schema for the hashed preimage — never submitted on-chain */
+const CommitmentPreimageSchema = asSchema('com.example.rps.commit.preimage', true)
+
+interface CommitmentInput {
+  /** The commit transaction's signer (`tx.from`) — never read from a payload field */
+  committer: XyoAddress
+  /** The session this commitment is valid in */
+  topic: string
+  choice: string
+  salt: string
+}
 
 /**
- * Create a commitment hash from a choice and salt.
- * Uses PayloadBuilder.hash for deterministic, reproducible hashing.
+ * Create a commitment hash that binds the committer, topic, choice, and salt.
+ * Uses PayloadBuilder.hash (root hash) for deterministic, reproducible hashing.
  */
-async function createCommitment(choice: string, salt: string): Promise<string> {
-  // Hash a canonical payload so the hash is reproducible during verification
-  const preimage = new PayloadBuilder({ schema: RevealSchema })
-    .fields({ topic: '', choice, salt })
+async function createCommitment({
+  committer, topic, choice, salt,
+}: CommitmentInput): Promise<string> {
+  // Hash a canonical payload so the hash is reproducible during verification.
+  // Binding the committer means a copied commitment never verifies for another
+  // account; binding the topic means it never verifies in another session.
+  const preimage = new PayloadBuilder({ schema: CommitmentPreimageSchema })
+    .fields({
+      committer, topic, choice, salt,
+    })
     .build()
   return await PayloadBuilder.hash(preimage)
 }
@@ -115,12 +136,17 @@ function generateSalt(): string {
 
 ### Datalake Setup
 
-The functions below use a `datalakeRunner` to persist payloads independently of the wallet. Create it once and share across your application. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
+The functions below use a `datalakeRunner` to persist payloads independently of the wallet, and a `datalakeViewer` on the same endpoint to read them back by hash — commits and reveals are off-chain, so no gateway read returns them. Create both once and share across your application. See [Gateway — Accessing the Datalake](../xl1-knowledge/gateway.md#accessing-the-datalake) for full details.
 
 ```ts
-import { createRestDataLakeRunner } from '@xyo-network/xl1-sdk'
+import {
+  createRestDataLakeRunner, createRestDataLakeViewer, NetworkDataLakeUrls,
+} from '@xyo-network/xl1-sdk'
 
-const datalakeRunner = await createRestDataLakeRunner('https://api.archivist.xyo.network/dataLake')
+// The dApp's own datalake: its configured endpoint (env var / config), defaulting to the network's
+const DATALAKE_ENDPOINT = appConfig.dataLakeEndpoint ?? NetworkDataLakeUrls[networkId]
+const datalakeRunner = await createRestDataLakeRunner(DATALAKE_ENDPOINT)
+const datalakeViewer = await createRestDataLakeViewer(DATALAKE_ENDPOINT)
 ```
 
 ### Submitting the Commit
@@ -132,7 +158,11 @@ async function submitCommit(
   choice: string,
 ): Promise<{ txHash: Hash; salt: string }> {
   const salt = generateSalt()
-  const commitment = await createCommitment(choice, salt)
+  // The account that will sign the commit transaction — bound into the preimage
+  const committer = await gateway.signer.address()
+  const commitment = await createCommitment({
+    committer, topic, choice, salt,
+  })
 
   const commitPayload: CommitPayload = asCommitPayload(
     new PayloadBuilder({ schema: CommitSchema })
@@ -144,7 +174,8 @@ async function submitCommit(
   // Insert into the dApp's datalake first — the wallet does not do this automatically.
   await datalakeRunner.insert([commitPayload])
 
-  const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
+  // `from` asserts the transaction is signed by the address bound into the preimage
+  const [txHash] = await gateway.addPayloadsToChain([], [commitPayload], { from: committer })
 
   // CRITICAL: The salt must be stored locally and kept secret until reveal.
   // If the salt is lost, the commit cannot be revealed.
@@ -209,20 +240,34 @@ async function submitReveal(
 
 ### Verifying a Reveal Against Its Commit
 
+Each signer is the `from` of the `TransactionBoundWitness` that carried the payload — see [Binding Commits to Identity](#binding-commits-to-identity) for how to read it.
+
 ```ts
+import type { XyoAddress } from '@xyo-network/sdk'
+
 async function verifyReveal(
   commit: CommitPayload,
+  commitSigner: XyoAddress,
   reveal: RevealPayload,
+  revealSigner: XyoAddress,
 ): Promise<boolean> {
   if (commit.topic !== reveal.topic) return false
 
-  // Recompute the commitment from the revealed values
-  const expected = await createCommitment(reveal.choice, reveal.salt)
+  // Only the committer can reveal — a replayed reveal from another account fails here
+  if (revealSigner !== commitSigner) return false
+
+  // Recompute the commitment from the revealed values and the committer's address
+  const expected = await createCommitment({
+    committer: commitSigner,
+    topic: reveal.topic,
+    choice: reveal.choice,
+    salt: reveal.salt,
+  })
   return expected === commit.commitment
 }
 ```
 
-The verification is deterministic because `PayloadBuilder.hash` produces the same hash for the same input. No signing keys are needed — the hash itself is the proof.
+The verification is deterministic because `PayloadBuilder.hash` produces the same hash for the same input. The verifier needs no keys of its own: the hash proves the choice, and the transaction signatures — already checked by the chain — prove who committed and who revealed. Submit the reveal from the account that committed; a reveal signed by any other account never verifies.
 
 ---
 
@@ -312,17 +357,83 @@ async function windowState(
 
 ## Binding Commits to Identity
 
-The commit transaction is signed by the committer's wallet account via `addPayloadsToChain`. The signer's address appears in the transaction's BoundWitness `addresses` array. This binds the commit to a specific identity without requiring any additional signature logic.
+The commit transaction is signed by the committer's wallet account via `addPayloadsToChain`, which sets the `TransactionBoundWitness` `from` to the signer's address; the chain rejects a transaction whose `from` is not among the BoundWitness `addresses` that signed it. That signature binds the *transaction* to an identity — not the *commitment value*, which is just a string anyone can copy into a commit transaction of their own. Without more, a copycat commits your commitment, waits for your reveal, and replays your `choice` + `salt` as theirs.
 
-To verify who made a commit:
+Two rules close that gap, both shown above:
+
+1. **The preimage binds the committer and topic.** `createCommitment` hashes the signer's address and the session `topic` with the choice and salt, so a copied commitment recomputes to a different hash under the copier's address, and in any other session.
+2. **Only the committer can reveal.** `verifyReveal` requires reveal-transaction signer === commit-transaction signer, and recomputes the commitment with that address.
+
+The address is structural: read it from the transaction's `from`, never from a payload field — see [Declarative Payloads, Structural Authorship](../xyo-knowledge/best-practices.md#declarative-payloads-structural-authorship). With transaction hashes in hand, `transaction.byHash` returns each signed transaction — its `from` and its `payload_hashes[]`. Commits and reveals are submitted off-chain, so their bodies are not in `tx[1]`: fetch each body from the datalake by a hash *that same transaction* lists, and keep it only if it hashes back to that hash. Each payload stays paired with the signer of the transaction that actually carried it:
 
 ```ts
-function getCommitter(tx: SignedHydratedTransactionWithHashMeta): Address {
+import type { Payload, Schema, XyoAddress } from '@xyo-network/sdk'
+import { isAnyPayload, PayloadBuilder } from '@xyo-network/sdk'
+import type { SignedHydratedTransactionWithHashMeta } from '@xyo-network/xl1-sdk'
+
+function signerOf(tx: SignedHydratedTransactionWithHashMeta): XyoAddress {
   const [bw] = tx
-  // The 'from' field on the TransactionBoundWitness identifies the sender
+  // The 'from' field on the TransactionBoundWitness identifies the signer
   return bw.from
 }
+
+/** Off-chain bodies of `schema` that this transaction committed to, read from the datalake */
+async function bodiesOf(tx: SignedHydratedTransactionWithHashMeta, schema: Schema): Promise<Payload[]> {
+  const [bw] = tx
+  const hashes = bw.payload_hashes.filter((_, i) => bw.payload_schemas[i] === schema)
+  if (hashes.length === 0) return []
+  const fetched = (await datalakeViewer.get(hashes)).filter(isAnyPayload)
+  // The datalake is untrusted storage: keep only bodies whose root hash this transaction lists
+  const pairs = await PayloadBuilder.hashPairs(fetched)
+  return pairs.filter(([, hash]) => hashes.includes(hash)).map(([payload]) => payload)
+}
+
+const viewer = gateway.connection.viewer
+if (!viewer) throw new Error('Gateway has no viewer attached')
+const [commitTx, revealTx] = await Promise.all([
+  viewer.transaction.byHash(commitTxHash),
+  viewer.transaction.byHash(revealTxHash),
+])
+if (!commitTx || !revealTx) throw new Error('Transaction not found')
+
+// Take each payload from the same transaction its signer comes from
+const commit = (await bodiesOf(commitTx, CommitSchema)).find(isCommitPayload)
+const reveal = (await bodiesOf(revealTx, RevealSchema)).find(isRevealPayload)
+if (!commit || !reveal) throw new Error('Commit or reveal payload not found')
+
+const isValid = await verifyReveal(commit, signerOf(commitTx), reveal, signerOf(revealTx))
 ```
+
+An indexer walking blocks reads the same `from` off each `TransactionBoundWitness` (see [Chain Data Indexing — Via Block Walk](chain-data-indexing-protocol.md#via-block-walk--schema-discovery-from-the-chain)). Keep each hash paired with its own transaction's signer — **not** a `hash → signer` map. A copied commitment or replayed reveal is a byte-identical payload, so the same hash arrives in several transactions, and a map lets the copycat's transaction overwrite the honest signer:
+
+```ts
+import type { Hash } from '@ariestools/sdk'
+import type { Payload, XyoAddress } from '@xyo-network/sdk'
+import { isTransactionBoundWitness } from '@xyo-network/xl1-sdk'
+
+interface SignedRef {
+  hash: Hash
+  /** `from` of the TransactionBoundWitness that carried this hash */
+  signer: XyoAddress
+}
+
+/** Commit/reveal hashes in one block's on-chain payloads, each with its own transaction's signer */
+function commitRevealRefs(blockPayloads: Payload[]): SignedRef[] {
+  const refs: SignedRef[] = []
+  for (const p of blockPayloads) {
+    if (!isTransactionBoundWitness(p)) continue
+    for (let i = 0; i < p.payload_hashes.length; i++) {
+      const schema = p.payload_schemas[i]
+      if (schema === CommitSchema || schema === RevealSchema) {
+        refs.push({ hash: p.payload_hashes[i], signer: p.from })
+      }
+    }
+  }
+  return refs
+}
+```
+
+Fetch the bodies from the datalake with `datalakeViewer.get(refs.map(r => r.hash))` — they are off-chain, so no gateway read returns them — and recompute each body's hash (`PayloadBuilder.hash`) to match it back to its refs: every ref whose `hash` matches gets that body under its own `signer`. Store each commit and reveal under `(topic, signer)`, and verify every reveal against *its own signer's* commit in that topic.
 
 ---
 
@@ -334,4 +445,5 @@ function getCommitter(tx: SignedHydratedTransactionWithHashMeta): Address {
 | Using predictable salts (timestamp, counter) | Attacker can brute-force the choice | Use `crypto.getRandomValues` for 32+ bytes |
 | Skipping the commit phase for "trusted" parties | Removes fairness guarantees entirely | Always use commit-reveal when order matters |
 | Hashing choice without salt | Attacker can precompute hashes for all possible choices | Always include a random salt in the hash |
+| Hashing only `choice + salt`, or accepting a reveal without checking its signer | A copycat submits your commitment in their own commit transaction, then replays your revealed `choice` + `salt` as theirs; the same commitment also verifies in any other session | Bind the committer (the commit transaction's `from`) and `topic` into the preimage; require reveal-transaction `from` === commit-transaction `from`. Never add a `from`/`committer` field to the commit or reveal payload — anyone can write any address there |
 | Allowing reveals before all commits are in | Late committers can see early reveals | Enforce commit deadline before opening reveal phase |

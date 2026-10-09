@@ -20,7 +20,7 @@ CREATE ──► COMMIT ──► REVEAL ──► SETTLE ──► CLOSED
   │          │          │          │
   │          │          │          └─ Winnings distributed
   │          │          └─ Choices verified against commits
-  │          └─ Players submit hash(prediction + salt)
+  │          └─ Players submit hash(committer + marketId + prediction + salt)
   └─ Market created with question, options, deadlines
 ```
 
@@ -82,7 +82,7 @@ export const MarketCommitSchema = asSchema('com.example.market.commit', true)
 export const MarketCommitPayloadZod = z.extend(PayloadZodLooseOfSchema(MarketCommitSchema), {
   /** References the market this commit belongs to */
   marketId: z.string(),
-  /** hash(prediction + salt) */
+  /** hash(committer + marketId + prediction + salt) — see commit-reveal.md */
   commitment: z.string(),
 })
 
@@ -156,10 +156,10 @@ Each phase has a distinct validation responsibility. Treating them as separate g
 | Gate | Runs at | Checks |
 |------|---------|--------|
 | **Commit gate** | Before submitting a `MarketCommitPayload` | Market exists; `current ∈ [market.commit.nbf, market.commit.exp)`; participant has not already committed; (if staked) participant has stake available |
-| **Reveal gate** | Before submitting a `MarketRevealPayload` | `current ∈ [market.reveal.nbf, market.reveal.exp)`; participant has a recorded commit for this market; `prediction ∈ market.options`; `hash(prediction + salt)` matches the recorded commitment |
-| **Settlement gate** | Before signing a `MarketSettlementPayload` | `current >= market.reveal.exp`; `outcome ∈ market.options`; settlement signer's address ∈ `market.outcomeAuthorities`; every reveal included in the settlement BW co-payloads has been re-verified against its commit |
+| **Reveal gate** | Before submitting a `MarketRevealPayload` | `current ∈ [market.reveal.nbf, market.reveal.exp)`; participant has a recorded commit for this market, signed by the account that will sign the reveal; `prediction ∈ market.options`; the commitment recomputed from the participant's address, `marketId`, `prediction`, and `salt` matches the recorded commitment |
+| **Settlement gate** | Before signing a `MarketSettlementPayload` | `current >= market.reveal.exp`; `outcome ∈ market.options`; settlement signer's address ∈ `market.outcomeAuthorities`; every reveal included in the settlement BW co-payloads has been re-verified against its signer's own commit (reveal-transaction `from` === commit-transaction `from`) |
 
-The settlement gate explicitly **re-runs** the reveal-gate hash check on every reveal it bundles. This matters because a settler may receive reveals from an untrusted source (a relayer, an indexer cache); the cryptographic check is cheap and removes the trust assumption.
+The settlement gate explicitly **re-runs** the reveal-gate signer and hash checks on every reveal it bundles. This matters because a settler may receive reveals from an untrusted source (a relayer, an indexer cache); the cryptographic check is cheap and removes the trust assumption. Take each signer from the `from` of the finalized `TransactionBoundWitness` that carried the payload — never from the relayer or a payload field — see [Commit-Reveal — Binding Commits to Identity](commit-reveal.md#binding-commits-to-identity).
 
 ---
 
@@ -236,7 +236,7 @@ async function createMarket(
 
 ## Phase 2: Commit Predictions
 
-Participants commit their predictions using the [Commit-Reveal Primitive](commit-reveal.md). The commit-gate checks (see [Validation Gates](#validation-gates)) run before submission. The commit payload uses `$sources` to bind itself to the market by hash:
+Participants commit their predictions using the [Commit-Reveal Primitive](commit-reveal.md). The commit-gate checks (see [Validation Gates](#validation-gates)) run before submission. The commitment binds the participant's signing address and the `marketId` (see [Commit-Reveal — Generating the Commitment](commit-reveal.md#generating-the-commitment)), and the commit payload uses `$sources` to bind itself to the market by hash:
 
 ```ts
 async function commitPrediction(
@@ -245,7 +245,11 @@ async function commitPrediction(
   prediction: string,
 ): Promise<{ txHash: Hash; salt: string }> {
   const salt = generateSalt()
-  const commitment = await createCommitment(prediction, salt)
+  // The account that will sign the commit transaction — bound into the preimage
+  const committer = await gateway.signer.address()
+  const commitment = await createCommitment({
+    committer, topic: market.marketId, choice: prediction, salt,
+  })
   const marketHash = await PayloadBuilder.hash(market)
 
   const commitPayload: MarketCommitPayload = asMarketCommitPayload(
@@ -257,7 +261,8 @@ async function commitPrediction(
   )
 
   await datalakeRunner.insert([commitPayload])
-  const [txHash] = await gateway.addPayloadsToChain([], [commitPayload])
+  // `from` asserts the transaction is signed by the address bound into the preimage
+  const [txHash] = await gateway.addPayloadsToChain([], [commitPayload], { from: committer })
 
   // Store salt locally — needed for reveal phase
   return { txHash, salt }
@@ -296,6 +301,8 @@ async function revealPrediction(
 }
 ```
 
+Reveal from the account that committed — the settlement gate only accepts a reveal whose transaction signer is the commit's signer.
+
 ---
 
 ## Phase 4: Settle
@@ -304,23 +311,29 @@ After `market.reveal.exp`, an address listed in `market.outcomeAuthorities` sett
 
 ```ts
 import { BoundWitnessBuilder } from '@xyo-network/sdk'
+import type { XyoAddress } from '@xyo-network/sdk'
 
 async function settleMarket(
   gateway: XyoGatewayRunner,
   authority: Account,
   market: MarketPayload,
   outcome: string,
-  reveals: MarketRevealPayload[],
-  commitsByHash: Record<Hash, MarketCommitPayload>,
+  // Each signer is the `from` of the finalized TransactionBoundWitness that carried the payload
+  reveals: { reveal: MarketRevealPayload; signer: XyoAddress }[],
+  commitsBySigner: Map<XyoAddress, MarketCommitPayload>,
 ): Promise<Hash> {
   // Settlement gate: re-verify every reveal against its commit. Never trust the caller.
   const verifiedReveals: MarketRevealPayload[] = []
-  for (const reveal of reveals) {
-    const [commitHash] = reveal.$sources ?? []
-    const commit = commitHash ? commitsByHash[commitHash] : undefined
+  for (const { reveal, signer } of reveals) {
+    // Only the committer can reveal — check against the reveal signer's own commit
+    const commit = commitsBySigner.get(signer)
     if (!commit || commit.marketId !== reveal.marketId) continue
+    const [commitHash] = reveal.$sources ?? []
+    if (commitHash !== await PayloadBuilder.hash(commit)) continue
 
-    const expected = await createCommitment(reveal.prediction, reveal.salt)
+    const expected = await createCommitment({
+      committer: signer, topic: market.marketId, choice: reveal.prediction, salt: reveal.salt,
+    })
     if (expected === commit.commitment) verifiedReveals.push(reveal)
   }
 
@@ -366,7 +379,9 @@ function deriveWinners(
 
   // Map each reveal to the address that signed its commit.
   // (See "Binding Commits to Identity" in commit-reveal.md — the commit signer
-  //  is the participant of record. Resolve via the commit's TransactionBoundWitness.)
+  //  is the participant of record. Resolve via the commit's TransactionBoundWitness.
+  //  A copied commit shares the payload hash, so resolve to the signer whose
+  //  address recomputes the commitment — the one the settlement gate verified.)
   const winners: Address[] = []
   const losers: Address[] = []
   for (const reveal of verifiedReveals) {
