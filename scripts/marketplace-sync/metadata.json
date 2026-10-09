@@ -2,15 +2,20 @@
   "name": "xyo-skills",
   "version": "1.1.38",
   "displayName": "XYO Skills",
-  "description": "XYO and XL1 agent skills for building dApps on the XL1 blockchain. Covers XYO primitives, XL1 chain operations, scaffold tooling, testing, and prescriptive design patterns. Requires companion ariestools-skills for xy-development and xy-toolchain.",
+  "description": "XYO and XL1 agent skills for building dApps on the XL1 blockchain: a planning wizard, project scaffolding (React + indexer service, or the dapp-kit headless runtime), prescriptive design patterns, XL1 chain and gateway knowledge, XYO primitives, and testing with a dApp Definition of Done. Requires companion ariestools-skills for xy-development and xy-toolchain.",
   "shortDescription": "XL1 and XYO development skills.",
-  "longDescription": "A layered skill stack for building XL1 dApps and XYO protocol integrations, including scaffold tooling, design patterns, chain knowledge, XYO primitives, and XL1 testing. Install ariestools-skills alongside this pack for TypeScript toolchain and development workflow standards.",
+  "longDescription": "A layered skill stack for XL1 dApps and XYO protocol integrations. xl1-build turns a vague request into a spec and xl1-scaffold bootstraps it; xl1-patterns covers commit-reveal, indexing, inscriptions, tokens, Statement Graph and Event Kit wakes plus multi-party architecture principles; xl1-dapp-kit covers @xyo-network/dapp-kit headless runtimes; xl1-testing covers local chains, Sequence verification and the dApp Definition of Done; xl1-knowledge and xyo-knowledge cover the chain, gateway, datalakes and protocol primitives. Install ariestools-skills alongside for TypeScript toolchain and development workflow standards.",
   "keywords": [
     "xl1",
     "xyo",
     "blockchain",
     "dapp",
-    "typescript"
+    "typescript",
+    "dapp-kit",
+    "scaffold",
+    "commit-reveal",
+    "indexing",
+    "statement-graph"
   ],
   "category": {
     "slug": "developer-tools",
@@ -32,9 +37,9 @@
   "logo": "./assets/xyo-logo.png",
   "icon": "./assets/xyo-icon.svg",
   "defaultPrompts": [
-    "Build an XL1 dApp",
-    "Review this XYO integration",
-    "Scaffold a new XL1 project"
+    "Plan an XL1 dApp with me",
+    "Scaffold a new XL1 project",
+    "Review this XYO integration"
   ],
   "capabilities": [
     "Read",
