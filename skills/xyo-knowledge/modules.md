@@ -2,15 +2,17 @@
 
 **Root barrel package:** `@xyo-network/sdk` — start here for protocol primitives and generic modules; tree shaking eliminates unused exports. Specific diviner / witness / archivist *implementations* ship as their own packages and are imported by name (noted per example below).
 
-For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
+For full type details, read the `.d.ts` files under `dist/neutral/modules/<name>/` in `@xyo-network/sdk` (e.g. `archivist-model`, `node-model`), or `dist/neutral/index.d.ts` in a standalone package.
 
 ---
 
-**Versioned identity:** existing archivist deduplication/lookup behavior must be
-checked before storing variants that share a data hash. New application identity
-and validation caches should use root hashes and applicable policy; do not assume
-the store preserves every `$version`/metadata representation. See [Payload Schema
-Evolution and Identity](payload-schema-evolution.md).
+**Versioned identity:** SDK archivists store and dedupe on the root hash
+(`_hash`), so variants that share a data hash but differ in `$version` or other
+client metadata are kept side by side. `get()` accepts a data hash too, but
+answers it with a data-only view (`$*` removed, `_hash` set to the data hash),
+not a stored representation — look up by root hash when the representation
+matters. New application identity and validation caches should use root hashes
+and applicable policy. See [Payload Schema Evolution and Identity](payload-schema-evolution.md).
 
 ## The Module Abstraction
 
@@ -32,21 +34,36 @@ Modules communicate via **signed queries**: the caller creates a `QueryBoundWitn
 Archivists store and retrieve payloads. An archivist is the most constrained of three storage tiers — database (arbitrary keys), datalake (keys cryptographically derivable from values), archivist (same key guarantee, values constrained to payloads). See [Datalakes — Tiered Data Storage](../xl1-knowledge/datalakes.md#tiered-data-storage-database-vs-datalake-vs-archivist).
 
 The archivist surface is split by capability — there is no single
-`ArchivistFunctions` interface. `ReadArchivistFunctions`, `WriteArchivistFunctions`,
-and the combined `AllArchivistFunctions` live in `archivist-model`:
+`ArchivistFunctions` interface. `archivist-model` defines four function groups;
+the `Archivist` interface (and `ArchivistInstance`) combines them. Shown with
+the payload types an archivist instance uses (`PromisableArray<T>` = `Promisable<T[]>`):
 
 ```ts
 // ReadArchivistFunctions
-get(hashes: Hash[]): Promise<Payload[]>
-next(options?: NextOptions): Promise<Payload[]>
+get(hashes: Hash[]): PromisableArray<WithStorageMeta<Payload>>    // root or data hashes
+next(options?: ArchivistNextOptions): PromisableArray<WithStorageMeta<Payload>>
 
 // WriteArchivistFunctions
-insert(payloads: Payload[]): Promise<Payload[]>
-delete(hashes: Hash[]): Promise<Payload[]>
-clear(): void
+insert(payloads: Payload[]): PromisableArray<WithStorageMeta<Payload>>  // newly stored only
+delete(hashes: Hash[]): PromisableArray<WithStorageMeta<Payload>>
+clear(): Promisable<void>
+
+// StashArchivistFunctions
+commit(): PromisableArray<WithStorageMeta<Payload>>
+
+// AllArchivistFunctions — NOT the combined interface; just these two
+all(): PromisableArray<WithStorageMeta<Payload>>   // @deprecated — use next() or snapshot()
+snapshot(): PromisableArray<PayloadHashMap<WithStorageMeta<Payload>>>
 ```
 
-**Implementations:** MemoryArchivist, IndexedDbArchivist, StorageArchivist, LevelDB, LMDB, MongoDB, Cookie, Firebase
+`insert` returns only the payloads it newly stored — one whose root hash is
+already present is skipped and not returned.
+
+**Implementations:**
+
+- On the `@xyo-network/sdk` barrel: `MemoryArchivist`, `GenericArchivist` (backed by a pluggable `ArchivistDriver`), `ViewArchivist` (read-only view over an `originArchivist`)
+- Standalone 8.0.x packages: `IndexedDbArchivist` (`@xyo-network/archivist-indexeddb`), `StorageArchivist` (`archivist-storage`), `CookieArchivist` (`archivist-cookie`), `FilesystemArchivist` (`archivist-filesystem`), `S3Archivist` (`archivist-s3`), `LevelDbArchivist` (`archivist-leveldb`), `LmdbArchivist` (`archivist-lmdb`), `MongoDBArchivist` (`archivist-mongodb`), `FirebaseArchivist` (`archivist-firebase`)
+- `@xyo-network/archivist-express` is not an archivist: it exports `archivistRestMiddleware`, Express middleware that serves an archivist over REST
 
 **`.next()` is implementation-dependent.** Local browser archivists (IndexedDbArchivist, MemoryArchivist) implement real cursor pagination. The XL1 remote datalake does not — for XL1 chain reads, iterate the chain to discover hashes, then fetch by hash via `get()`. See [Datalakes — How to read](../xl1-knowledge/datalakes.md).
 
@@ -65,7 +82,7 @@ clear(): void
 
 #### Creation Examples
 
-All browser archivists share the standard archivist interface (`insert`, `get`, `next`, `delete`, `clear`) with built-in deduplication by data hash.
+All browser archivists share the standard archivist interface (`insert`, `get`, `next`, `delete`, `clear`) with built-in deduplication by root hash (`_hash`). The data hash is only a lookup alias: `get()` accepts it but returns a data-only view without `$*` metadata.
 
 ```ts
 import { MemoryArchivist, MemoryArchivistConfigSchema } from '@xyo-network/sdk'
@@ -117,11 +134,12 @@ Witnesses observe state and produce attestation payloads.
 
 ```ts
 interface WitnessQueryFunctions<TIn, TOut> {
-  observe(payloads?: TIn[]): Promise<TOut[]>
+  observe(payloads?: TIn[]): Promisable<WithoutPrivateStorageMeta<TOut>[]>
+  observeQuery(payloads?: TIn[], account?: AccountInstance): Promisable<ModuleQueryResult<TOut>>
 }
 ```
 
-**Implementations:** `AdhocWitness` (on the root barrel), `TimestampWitness` (`@xyo-network/witness-timestamp`), `EnvironmentWitness` (`@xyo-network/witness-environment`). The blockchain/EVM witness packages ship an abstract base (`AbstractEvmWitness`) rather than a ready-to-use concrete class — check the package before assuming a `BlockchainWitness` / `EvmWitness` export exists.
+**Implementations:** `AdhocWitness` (on the root barrel), `TimestampWitness` (`@xyo-network/witness-timestamp`), `EnvironmentWitness` (`@xyo-network/witness-environment`). `@xyo-network/witness-evm` ships only an abstract base (`AbstractEvmWitness`), and `@xyo-network/witness-blockchain` only provider helpers (`getProviderFromEnv`, `checkIpfsUrl`, …) — neither has a ready-to-use concrete class, so don't assume a `BlockchainWitness` / `EvmWitness` export exists.
 
 Use witnesses to create payloads that attest to some observed state — a timestamp, a blockchain value, a sensor reading, or custom application data.
 
@@ -133,10 +151,11 @@ Sentinels coordinate multiple witnesses and aggregate their observations.
 separate `SentinelFunctions` interface:
 
 ```ts
-report(payloads?: TIn[]): Promise<TOut[]>
+report(payloads?: TIn[]): Promisable<TOut[]>
+reportQuery(payloads?: TIn[], account?: AccountInstance): Promisable<ModuleQueryResult<TOut>>
 ```
 
-A sentinel has a **job/task system** for parallel and sequential witness execution. It emits lifecycle events: `JobStart`, `JobEnd`, `TaskStart`, `TaskEnd`, `ReportStart`, `ReportEnd`.
+A sentinel has a **job/task system** for parallel and sequential witness execution (`MemorySentinel` is on the barrel). It emits camelCase lifecycle events: `jobStart`, `jobEnd`, `taskStart`, `taskEnd`, `reportStart`, `reportEnd` — e.g. `sentinel.on('reportEnd', …)`.
 
 Use sentinels when you need to orchestrate multiple witnesses into a single report.
 
@@ -146,11 +165,12 @@ Diviners query archived data and derive results.
 
 ```ts
 interface DivinerQueryFunctions<TIn, TOut> {
-  divine(payloads?: TIn[]): Promise<TOut[]>
+  divine(payloads?: TIn[], retry?: RetryConfig): Promise<WithoutPrivateStorageMeta<TOut>[]>
+  divineQuery(payloads?: TIn[], account?: AccountInstance, retry?: RetryConfig): Promise<ModuleQueryResult<TOut>>
 }
 ```
 
-Takes query payloads as input, returns result payloads. The ecosystem publishes **many specialized diviner packages** — payload, boundwitness, address-chain, address-history, schema-list, schema-stats, forecasting, jsonpath, jsonpatch, hash-lease, identity, range, transform, and more. Only a handful of generic ones are on the `@xyo-network/sdk` barrel; the rest are installed and imported individually as `@xyo-network/diviner-<name>`.
+Takes query payloads as input, returns result payloads. The payload, boundwitness, and identity diviners are on the `@xyo-network/sdk` barrel — `GenericPayloadDiviner`, `MemoryBoundWitnessDiviner` (abstract base `BoundWitnessDiviner`), and `IdentityDiviner`. Their old standalone packages (`@xyo-network/diviner-payload`, `diviner-payload-generic`, `diviner-payload-abstract`, `diviner-payload-model`, `diviner-boundwitness`, `diviner-identity`, plus `diviner`, `diviner-abstract`, `diviner-model`) are deprecated re-export shims — don't install them. The specialized diviners remain individual 8.0.x packages imported as `@xyo-network/diviner-<name>`: archivist, address-chain, address-history, schema-list, schema-stats, forecasting, jsonpath, jsonpatch, hash-lease, range, transform.
 
 ### Node — Container/Registry
 
@@ -159,25 +179,33 @@ Nodes manage a tree of modules with parent-child relationships.
 ```ts
 // Split across NodeRegistrationFunctions and NodeQueryFunctions
 // (node-model) — there is no single `NodeFunctions` interface.
-register(module: ModuleInstance): void
-attach(address: Address, external?: boolean): Promise<Address>
-detach(address: Address): Promise<Address>
-registered(): Promise<Address[]>
-attached(): Promise<Address[]>
-resolve(filter, options?: ResolveOptions): Promise<ModuleInstance[]>
+register(mod: AttachableModuleInstance): Promise<void>      // async — await it
+attach(id: ModuleIdentifier, external?: boolean): Promise<XyoAddress | undefined>
+detach(id: ModuleIdentifier): Promise<XyoAddress | undefined>
+registered(): Promise<XyoAddress[]>
+attached(): Promise<XyoAddress[]>
+
+// On every ModuleInstance (not node-specific)
+resolve('*', options?: ObjectFilterOptions): Promise<ModuleInstance[]>
+resolve(id: ModuleIdentifier, options?: ObjectFilterOptions): Promise<ModuleInstance | undefined>
 ```
 
-- `attach(address, true)` — public child (visible to parent nodes)
-- `attach(address, false)` — private child (hidden from parent)
-- `resolve(filter, { direction: 'up'|'down'|'all', maxDepth })` — traverse the module tree
+`ModuleIdentifier` is an address, a module name, or a colon-joined path of them
+(`'ChildNode:GameArchivist'`). The query functions (`attach`, `detach`,
+`registered`, `attached`) each have a `…Query` variant (e.g. `attachQuery`) that
+returns the raw `ModuleQueryResult`.
 
-### Bridge — Network Communication
+- `attach(id, true)` — public child (visible to parent nodes)
+- `attach(id, false)` — private child (hidden from parent)
+- `resolve(id, { direction: 'up'|'down'|'all', maxDepth, identity })` — traverse the module tree
 
-Bridges connect modules across network boundaries.
+### Bridge — Network Communication (deprecated)
 
-**Implementations:** HTTP, WebSocket, Worker, PubSub
-
-Use bridges when modules need to communicate across processes or machines.
+Bridges connected modules across process or machine boundaries. The Bridge
+module concept is **deprecated and will be removed in the next major SDK
+version** — its barrel exports are marked `@deprecated`, and the
+`@xyo-network/bridge-*` packages are deprecated on npm. Don't use bridges in new
+work.
 
 ---
 
@@ -239,12 +267,20 @@ Modules discover each other through the node's resolution system:
 - **All** — search in both directions
 
 ```ts
-// Find all archivists attached to this node
-const archivists = await node.resolve('*', { direction: 'down' })
+import { isArchivistInstance } from '@xyo-network/sdk'
 
-// Find a specific module by address
+// '*' returns every module reachable in that direction — including the node itself
+const all = await node.resolve('*', { direction: 'down' })
+const archivists = all.filter(isArchivistInstance)
+
+// A specific module by address or name; `identity` narrows the result type
 const module = await node.resolve(targetAddress, { direction: 'all', maxDepth: 5 })
+const gameArchivist = await node.resolve('GameArchivist', { identity: isArchivistInstance })
 ```
+
+Filter `'*'` results yourself: in SDK 8.0.x, passing `identity` together with
+`'*'` returns an array of booleans (the check's results) instead of the matching
+modules. `identity` works as expected on a single-id resolve.
 
 Resolution enables loose coupling — modules reference each other by address in their config, and the node resolves those addresses at runtime.
 
@@ -256,9 +292,15 @@ Modules are created via factories registered by config schema:
 
 ```ts
 class ModuleFactoryLocator {
-  register(factory: CreatableModuleFactory, labels?: Labels): void
-  locate(schema: Schema, labels?: Labels): CreatableModuleFactory
+  static standard(): ModuleFactoryLocator  // barrel modules: Memory*, View*, AdhocWitness, generic diviners
+  static empty(): ModuleFactoryLocator
+  register(factory: CreatableModuleFactory, labels?: Labels, primary?: boolean | Schema | Schema[]): this
+  registerMany(factories: CreatableModuleFactory[]): this
+  locate(schema: Schema, labels?: Labels): CreatableModuleFactory | LabeledCreatableModuleFactory
+  freeze(): void
 }
+
+// Add a standalone backend: locator.register(IndexedDbArchivist.factory())
 ```
 
 This enables dynamic instantiation: a manifest declares modules by schema, and the factory locator creates the right implementation.
@@ -274,6 +316,7 @@ interface AuthoredNodeManifest {
   config: {
     schema: 'network.xyo.node.config'
     name: string
+    accountPath?: string   // HD path below the loader's wallet
   }
   modules?: {
     public?: AuthoredModuleManifest[]
@@ -282,6 +325,38 @@ interface AuthoredNodeManifest {
 }
 ```
 
-Schema: `'network.xyo.node.manifest'`
+Schemas: a package manifest (one or more nodes) is `'network.xyo.manifest.package'`
+(`PackageManifestPayloadSchema`); a single node manifest is `'network.xyo.node.manifest'`.
+
+Load one with `ManifestWrapper`, a wallet, and a factory locator that knows every
+config schema the manifest uses:
+
+```ts
+import {
+  HDWallet, isArchivistInstance, ManifestWrapper, MemoryArchivistConfigSchema,
+  ModuleFactoryLocator, NodeConfigSchema, PackageManifestPayloadSchema,
+} from '@xyo-network/sdk'
+import type { PackageManifestPayload } from '@xyo-network/sdk'
+
+const manifest: PackageManifestPayload = {
+  schema: PackageManifestPayloadSchema,
+  nodes: [{
+    config: { accountPath: "0'", name: 'GameNode', schema: NodeConfigSchema },
+    modules: {
+      private: [{ config: { name: 'SecretArchivist', schema: MemoryArchivistConfigSchema } }],
+      public: [{ config: { name: 'GameArchivist', schema: MemoryArchivistConfigSchema } }],
+    },
+  }],
+}
+
+const wallet = await HDWallet.fromPhrase(phrase)
+const node = await new ManifestWrapper(manifest, wallet, ModuleFactoryLocator.standard()).loadNodeFromIndex(0)
+const archivist = await node.resolve('GameArchivist', { identity: isArchivistInstance })
+```
+
+Each node's account is derived from `wallet` at its `accountPath` (default
+`"<index>'"`). A module gets a derived account only when its own config sets
+`accountPath`; otherwise it is random — set it wherever an address must stay
+stable across restarts. `loadNodes()` loads every node in the package.
 
 Use manifests for production deployments where the module tree should be declared as configuration rather than built imperatively.

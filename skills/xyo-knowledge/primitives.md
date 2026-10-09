@@ -2,7 +2,7 @@
 
 **Root barrel package:** `@xyo-network/sdk` — start here for protocol primitives and generic modules; tree shaking eliminates unused exports. Specific diviner / witness / archivist *implementations* ship as their own packages and are imported by name.
 
-For full type details, read the `.d.ts` files at `dist/neutral/index.d.ts` in each package.
+For full type details, read the `.d.ts` files under `dist/neutral/` — `modules/<name>/` in `@xyo-network/sdk-protocol-core` (re-exported through `@xyo-network/sdk-protocol` and the barrel) for the primitives on this page.
 
 ---
 
@@ -35,7 +35,7 @@ plain `z.object` / `z.enum` helpers and are composed into `FieldsZod`.
 ```ts
 import { zodAsFactory, zodIsFactory, zodToFactory } from '@ariestools/sdk'
 import { asSchema, PayloadZodOfSchema } from '@xyo-network/sdk'
-import * as z from 'zod/mini'
+import { z } from 'zod/mini'
 
 export const MoveSchema = asSchema('com.example.rps.move', true)
 export type MoveSchema = typeof MoveSchema
@@ -58,7 +58,7 @@ Required pieces:
 | Piece | Rule |
 |---|---|
 | Schema name | `asSchema('…', true)` — never a raw string or a cast |
-| Zod import | `import * as z from 'zod/mini'` — not `zod` |
+| Zod import | `import { z } from 'zod/mini'` — the `zod/mini` entry the SDK uses, not full `zod`; named `z`, not a namespace import |
 | Envelope | `z.extend(PayloadZodOfSchema(Schema), FieldsZod.shape)` |
 | Type | `z.infer<typeof FooZod>` |
 | Guards | `zodIsFactory` / `zodAsFactory` / `zodToFactory` from `@ariestools/sdk` |
@@ -130,6 +130,21 @@ const payload = new PayloadBuilder({ schema: MoveSchema })
   .build()
 ```
 
+`.fields()` takes data fields only: it **silently drops** any `$*` or `_*` key
+(and `undefined` values), and each call replaces the previous field set. Set
+client metadata such as `$version` or `$sources` through `.meta({ … })`, which
+keeps only `$*` keys and throws on an invalid `$version`:
+
+```ts
+const sourced = new PayloadBuilder({ schema: MoveSchema })
+  .fields({ move: 'rock' })
+  .meta({ $sources: [gameHash] }) // `$version` belongs here too — never in .fields()
+  .build()
+```
+
+The builder validates the schema name (`asSchema`) and nothing else — custom
+fields are not checked. Narrow the result with the payload's Zod factory, as below.
+
 #### Narrowing the built payload
 
 A TypeScript annotation, generic argument, or `as` cast does not validate custom
@@ -186,13 +201,18 @@ A bound witness is itself a payload with schema `'network.xyo.boundwitness'`:
 ```ts
 interface BoundWitness extends Payload {
   schema: 'network.xyo.boundwitness'
-  addresses: Address[]                  // Signing parties
+  addresses: XyoAddress[]               // Signing parties
   payload_hashes: Hash[]                // Hashes of included payloads
   payload_schemas: Schema[]             // Schemas of included payloads
   previous_hashes: (Hash | null)[]      // Chain linking (per signer)
   $signatures: (Hex | null)[]           // Cryptographic signatures
 }
 ```
+
+`XyoAddress` is either a legacy 40-hex secp256k1 address or a bech32m
+post-quantum address (`qm65…`, ML-DSA-65 — see
+[Identity & Signing](identity.md#account)). Both kinds can sign the same bound
+witness; validate with `isXyoAddress` rather than a hex regex.
 
 ### Invariants
 
@@ -204,6 +224,9 @@ These arrays are always parallel:
 
 - `UnsignedBoundWitness` — `$signatures` contains all `null` values
 - `SignedBoundWitness` — `$signatures` contains all non-null hex strings
+- `PartiallySigned<T>` — some slots filled, some `null`: the intermediate state
+  of [sequential cosigning](#parties-in-separate-processes-sequential-cosigning).
+  `isPartiallySigned(bw)` / `isFullySigned(bw)` check the slots' shape only
 
 ### BoundWitnessBuilder
 
@@ -221,17 +244,18 @@ const [boundWitness, payloads, errors] = await new BoundWitnessBuilder()
 ```
 
 Builder methods:
-- `.signer(account)` / `.signers([...])` — add signing parties
+- `.signer(account)` / `.signers([...])` — add parties whose keys are in this process; they sign at `build()`
+- `.participant({ address, previousHash })` / `.participants([...])` — add address-only parties; their slots stay `null` until they [cosign](#parties-in-separate-processes-sequential-cosigning)
 - `.payload(payload)` / `.payloads([...])` — add payloads to witness
-- `.hashes(hashes, schemas)` — alternative: reference payloads by hash
+- `.hashes(hashes, schemas)` — meant to reference payloads by hash, but in SDK 8.0.x it throws `Can not set hashes when payloads already set` on every call; attach the payloads instead
 - `.sourceQuery(hash)` — set the source query hash
-- `.build(sign?)` — returns `[BoundWitness, Payload[], ModuleError[]]`
+- `.build(sign?)` — returns `[BoundWitness, Payload[], ModuleError[]]`; `build(false)` leaves every slot `null`
 
-The builder auto-generates `addresses`, `payload_hashes`, `payload_schemas`, and `previous_hashes` from the provided signers and payloads. These fields cannot be set manually.
+Slot order follows the order in which signers and participants are added. The builder auto-generates `addresses`, `payload_hashes`, `payload_schemas`, and `previous_hashes` from the provided parties and payloads. These fields cannot be set manually.
 
 ### Multi-Signer (Co-Witnessed) BoundWitnesses
 
-A single bound witness can be co-signed by multiple parties. Each signer contributes their address and signature to the same witness, producing a single artifact that proves *joint* attestation:
+A single bound witness can be co-signed by multiple parties. Each signer contributes their address and signature to the same witness, producing a single artifact that proves *joint* attestation. When every signer's key is in one process, pass them all to `.signers()`:
 
 ```ts
 const [bw, payloads] = await new BoundWitnessBuilder()
@@ -244,6 +268,47 @@ const [bw, payloads] = await new BoundWitnessBuilder()
 ```
 
 This is the right shape for any "all parties agree to X" attestation — joint terms, multi-party releases, group commitments — where the proof must be a single co-signed object rather than three independent signatures.
+
+#### Parties in separate processes (sequential cosigning)
+
+Real counterparties rarely share a process. Reserve each remote party's slot by
+address with `.participant()`, ship the partially signed BW, and let each party
+fill its own slot with `cosignBoundWitness`:
+
+```ts
+import {
+  BoundWitnessBuilder, BoundWitnessValidator, cosignBoundWitness, isFullySigned, PayloadBuilder,
+} from '@xyo-network/sdk'
+
+// Party A — holds only its own key; B shares its address and current previousHash
+const [draft] = await new BoundWitnessBuilder()
+  .signer(accountA)
+  .participant({ address: addressB, previousHash: previousHashB ?? null })
+  .payload(terms)
+  .build()
+// draft.$signatures → [sigA, null]; send draft + terms to B
+
+// Party B — in its own process; check it is signing the terms it agreed to
+if (!draft.payload_hashes.includes(await PayloadBuilder.hash(terms))) throw new Error('unexpected terms')
+const cosigned = await cosignBoundWitness(draft, accountB)
+
+if (!isFullySigned(cosigned)) throw new Error('missing signatures')
+const errors = await new BoundWitnessValidator(cosigned).validate()
+```
+
+- `build()` is typed `Signed` even with participants — it is really partially
+  signed. Narrow with `isFullySigned` before treating it as signed.
+- `cosignBoundWitness(bw, account)` returns a new BW (the input is not mutated)
+  with only that account's slot filled. Cosigning never changes the data hash,
+  so parties can sign in any order.
+- It throws if the account's address is not listed, the slot is already filled,
+  or the recorded `previous_hashes` entry no longer matches the account's
+  current `previousHash` — a party must not sign anything else between sharing
+  its `previousHash` and cosigning.
+- It signs whatever data hash the BW carries. Each party checks the BW's
+  `payload_hashes` (root hashes) against the payloads it actually agreed to
+  before cosigning.
+- `isFullySigned` is a shape check; run `BoundWitnessValidator` on the final BW.
 
 #### Verifying multi-signer witnesses
 
@@ -277,7 +342,7 @@ Use `addressesContainsAll` when every party's signature is required (joint commi
 
 ### Chain Continuity
 
-Each signer tracks a `previousHash` that links bound witnesses into a tamper-evident chain. The `previous_hashes` array records each signer's last known hash at the time of signing. This creates an ordered, linked history of interactions per identity.
+Each signer tracks a `previousHash` that links bound witnesses into a tamper-evident chain. The `previous_hashes` array records each signer's last known hash at the time of signing. This creates an ordered, linked history of interactions per identity. The value lives in memory unless a previous-hash store is configured — see [Identity & Signing — Chain Continuity](identity.md#chain-continuity).
 
 ---
 

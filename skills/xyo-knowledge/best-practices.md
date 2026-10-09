@@ -46,7 +46,7 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 - **Hashing:** `PayloadBuilder.hash` is the default for application identity, references, commitments, caches, and deduplication: it includes client metadata and uses canonical serialization. Native `JSON.stringify` plus a digest is not the protocol algorithm. `PayloadBuilder.dataHash` additionally strips all client metadata, including `$version`; use it only where a specific protocol requires that projection. See [hash and version rules](payload-schema-evolution.md#root-hash-for-virtually-all-application-uses).
 - **Datalake access:** `RestDataLakeRunner` and `RestDataLakeViewer` implement the archivist HTTP contract (request format, hash-keyed reads, schema filtering on the request). Raw `fetch()` to the same endpoint may not match the expected request shape. Note: do not use `.next()` against a remote XL1 datalake — see [Datalakes — How to read](../xl1-knowledge/datalakes.md).
 - **Chain queries:** The gateway from `useProvidedGateway()` is the correct client for reading chain state. Access viewer methods via `connection.viewer` sub-viewers. Raw `fetch` to the gateway endpoint loses type safety and provenance.
-- **Payload construction:** `PayloadBuilder` manages schema validation and meta field conventions. Raw object literals (`{ schema: '...', field: value }`) skip this and may produce invalid payloads.
+- **Payload construction:** `PayloadBuilder` validates the schema name and keeps meta fields in their lanes (`.fields()` drops `$*` / `_*` keys; client metadata goes through `.meta()`). It does **not** validate custom fields — pair `build()` with the payload's Zod `as…` factory ([Narrowing the built payload](primitives.md#narrowing-the-built-payload)). Raw object literals (`{ schema: '...', field: value }`) skip all of this and may produce invalid payloads.
 - **BoundWitness construction:** `BoundWitnessBuilder` computes parallel arrays (`addresses`, `payload_hashes`, `payload_schemas`, `previous_hashes`, `$signatures`) and maintains chain continuity. Manual construction risks breaking these invariants.
 
 ### Anti-pattern table
@@ -57,7 +57,7 @@ The XYO/XL1 protocol defines precise rules for how data is serialized, hashed, s
 | Raw `fetch()` to datalake endpoint | May not match archivist HTTP contract | `RestDataLakeRunner` / `RestDataLakeViewer` from `@xyo-network/xl1-sdk` |
 | Calling gateway methods by string name or raw HTTP | The gateway has no `.call()` method — use the typed sub-viewer API | `defaultGateway.connection.viewer?.<sub-viewer>.<method>(...)` — see [Gateway](../xl1-knowledge/gateway.md) |
 | Manual BoundWitness field construction | Parallel array invariants easily broken | `BoundWitnessBuilder` |
-| Raw object literal `{ schema: '...', field: val }` | Skips meta field management and validation | `PayloadBuilder` |
+| Raw object literal `{ schema: '...', field: val }` | Skips schema-name and meta field handling | `PayloadBuilder`, narrowed with the payload's Zod factory |
 | Using `datalakeRunner`/`datalakeViewer` without creating them | These are not globals — they must be instantiated | `createRestDataLakeRunner(endpoint)` / `createRestDataLakeViewer(endpoint)` from `@xyo-network/xl1-sdk` — see [Gateway](../xl1-knowledge/gateway.md) |
 
 ### When native constructs are acceptable
@@ -163,13 +163,16 @@ Use `$sources` to reference related payloads by **root hash** (`PayloadBuilder.h
 - Never use these prefixes for application data
 
 ### Use PayloadBuilder
-Always construct payloads via `PayloadBuilder`, not raw object literals. The builder handles schema validation and meta field management correctly.
+Always construct payloads via `PayloadBuilder`, not raw object literals. The builder checks the schema name and manages meta fields — `$version` / `$sources` set through `.fields()` are silently dropped, so use `.meta()`. It does not check your fields; the Zod factory does.
 
 ```ts
 // Good
-const payload = new PayloadBuilder({ schema: MoveSchema })
-  .fields({ move: 'rock' })
-  .build()
+const payload = asMovePayload(
+  new PayloadBuilder({ schema: MoveSchema })
+    .fields({ move: 'rock' })
+    .build(),
+  true,
+)
 
 // Avoid
 const payload = { schema: 'com.example.rps.move', move: 'rock' }
@@ -254,7 +257,7 @@ const diviner = new MyDiviner(archivist)
 - Default to private unless the module needs to be discoverable from outside
 
 ### Use Manifests for Production
-Imperative composition (`create` → `register` → `attach`) is fine for testing and prototyping. For production, declare the module tree in a manifest for reproducibility and configuration management.
+Imperative composition (`create` → `register` → `attach`) is fine for testing and prototyping. For production, declare the module tree in a manifest for reproducibility and configuration management — see [Manifest System](modules.md#manifest-system) for the loader.
 
 ### Account Strategy
 - **Testing:** `{ account: 'random' }` — quick, no key management needed
@@ -271,10 +274,10 @@ Every significant state change in your application should be captured in a bound
 Always use `BoundWitnessBuilder`. The builder computes `addresses`, `payload_hashes`, `payload_schemas`, and `previous_hashes` from the provided signers and payloads. Manual construction risks breaking invariants.
 
 ### Preserve Chain Continuity
-The `previous_hashes` array creates a tamper-evident, per-signer chain of bound witnesses. Don't use throwaway accounts where continuity matters — reuse the same account to build a meaningful chain.
+The `previous_hashes` array creates a tamper-evident, per-signer chain of bound witnesses. Don't use throwaway accounts where continuity matters — reuse the same account to build a meaningful chain. An account's `previousHash` is held in memory only, so persist it with `Account.previousHashStore` (`IndexedDbPreviousHashStore` / `StoragePreviousHashStore`) or every reload restarts the chain; with a store, a concurrent sign from another tab throws rather than forking it. See [Identity & Signing — Chain Continuity](identity.md#chain-continuity).
 
 ### Multi-Party Signing
-A bound witness with multiple signers proves that all parties agreed on the same data. For a game like Rock Paper Scissors, this is valuable: both players and a game arbiter can co-sign the outcome.
+A bound witness with multiple signers proves that all parties agreed on the same data. For a game like Rock Paper Scissors, this is valuable: both players and a game arbiter can co-sign the outcome. Players do not share keys: reserve the other parties' slots with `.participant({ address, previousHash })`, pass the partially signed BW along, have each party fill its slot with `cosignBoundWitness`, then check `isFullySigned` (shape only) and validate with `BoundWitnessValidator`. See [sequential cosigning](primitives.md#parties-in-separate-processes-sequential-cosigning).
 
 ---
 

@@ -94,8 +94,8 @@ Author the type as in [Authoring a payload type](primitives.md#authoring-a-paylo
 The envelope factory is what binds schema name and `$version` to the field shape:
 
 ```ts
-import * as z from 'zod/mini'
 import { asSchema, PayloadZodOfSchema } from '@xyo-network/sdk'
+import { z } from 'zod/mini'
 
 const ReadingSchema = asSchema('com.example.sensor.reading', true)
 const ReadingFieldsZod = z.object({ temperatureCelsius: z.number() })
@@ -148,8 +148,13 @@ weaker authentication, authorization, closure, or consensus rules.
 Cache schema definitions by `(schema, effectiveVersion)`. Cache validation by root
 hash **and** applicable validator/authorization policy. A data-hash lookup may
 group variants but must not silently replace one representation with another.
-Check actual archivist lookup/dedup behavior; a generic data-hash-based store does
-not become representation-safe through a new key in application code alone.
+SDK archivists (every `AbstractArchivist` subclass — Memory, IndexedDb, Storage,
+…) store and dedupe on the root `_hash`, so variants that share a data hash are
+kept side by side. Their `get()` accepts a data hash as an alias but answers with
+a data-only view (`$*` removed, `_hash` set to the data hash), never a stored
+representation — fetch by root hash when `$version` or `$sources` matters. A
+custom store keyed by data hash does not become representation-safe through a
+new key in application code alone.
 
 ## Existing protocol exceptions and migration
 
