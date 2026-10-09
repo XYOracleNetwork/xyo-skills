@@ -66,7 +66,7 @@ Define payload types using the [Zod-first pattern](../xl1-knowledge/development.
 
 ```ts
 import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
-import * as z from 'zod/mini'
+import { z } from 'zod/mini'
 import { PayloadZodLooseOfSchema } from '@xyo-network/sdk'
 
 // Open object; support only effective 1.0.0 by default.

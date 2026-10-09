@@ -21,7 +21,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Chain state is read through `connection.viewer` sub-viewers — no raw HTTP calls to the gateway endpoint
 - [ ] `connection.viewer` is guarded before use (`?.` or null check) — it is `XyoViewer | undefined`
 - [ ] Transactions are submitted through gateway methods (`addPayloadsToChain`, `send`, `sendMany`) — no manual `TransactionBoundWitness` construction
-- [ ] Write capability is checked before submitting (`'addPayloadsToChain' in defaultGateway`)
+- [ ] Writes are gated on a granted account (lifted from `ConnectAccountsStack`'s `onAccountsChanged`) **and** write capability (`'addPayloadsToChain' in defaultGateway`) — under `GatewayProvider` the capability check alone passes as soon as the wallet extension is installed, before the user grants this site any account
 - [ ] **No hand-rolled JSON-RPC envelopes anywhere.** `grep -rE '"jsonrpc"\s*:' src/` returns nothing. The `"jsonrpc"` field is required by JSON-RPC 2.0 and is the structural tell of a bypass — catches any direct call regardless of which method name it carries, so the check stays valid as new XL1 viewers are added. Every chain read goes through `connection.viewer.*`; every write goes through gateway methods. See [Gateway — Never Issue Raw RPC Calls](../xl1-knowledge/gateway.md#never-issue-raw-rpc-calls)
 - [ ] **No Ethereum JSON-RPC method names anywhere.** XL1 is not an EVM chain. `grep -rE "\b(eth|net|web3|personal|engine)_[a-zA-Z]+\b" src/` returns nothing — these namespaces are defined by the Ethereum spec and do not exist on the XL1 gateway. Replace any hits with XL1 viewer/runner equivalents (`eth_getBalance` → `viewer.account.balance.accountBalance(...)`, `eth_blockNumber` → `viewer.block.currentBlockNumber()`, `eth_sendTransaction` → `gateway.addPayloadsToChain(...)` / `gateway.send(...)`, etc.)
 - [ ] **No Ethereum SDKs imported for chain access.** `grep -rE "from ['\"](ethers|viem|web3|@ethersproject|@walletconnect)" src/` returns nothing — these libraries speak the Ethereum JSON-RPC protocol and will not work against XL1, regardless of configuration. Use `@xyo-network/xl1-sdk` instead. (Address compatibility via shared BIP44 derivation is the *only* thing XL1 borrows from Ethereum.)
@@ -47,9 +47,11 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] `Account.random()` is not used for user-facing wallet connections — it is for tests and non-interactive scripts only
 - [ ] `ConnectAccountsStack` handles the wallet connection UI — no custom connection/disconnection UI that duplicates its functionality
 - [ ] `ConnectAccountsStack` is rendered unconditionally — it manages both unconnected and connected states
-- [ ] The connected address is lifted into app-level state via `onAccountConnected` and passed as props — `useConnectAccount()` is not called in multiple components
+- [ ] The granted accounts are lifted into app-level state via `onAccountsChanged`; the dApp keeps its chosen account there, clears it when the callback reports `[]` (revoked), and passes it down as props. `onAccountConnected` (a compatibility prop — first account only, never called on revoke) is not used to lift the address, and `useConnectAccount()` is not called in multiple components
 - [ ] When the wallet extension is missing, the UI prompts the user to install it — no silent fallback to a random account
-- [ ] Permission requests are scoped to the publicly supported wallet methods (`xyoWallet_getAccounts`, `xyoSigner_address`) — `xyoDataLakes_get` / `xyoDataLakes_insert` are never requested (datalake access from a dApp is plain HTTP via `RestDataLakeRunner` / `RestDataLakeViewer`)
+- [ ] Permission requests ask for `xyoWallet_getAccounts` only — its grant also covers `xyoSigner_address`, so there is no separate signer request — and `xyoDataLakes_get` / `xyoDataLakes_insert` are never requested (datalake access from a dApp is plain HTTP via `RestDataLakeRunner` / `RestDataLakeViewer`)
+- [ ] The SDK's datalake components (`DataLake*` buttons and panels, `ApprovedLakeSelector`) are not rendered — they drive the wallet's internal `xyoDataLakes_*` methods
+- [ ] The connection UI is restyled, if at all, through `ConnectAccountsStack`'s slot props (`AccountComponent`, `ConnectComponent`, `LoadingComponent`, `NoWalletInstalledComponent`) — not by wrapping or forking it
 
 **Source:** [Browser UX — Wallet Connection](browser-ux.md), [Wallet — Permissions](wallet.md#permissions)
 
@@ -105,8 +107,9 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] Only one browser system per network — a React app does not launch `launchXl1BrowserGatewaySystem` alongside `InPageGatewaysProvider`
 - [ ] App strictly requires wallet? Uses `WalletGatewayProvider`
 - [ ] Read-only components (history, leaderboards, explorers) are placed outside the wallet connection gate — they need no wallet
+- [ ] Public chain reads under `GatewayProvider` use `gateways.inPageGateway` from `useProvidedGateway()` — not `defaultGateway`, which is the wallet's gateway whenever the extension is installed and `undefined` while wallet discovery runs
 - [ ] **Multi-user derived views (game history, leaderboards, market listings) read the companion service's index** via relative `fetch('/api/…')` — not a browser chain walk. The in-page gateway serves only bounded lookups — a transaction by hash, a block by number, the finalized head — with off-chain payloads fetched from the dApp's datalake by hash. Any browser-side block walk that remains (a `blockByNumber` / `blocksByNumber` loop in the app package) is labelled prototype-only and bounded below at `VITE_INDEXER_FLOOR_BLOCK`
-- [ ] Wallet-gated components (submit move, create game) check write capability before rendering action controls
+- [ ] Wallet-gated components (submit move, create game) check for a granted account and write capability before rendering action controls
 
 **Source:** [In-Page Data Lakes](in-page-datalakes.md), [Chain Data Indexing — Client](chain-data-indexing-client.md), [Browser ↔ Service Wiring](browser-service-wiring.md), [Browser Gateway](../xl1-knowledge/gateway-browser.md)
 
@@ -139,7 +142,7 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 - [ ] `confirmSubmittedTransaction` calls pass explicit options for non-local networks (e.g., `{ attempts: 30, delay: 10_000 }` for Sequence) — defaults time out before finalization
 - [ ] Seed phrase loads from `.env` via `dotenv/config`; never logged, committed, or echoed to console
 - [ ] Script defaults to a non-mainnet network (e.g., `XL1_NETWORK=sequence`) — explicit override required to point at mainnet
-- [ ] **(if local vitest chain)** Prefer `@xyo-network/dapp-kit-vitest-config` `local-xl1` for public/dapp-kit consumers; use XYO-internal `apiLocal` only when restricted packages are available — see [dApp Kit Vitest](../xl1-testing/local-chain-dapp-kit-vitest.md)
+- [ ] **(if local vitest chain)** Prefer `@xyo-network/dapp-kit-vitest-config` `local-xl1` for public/dapp-kit consumers (its own `apiLocal` installer is also public); use the restricted `@xyo-network/xl1-vitest-config` `apiLocal` harness only when its XYO-internal packages are available — see [dApp Kit Vitest](../xl1-testing/local-chain-dapp-kit-vitest.md)
 
 **Source:** [Headless Testnet Verification](../xl1-testing/headless-testnet-verification.md) (in the `xl1-testing` skill)
 
@@ -157,11 +160,13 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 
 ## dApp Kit (if using `@xyo-network/dapp-kit*` / `xl1.dapp.json`)
 
-- [ ] `xl1-dapp validate` (and `plan` for the deployment under test) succeeds
+- [ ] `xl1-dapp validate` and `plan --deployment <name>` succeed, and `xl1-dapp test --deployment <name>` passes the deployment's declared verifications (every deployment declares at least one `verification` entry with an `evidence` label)
+- [ ] Target placement lives in `xl1.deploy.json`, not `xl1.dapp.json`; a Kubernetes/Proxmox target plan is schema-only and is not a deployment
 - [ ] Clients use **application ports** / documented status — not a one-off shadow REST schema as the protocol
 - [ ] Effect journal / crash recovery expectations are met or explicitly out of scope with reason
 - [ ] If event-driven: wake ≠ durable event ≠ subscription cursor ([Events and wakes](../xl1-dapp-kit/events-and-wakes.md))
-- [ ] Evidence label is stated (**local** / packed / Sequence / …); local green is not hosted or production qualification ([Conformance](../xl1-dapp-kit/conformance.md))
+- [ ] If receiving Event Kit wakes: the public URL uses `createActiveSourceWakeHttpHostAdapter` (grant + active D-005 subscription, pre-auth rate limiter, size caps, deadline) and only admits; reducers run in a separate worker draining `WakeQueue` ([Authenticated Wake Delivery](authenticated-wake-delivery.md))
+- [ ] The evidence produced is stated as its runner label (`model` / `deterministic` / `node` / `browser` / `local-xl1` / `local-datalake` / `sequence` / `mainnet`) and L-level; local green (L5 or below) is not hosted (L6/L7) or production (L9) qualification ([Conformance](../xl1-dapp-kit/conformance.md))
 - [ ] Local chain automation uses [dapp-kit vitest `local-xl1`](../xl1-testing/local-chain-dapp-kit-vitest.md) when specs need a vitest-owned chain
 
 **Source:** [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md), [Full local dApp stack — dapp-kit](../xl1-testing/local-dapp-stack.md#dapp-kit)
@@ -210,10 +215,20 @@ Layer 1 always applies. Walk this layer (Layer 2) when the project is a dApp. Wa
 
 ## Multi-Party Co-Signing (if applicable)
 
-- [ ] Joint commitments use a single multi-signer BoundWitness (`.signers([a, b, ...])`) — not parallel single-signer BWs that a verifier would have to correlate
+- [ ] Joint commitments use a single multi-signer BoundWitness (`.signers([a, b, ...])` when every key is in one process; `.participant(s)` + `cosignBoundWitness` when parties sign in separate processes — see [sequential cosigning](../xyo-knowledge/primitives.md#parties-in-separate-processes-sequential-cosigning)) — not parallel single-signer BWs that a verifier would have to correlate
 - [ ] Every multi-signer BW is signature-checked with `BoundWitnessValidator` (`(await new BoundWitnessValidator(bw).validate()).length === 0`) before any membership check — `addressesContainsAll` / `addressesContainsAny` test membership in `addresses` only, not signatures
 - [ ] "All parties must agree" checks use `addressesContainsAll(bw, parties)` from `@xyo-network/sdk`, on a validated BW
 - [ ] "Any authorized authority may sign" checks use `addressesContainsAny(bw, authorities)` on a validated BW, with a non-empty `authorities` list (an empty list returns `true`)
 - [ ] Multi-sig parties (a party with several addresses) require *all* of that party's addresses to co-sign their secret reveal — not any one of them
 
 **Source:** [Protocol Primitives — Multi-Signer BoundWitnesses](../xyo-knowledge/primitives.md#multi-signer-co-witnessed-boundwitnesses), [Atomic Exchange](atomic-exchange.md)
+
+---
+
+## Statement Graph (if applicable)
+
+- [ ] Every claim sets `subject` and is published with `publishStatements` (claim elevated, every claimed object in the same transaction, no `$` metadata on claimed objects)
+- [ ] Vocabulary schemas live under a namespace you control (`com.<org>.*`), not `network.xyo.*`
+- [ ] Statement Graph version matches its composers' peer ranges (`~0.5.x` while Event Kit 2.2 / Service Kit 0.2 peer `^0.5`); pre-fold-4 checkpoints are deleted or rescanned
+
+**Source:** [Statement Graph](statement-graph.md)

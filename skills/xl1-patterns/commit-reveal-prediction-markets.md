@@ -43,7 +43,7 @@ Define a schema for each phase of the lifecycle. Validity windows reuse `BlockDu
 import { asSchema, PayloadZodLooseOfSchema } from '@xyo-network/sdk'
 import { BlockDurationZod } from '@xyo-network/xl1-sdk'
 import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
-import * as z from 'zod/mini'
+import { z } from 'zod/mini'
 
 // --- Market Definition ---
 
@@ -489,7 +489,7 @@ import { StorageArchivist, StorageArchivistConfigSchema } from '@xyo-network/arc
 function MarketPage({ marketId }: { marketId: string }) {
   const { defaultGateway } = useProvidedGateway()
   const [market, setMarket] = useState<MarketState>()
-  const [address, setAddress] = useState<string>()
+  const [address, setAddress] = useState<XyoAddress>()
   const [secretStore, setSecretStore] = useState<StorageArchivist>()
 
   const canWrite = defaultGateway && 'addPayloadsToChain' in defaultGateway
@@ -525,7 +525,10 @@ function MarketPage({ marketId }: { marketId: string }) {
         <SettlementResults settlement={market.settlement!} />
       )}
 
-      <ConnectAccountsStack onAccountConnected={setAddress} />
+      {/* Keep the chosen account while it is still granted; [] (revoked) clears it — see Browser UX */}
+      <ConnectAccountsStack
+        onAccountsChanged={accounts => setAddress(current => (current !== undefined && accounts.includes(current) ? current : accounts[0]))}
+      />
 
       {canWrite && address && market.phase === 'commit' && (
         <CommitForm

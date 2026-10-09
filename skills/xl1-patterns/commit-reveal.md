@@ -37,7 +37,7 @@ Define two payload identifiers, one for commits and one for reveals, with corres
 ```ts
 import { asSchema, PayloadZodLooseOfSchema } from '@xyo-network/sdk'
 import { zodIsFactory, zodAsFactory, zodToFactory } from '@ariestools/sdk'
-import * as z from 'zod/mini'
+import { z } from 'zod/mini'
 
 // --- Commit ---
 
