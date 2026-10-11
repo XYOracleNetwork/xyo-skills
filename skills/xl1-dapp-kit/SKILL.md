@@ -41,7 +41,7 @@ This is **Layer 6** of the XYO skill stack: `xy-development` (1) → `xy-toolcha
 ## Table of Contents
 
 ### [Architecture principles](../xl1-patterns/architecture-principles.md) (in xl1-patterns — lower layer, read first)
-**Read first when designing or reviewing a dapp-kit app whose state matters to more than one party.** The principles live in xl1-patterns because they hold with or without dapp-kit; this skill is the supported way to build the engine they describe as a headless runtime.
+**Read first when designing or reviewing a dapp-kit app whose state matters to more than one party.** The principles live in xl1-patterns because they hold with or without dapp-kit; this skill is the supported way to build the engine they describe as a headless runtime. When assigning worker roles or designing wake handling, effect admission, recovery or coordination, also consult the cross-cutting [ariestools-architecture](https://github.com/ariestools/ariestools-skills/blob/main/skills/ariestools-architecture/SKILL.md) skill from an adopted revision that contains it, then apply [Worker authority and coordination](../xl1-patterns/architecture-principles.md#worker-authority-and-coordination). Local host lifecycle supervision remains compatible; the skill does not expand a journal's supported ownership model or grant additional signing authority.
 
 ### [Vocabulary](vocabulary.md)
 Definition, configuration, plan, incarnation, host, engine and systems, the two manifests, lock versions, status dimensions, durability classes — the words agents must not collapse.

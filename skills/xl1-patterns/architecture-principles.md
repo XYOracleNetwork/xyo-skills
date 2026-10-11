@@ -65,6 +65,41 @@ flowchart TB
 | Index | Derived, published data for fast reads. Rebuildable, replaceable and never authoritative. Also called a projection. |
 | Verifier | An implementation that derives state from evidence alone. |
 
+## Worker authority and coordination
+
+When designing worker roles, work discovery, concurrent attempts, recovery or
+coordination, consult the cross-cutting
+[ariestools-architecture](https://github.com/ariestools/ariestools-skills/blob/main/skills/ariestools-architecture/SKILL.md)
+skill. That link identifies its canonical source in the separate Aries Tools
+pack. Verify that the adopted pack revision contains the skill before claiming
+it was loaded. If it does not, read an accessible source revision containing
+it and report that revision; if no such source is accessible, record the
+limitation and apply the criteria here.
+
+Prefer eligible, autonomous, replaceable participants that discover unfinished
+work from durable evidence and reconcile outcomes under the written protocol.
+Wakes and gossip accelerate discovery; catch-up from durable evidence repairs
+missed signals. Define what concurrent attempts mean at the effect boundary:
+duplicate computation can be harmless while signing, sponsorship, publication
+or asset movement still needs explicit admission and repeat safety. A local
+journal alone does not make effects safe across independent workers. Recovery
+workers follow the same authority, concurrency and replacement rules as other
+workers.
+
+For each proposed scheduler, leader, queue or controller, name the correctness
+invariant or resource constraint it protects, scope its decision authority to
+that requirement, and define failure, stale-participant and recovery behavior.
+State the evidence, access and communication assumptions needed for progress,
+and bound retries and speculative work. Host lifecycle supervision can launch,
+stop and clean up local actors without becoming the application's authority
+over distributed work.
+
+Apply this default within the actual protocol and runtime contracts. A house
+role's required signer or private custody can limit replacement; document that
+dependency and its recovery path. Do not infer additional signing authority or
+multi-writer support from the architectural preference, or remove required
+coordination without preserving the invariant it protects.
+
 ## 1. The dApp is an engine; every interface is a client
 
 > Everything that defines the dApp (its protocol types, validation, state
@@ -446,6 +481,17 @@ Ask these of any new XL1 dApp design, and answer them in the design doc or compl
    your schema?
 9. Where do time and randomness come from?
 10. What does each action assume, and does it bind those assumptions?
+11. If the participant currently in charge disappears, what durable evidence
+    lets another eligible participant determine and perform the next valid
+    action? Which signer, custody or access dependencies limit that recovery?
+12. When workers race or restart around an effect, what prevents duplicate or
+    stale effects at the effect boundary, and what repairs missed wake hints?
+13. Which named invariant or resource constraint requires each coordination
+    mechanism, what decisions does it control, and how does progress resume
+    after its failure or a partition?
+14. Under what availability and communication assumptions does reconciliation
+    make progress, including repair work, and what bounds retries and
+    speculative activity?
 
 ## Lessons from practice
 
