@@ -32,18 +32,30 @@ The same builder works for all of them — the difference is which terminal call
 
 ```ts
 import {
-  DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls, type XyoGateway,
+  createRestDataLakeViewer, DefaultNetworks, GatewayBuilder, NetworkDataLakeUrls, type XyoGateway,
 } from '@xyo-network/xl1-sdk'
 
 const id = 'sequence' // or 'mainnet' / 'local'
 const network = DefaultNetworks.find((n) => n.id === id)
 if (!network) throw new Error(`Unknown network "${id}"`)
 
+const lakeUrl = NetworkDataLakeUrls[id]
+const dataLake = await createRestDataLakeViewer(lakeUrl)
+
+// The gateway binding is the same single endpoint. It feeds `connection.storage`
+// only — `payloadsByHash` and `transaction.byHash` stay on the gateway store.
 const gateway: XyoGateway = await new GatewayBuilder()
   .name(id)
   .rpcUrl(`${network.url}/rpc`)
-  .dataLakeEndpoint(NetworkDataLakeUrls[id])
+  .additionalConnections({
+    'rest-data-lake': { type: 'rest', baseUrl: lakeUrl },
+  })
+  .additionalProviderBindings({
+    DataLakeRunner: { connection: 'rest-data-lake' },
+    DataLakeViewer: { connection: 'rest-data-lake' },
+  })
   .build()
+// dataLake.get(hashes) reads off-chain bodies. The gateway binding does not.
 ```
 
 This is the right path for: chain walks, indexers, archival jobs, dashboards, ETL, server-rendered pages, monitoring scripts.
@@ -54,7 +66,7 @@ This is the right path for: chain walks, indexers, archival jobs, dashboards, ET
 
 ```ts
 import {
-  DefaultNetworks, GatewayBuilder, generateXyoBaseWalletFromPhrase, NetworkDataLakeUrls,
+  createRestDataLakeRunner, DefaultNetworks, GatewayBuilder, generateXyoBaseWalletFromPhrase, NetworkDataLakeUrls,
   type XyoGatewayRunner,
 } from '@xyo-network/xl1-sdk'
 
@@ -64,13 +76,23 @@ if (!network) throw new Error(`Unknown network "${id}"`)
 
 const baseWallet = await generateXyoBaseWalletFromPhrase(process.env.SEED_PHRASE!)
 const account = await baseWallet.derivePath('0')
+const lakeUrl = NetworkDataLakeUrls[id]
+const dataLake = await createRestDataLakeRunner(lakeUrl)
 
 const runner: XyoGatewayRunner = await new GatewayBuilder()
   .name(id)
   .rpcUrl(`${network.url}/rpc`)
-  .dataLakeEndpoint(NetworkDataLakeUrls[id])
+  .additionalConnections({
+    'rest-data-lake': { type: 'rest', baseUrl: lakeUrl },
+  })
+  .additionalProviderBindings({
+    DataLakeRunner: { connection: 'rest-data-lake' },
+    DataLakeViewer: { connection: 'rest-data-lake' },
+  })
   .account(account)
   .buildRunner()
+// dataLake.insert(payloads) writes this lake directly. A bound DataLakeRunner
+// also receives the runner's pre-broadcast content write.
 ```
 
 The result is a full `XyoGatewayRunner` — `addPayloadsToChain`, `send`, `sendMany`, and `confirmSubmittedTransaction` are all available. See [Gateway — Submitting Transactions](gateway.md#submitting-transactions) for the call surface.
@@ -113,7 +135,9 @@ In a long-running service, build one session at startup, use `session.gateway` e
 |--------|---------|
 | `.rpcUrl(url)` | HTTP transport — point at a gateway RPC endpoint |
 | `.postMessage(networkId, sessionId)` | PostMessage transport — for browser wallet ↔ dApp wiring (rarely used in Node) |
-| `.dataLakeEndpoint(url)` | Optional datalake URL — backs `connection.storage` (a `DataLakeViewer` from `.build()`, a `DataLakeRunner` from `.buildRunner()`) and the runner's pre-broadcast write of each transaction's full content, `offChain` payloads included. Viewer reads never consult it — fetch off-chain bodies with `createRestDataLakeViewer(url).get(hashes)` |
+| `.additionalConnections(connections)` | Named connection profiles merged into the locator. A data lake is a `rest` connection, not a gateway URL field |
+| `.additionalProviderBindings(bindings)` | Locator bindings. Bind `DataLakeViewer` and `DataLakeRunner` to that `rest` connection |
+| `.dataLakeEndpoint(url)` | **Deprecated, removed in 6.0.** 5.x adapter that binds `DataLakeViewer` and `DataLakeRunner` to one `rest` connection named `rest-data-lake`. Same effect as the two methods above. Backs `connection.storage` and the runner's pre-broadcast write. Viewer reads never consult it — fetch off-chain bodies with `createRestDataLakeViewer(url).get(hashes)` |
 | `.name(name)` | Diagnostic name for the gateway and its provider locator (default `'gateway-client'`). It does **not** select the network — `.rpcUrl()` does |
 | `.validators(validators)` | Custom block validators |
 | `.additionalProviders(factories)` | Extra `CreatableProviderFactory` entries (read path) |
@@ -187,7 +211,13 @@ function getSession(): Promise<GatewaySession<XyoGatewayRunner>> {
       return await new GatewayBuilder()
         .name('sequence')
         .rpcUrl(`${network.url}/rpc`)
-        .dataLakeEndpoint(NetworkDataLakeUrls.sequence)
+        .additionalConnections({
+          'rest-data-lake': { type: 'rest', baseUrl: NetworkDataLakeUrls.sequence },
+        })
+        .additionalProviderBindings({
+          DataLakeRunner: { connection: 'rest-data-lake' },
+          DataLakeViewer: { connection: 'rest-data-lake' },
+        })
         .account(account)
         .buildRunnerSession()
     })()
@@ -210,13 +240,15 @@ Cache the **promise**, not the resolved value, so concurrent first callers share
 
 ## Network Selection
 
-There is no React prop equivalent: resolve the network ID to its URLs yourself and pass those to the builder. The network is whatever `.rpcUrl()` (and `.dataLakeEndpoint()`) point at; `.name()` is only a diagnostic label. The IDs and their endpoints are documented in [Gateway — Networks](gateway.md#networks). Drive selection from an environment variable in production:
+There is no React prop equivalent: resolve the network ID to its URLs yourself and pass those to the builder. The network is whatever `.rpcUrl()` points at; a data lake, when you want one on the gateway, is a locator binding (or, through 5.x, the deprecated `.dataLakeEndpoint()`, removed in 6.0). `.name()` is only a diagnostic label. The IDs and their endpoints are documented in [Gateway — Networks](gateway.md#networks). Drive selection from an environment variable in production:
 
 ```ts
 const id = process.env.XL1_NETWORK ?? 'sequence'
 const network = DefaultNetworks.find((n) => n.id === id)
 if (!network) throw new Error(`Unknown network "${id}"`)
-// .rpcUrl(`${network.url}/rpc`).dataLakeEndpoint(NetworkDataLakeUrls[id])
+// .rpcUrl(`${network.url}/rpc`)
+// .additionalConnections({ 'rest-data-lake': { type: 'rest', baseUrl: NetworkDataLakeUrls[id] } })
+// .additionalProviderBindings({ DataLakeViewer: { connection: 'rest-data-lake' }, DataLakeRunner: { connection: 'rest-data-lake' } })
 ```
 
 ---
@@ -239,10 +271,21 @@ import {
 const locator = await basicRemoteViewerLocator(
   id,
   { protocol: 'http', url: `${network.url}/rpc` },
-  NetworkDataLakeUrls[id],
+  undefined,
+  {
+    additionalConnections: {
+      'rest-data-lake': { type: 'rest', baseUrl: NetworkDataLakeUrls[id] },
+    },
+    additionalProviderBindings: {
+      DataLakeRunner: { connection: 'rest-data-lake' },
+      DataLakeViewer: { connection: 'rest-data-lake' },
+    },
+  },
 )
 const gateway = await locator.getInstance<XyoGateway>(XyoGatewayMoniker)
 ```
+
+The third argument, `dataLakeEndpoint`, is the same 5.x adapter as `GatewayBuilder.dataLakeEndpoint` and is removed in 6.0. Pass `undefined` and set the locator bindings instead. `createRestDataLakeViewer(url)` / `createRestDataLakeRunner(url)` build that single-endpoint lake when you want the client directly.
 
 This is an escape hatch — prefer `GatewayBuilder` unless you have a concrete reason to drop down. Anything `GatewayBuilder` exposes (additional providers, validators) should be set through builder methods first. The first argument is the same diagnostic name `.name()` sets, not a network selector. A locator you build yourself is yours to release: `releaseProviderFactoryLocator(locator)` is what a session's `stop()` calls.
 

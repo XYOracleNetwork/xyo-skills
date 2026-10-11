@@ -100,7 +100,7 @@ Use them rather than raw `fetch()` to the endpoint: `RestDataLakeRunner` and `Re
 
 The chain stores only the hash of each off-chain payload, so **the payload body must land in a datalake the dApp reads from.** Who writes it depends on the gateway that submits:
 
-- **A runner gateway built with a datalake endpoint** (a Node `GatewayBuilder` with `.dataLakeEndpoint(url)` before `.buildRunner()`, or a browser system launched with `dataLakeEndpoint`) registers a `RestDataLakeRunner`, and `addPayloadsToChain` / `addTransactionToChain` write the transaction's full content — the bound witness plus every `onChain` and `offChain` payload — to that datalake *before* broadcasting. No separate insert is needed when that is the datalake the dApp reads from.
+- **A runner gateway whose locator binds `DataLakeRunner`** (build the lake with `createRestDataLakeRunner(url)` and `createRestDataLakeViewer(url)`, then bind both monikers to that `rest` connection) registers a `RestDataLakeRunner`, and `addPayloadsToChain` / `addTransactionToChain` write the transaction's full content — the bound witness plus every `onChain` and `offChain` payload — to that datalake *before* broadcasting. No separate insert is needed when that is the datalake the dApp reads from. `dataLakeEndpoint` on `GatewayBuilder`, REST gateway config, and `launchXl1BrowserGatewaySystem` is a 5.x adapter for that same binding and is removed in 6.0.
 - **A runner with no dApp-side datalake** — e.g. the browser wallet gateway — writes nothing to the dApp's datalake. The wallet's `addPayloadsToChain(onChain, offChain)` writes those payloads only to whatever datalake the *wallet* is configured for (if any); the dApp cannot rely on that being the endpoint it reads from, or being configured at all.
 
 In the second case (or when the content must also land in a different datalake), the flow for application data is:
@@ -169,7 +169,7 @@ interface DataLakeRunnerMethods {
 
 ## Configuration
 
-A remote datalake is a **named `rest` connection** (`{ type: 'rest', baseUrl }`) plus `providerBindings` that point the `DataLakeViewer` / `DataLakeRunner` monikers at it. This is the shape `createRestDataLakeViewer` / `createRestDataLakeRunner` and `GatewayBuilder().dataLakeEndpoint(url)` build internally:
+A remote datalake is a **named `rest` connection** (`{ type: 'rest', baseUrl }`) plus `providerBindings` that point the `DataLakeViewer` / `DataLakeRunner` monikers at it. That is the model. `createRestDataLakeViewer(url)` and `createRestDataLakeRunner(url)` build one such lake. Bind those monikers through the locator when a gateway should use it. `GatewayBuilder().dataLakeEndpoint(url)` (and the REST and browser `dataLakeEndpoint` options) still write this same binding through 5.x and are removed in 6.0:
 
 ```ts
 import { ConfigZod } from '@xyo-network/xl1-sdk'
