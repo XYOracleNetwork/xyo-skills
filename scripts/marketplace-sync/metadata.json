@@ -1,6 +1,6 @@
 {
   "name": "xyo-skills",
-  "version": "1.1.38",
+  "version": "1.1.39",
   "displayName": "XYO Skills",
   "description": "XYO and XL1 agent skills for building dApps on the XL1 blockchain: a planning wizard, project scaffolding (React + indexer service, or the dapp-kit headless runtime), prescriptive design patterns, XL1 chain and gateway knowledge, XYO primitives, and testing with a dApp Definition of Done. Requires companion ariestools-skills for xy-development and xy-toolchain.",
   "shortDescription": "XL1 and XYO development skills.",

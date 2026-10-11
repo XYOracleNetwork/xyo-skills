@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.39](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.38...v1.1.39) (2026-10-11)
+
+
+### Features
+
+* refresh XL1 skills and adopt autonomous worker architecture ([#113](https://github.com/XYOracleNetwork/xyo-skills/issues/113)) ([1389047](https://github.com/XYOracleNetwork/xyo-skills/commit/13890470cf1979a4d7ce5fcb76b170e81ed2e080))
+* release refreshed XL1 skills and autonomous worker guidance ([5fa7aae](https://github.com/XYOracleNetwork/xyo-skills/commit/5fa7aaed2d747d24a90f77126f3c783c4fd6c702))
+
+
+### Bug Fixes
+
+* integrate develop (Statement Graph 0.7.0 skill rewrite, redirect stubs out of installs) ([f42cc21](https://github.com/XYOracleNetwork/xyo-skills/commit/f42cc21d9a4a169aa00790969627b2ccf17a376b))
+* keep redirect stubs out of installs and re-point full-app e2e ([#110](https://github.com/XYOracleNetwork/xyo-skills/issues/110)) ([ad32c87](https://github.com/XYOracleNetwork/xyo-skills/commit/ad32c873507c762f5868d3ed72a7eb6f27059604))
+
 ## [1.1.38](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.37...v1.1.38) (2026-10-01)
 
 

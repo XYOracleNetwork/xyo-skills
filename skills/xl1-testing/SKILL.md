@@ -16,7 +16,7 @@ description: >
   browser tests, or set up unattended / CI testing. Owns the dApp Definition
   of Done gate, required before reporting any XL1 dApp work complete.
 metadata:
-  version: 1.1.38 # x-release-please-version
+  version: 1.1.39 # x-release-please-version
   layer: 7
 ---
 

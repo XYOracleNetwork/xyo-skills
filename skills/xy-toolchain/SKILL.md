@@ -7,7 +7,7 @@ description: >-
   policy, skills, and work tracking. This xyo-skills copy is a temporary redirect
   stub — do not use it as documentation.
 metadata:
-  version: 1.1.38 # x-release-please-version
+  version: 1.1.39 # x-release-please-version
   layer: 2
   status: redirect
   canonical: ariestools/ariestools-skills
