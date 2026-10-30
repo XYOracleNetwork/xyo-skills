@@ -79,7 +79,12 @@ Surface the written PRD in your acknowledgement so the user can correct any misr
 
 ## Invocation
 
-The scaffold runtime ships with this plugin under `scripts/scaffold/` (synced from `packages/xl1-scaffold/` at build time). Invoke it directly with Node — `${CLAUDE_SKILL_DIR}` resolves to this skill's directory at runtime.
+The scaffold runtime ships with this plugin under `scripts/scaffold/` (synced from `packages/xl1-scaffold/` at build time). Invoke it directly with Node. Resolve the skill directory first — `${CLAUDE_SKILL_DIR}` is only set under Claude Code; under Codex or any other harness, substitute the absolute path of the directory containing this `SKILL.md`:
+
+```shell
+SKILL_DIR="${CLAUDE_SKILL_DIR:-/abs/path/to/skills/xl1-scaffold}"
+SKILL="$SKILL_DIR/scripts/scaffold/scaffold-xl1-dapp.js"
+```
 
 ### Prerequisites
 
@@ -168,13 +173,14 @@ The monorepo templates wire app ↔ service the same way every time: app on `:30
 For a **single template**:
 
 ```shell
-node "${CLAUDE_SKILL_DIR}/scripts/scaffold/scaffold-xl1-dapp.js" <root> --template=<react|node|xl1-service> --network=<mainnet|sequence|local>
+node "$SKILL" <root> --template=<react|node|xl1-service> --network=<mainnet|sequence|local>
 ```
 
 For a **monorepo**, four scaffold invocations + a single root install:
 
 ```shell
-SKILL="${CLAUDE_SKILL_DIR}/scripts/scaffold/scaffold-xl1-dapp.js"
+SKILL_DIR="${CLAUDE_SKILL_DIR:-/abs/path/to/skills/xl1-scaffold}"
+SKILL="$SKILL_DIR/scripts/scaffold/scaffold-xl1-dapp.js"
 
 # 1. Workspace root (no install — verification skipped, root has no installable code yet).
 #    The root's package.json `name` field is the dir's basename (e.g. `rps-game`); sub-
