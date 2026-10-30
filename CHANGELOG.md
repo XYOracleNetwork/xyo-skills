@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.40](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.39...v1.1.40) (2026-10-30)
+
+
+### Bug Fixes
+
+* ship xl1-scaffold Codex runtime-path fallback ([83bd43f](https://github.com/XYOracleNetwork/xyo-skills/commit/83bd43fcf8e929c16d4e082a2a1e0ece0580f645))
+* **xl1-scaffold:** add Codex fallback for scaffold runtime path ([#118](https://github.com/XYOracleNetwork/xyo-skills/issues/118)) ([51cdf83](https://github.com/XYOracleNetwork/xyo-skills/commit/51cdf83555f5bf67bbf27bb83dfacc8fb5de8e9d))
+
 ## [1.1.39](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.38...v1.1.39) (2026-10-11)
 
 

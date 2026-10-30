@@ -15,7 +15,7 @@ description: >-
   application. Builds on xl1-patterns domain recipes and complements
   xl1-scaffold React+service apps — does not replace gateway/chain knowledge.
 metadata:
-  version: 1.1.39 # x-release-please-version
+  version: 1.1.40 # x-release-please-version
   layer: 6
 ---
 
