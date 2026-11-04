@@ -12,6 +12,7 @@ jobs:
   sync:
     name: Open and merge sync PR
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -50,5 +51,23 @@ jobs:
             exit 1
           fi
 
-          echo "Merging $pr_url with merge-commit method..."
-          gh pr merge "$pr_url" --merge
+          # PR checks start asynchronously. Wait for branch protection to report
+          # the PR ready instead of trying to merge before checks have finished.
+          echo "Waiting for required checks on $pr_url..."
+          for attempt in {1..60}; do
+            state=$(gh pr view "$pr_url" --json mergeStateStatus --jq '.mergeStateStatus')
+            if [[ "$state" == "CLEAN" ]]; then
+              echo "Merging $pr_url with merge-commit method..."
+              gh pr merge "$pr_url" --merge
+              exit 0
+            fi
+            if [[ "$state" == "DIRTY" ]]; then
+              echo "ERROR: sync PR has merge conflicts." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+          gh pr checks "$pr_url" --required || true
+          echo "ERROR: sync PR did not become ready to merge within 10 minutes." >&2
+          exit 1
