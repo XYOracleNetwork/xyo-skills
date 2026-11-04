@@ -190,6 +190,25 @@ Versioning is automated by [release-please](https://github.com/googleapis/releas
 2. PR `develop` → `main` with a `feat:` or `fix:` title (enforced by `lint-pr-title.yml`) and merge when ready to release.
 3. Release-please opens a Release PR against `main` with version bumps (in `version.txt`, `metadata.json`, and each `SKILL.md` frontmatter) and a regenerated `CHANGELOG.md`. Review and merge it — the git tag and GitHub Release are created automatically.
 4. The `sync-marketplaces` job in `release-please.yml` then runs the renderers and pushes the new version into `xyo-claude-plugin` and `xyo-codex-plugin` (matrix, `fail-fast: false`). Each mirror gets one commit per release plus a matching tag.
-5. A `main → develop` sync PR is opened **and auto-merged** with the merge-commit method, keeping `develop` aligned for the next cycle. No human action required.
+5. A `main → develop` sync PR is opened, waits for required checks, and is **automatically merged** with the merge-commit method, keeping `develop` aligned for the next cycle. No human action required. The sync job fails after a bounded wait if checks or conflicts prevent merging; resolve the reported failure and rerun it.
 
 Release versions are owned end-to-end by release-please plus the renderers — don't edit them by hand. The marketplace-mirror repos are write-only; never commit directly to them.
+
+### Automation credentials
+
+Configure the following repository secrets on **XYOracleNetwork/xyo-skills**. Keep the source-release and mirror-publishing credentials separate. A fine-grained PAT is restricted to its resource owner: an `ariestools` token cannot write to `XYOracleNetwork`, even when its user administers both organizations.
+
+| Repository secret | Resource owner | Selected repositories | Repository permissions |
+| --- | --- | --- | --- |
+| `RELEASE_PLEASE_TOKEN` | `XYOracleNetwork` | `xyo-skills` only | Contents: read and write; Pull requests: read and write; Workflows: read and write |
+| `MARKETPLACE_SYNC_TOKEN` | `XYOracleNetwork` | `xyo-claude-plugin` and `xyo-codex-plugin` only | Contents: read and write |
+
+Metadata read access is implicit. Neither credential needs organization permissions. Set an expiration and rotate the repository secrets before it is reached. Complete any organization approval required for the selected repositories. Do not copy a broadly scoped local `gh` login into CI.
+
+The source credential creates release branches, version commits, pull requests, tags, and GitHub releases; it also opens and merges the post-release sync PR. Workflows write permits references and releases targeting commits that update `.github/workflows/`, including release-automation fixes. The mirror credential only pushes rendered files and tags; it does not need Pull requests or Workflows write.
+
+The `permissions:` blocks in the workflows govern `GITHUB_TOKEN`, not either stored PAT. Keep an independently scoped PAT (or equivalent GitHub App installation token) for release and sync operations so generated pull requests run their required checks and the published release triggers the sync workflow automatically.
+
+For `403 Resource not accessible by personal access token`, check the actual token's resource owner, selected repositories, repository permissions, and organization approval, then confirm the workflow references the intended repository secret. A non-expired token with available quota can still lack write access. A Git tree creation failure requires Contents write; precreating the release branch does not repair that permission.
+
+After replacing a credential, use **Actions → Release Please → Run workflow**, selecting `main`, to retry the normal action. Release Please reconciles existing release PRs and releases; do not create version commits or release tags manually. Once a release PR has merged, confirm that the action published its GitHub release, both marketplace jobs passed, and the release-triggered sync PR merged with a merge commit. Check the separate sync workflow if the release succeeded but `develop` remains behind.
