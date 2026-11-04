@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.41](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.40...v1.1.41) (2026-11-04)
+
+
+### Bug Fixes
+
+* **skills:** adopt lightweight deployment convention ([650de76](https://github.com/XYOracleNetwork/xyo-skills/commit/650de7641429687361e83a26812c08a1a405aa9b))
+* **skills:** simplify deployment conventions and verification ([42fd7e2](https://github.com/XYOracleNetwork/xyo-skills/commit/42fd7e29143a67171946f10f5942b1b2b9b36b77))
+
 ## [1.1.40](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.39...v1.1.40) (2026-10-30)
 
 
