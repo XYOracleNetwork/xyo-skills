@@ -59,7 +59,7 @@ Typed command/query/status/admin frames over WebSocket / MessagePort, the frame 
 Event Kit wakes vs dapp-kit durable events vs subscription cursors. Detail for JWT/grants: [Authenticated Wake Delivery](../xl1-patterns/authenticated-wake-delivery.md).
 
 ### [Hosting and targets](hosting.md)
-Node vs browser hosts, deployable things, Vercel/Cloudflare composition and the `xl1-dapp-vercel` CLI, schema-only Kubernetes/Proxmox target plans, fail-closed policies.
+Node vs browser hosts, deployable things, deployment branch naming and automatic delivery, Vercel/Cloudflare composition and the optional `xl1-dapp-vercel` CLI, schema-only Kubernetes/Proxmox target plans, fail-closed policies.
 
 ### [Conformance](conformance.md)
 The L1–L9 evidence ladder and the runner's `evidence` labels, what “done” means for a dapp-kit app, and what local tests do **not** prove.

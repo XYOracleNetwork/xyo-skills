@@ -2,6 +2,8 @@
 
 Walk this checklist before declaring any XL1 dApp work complete. This is an **agent-facing completion gate**, not a deployment or release step — "done" here means the agent stops and reports the work as finished, regardless of whether anyone is about to deploy it. The `xl1-testing` skill owns this gate; each item corresponds to a rule or anti-pattern documented elsewhere in the skill stack and cites it under **Source**.
 
+For deployment-only work or deploying already verified source, use the shared [deployment conventions](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/deployment.md) and verify the changed route. Do not make every routine prerelease deployment rerun application, provider, chain or fleet qualification. An implementation change that affects a protocol/effect invariant still needs its applicable verification; a successful deployment does not establish that evidence.
+
 This checklist is **Gate 2** of a three-gate completion gate (see [`xy-development` (ariestools-skills) — workflow § Applying the Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#applying-the-definition-of-done), which numbers these as "layers"; here they are *gates*, so they do not collide with the skill-stack layer numbers):
 
 1. **Gate 1 — Generic DoD** ([`xy-development` (ariestools-skills) — workflow § Definition of Done](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/workflow.md#definition-of-done)): builds, lints, tests, dev server, no placeholders, no regressions. Always applies.
