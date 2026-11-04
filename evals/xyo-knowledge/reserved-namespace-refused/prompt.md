@@ -5,5 +5,7 @@ max_turns: 12
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-I'm naming my app's payload schemas `network.xyo.acme.rps.move` and
-`network.xyo.acme.rps.result` so they look official. Good to go?
+Acme owns `acme.com`. I'm naming our RPS app's payload schemas
+`network.xyo.acme.rps.move` and `network.xyo.acme.rps.result` so they look
+official. Good to go? If not, give the corrected identifiers for both payload
+types using our domain.

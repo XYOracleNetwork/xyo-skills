@@ -6,6 +6,7 @@ Behavioral tests for the skill stack, run with [`claude plugin eval`](https://co
 pnpm eval                          # whole suite, 3 runs per case
 pnpm eval --skill xl1-patterns     # one skill's cases
 pnpm eval:smoke                    # tagged smoke cases, one run each
+pnpm eval:judge-calibration        # fixed omission + valid-referral judge controls
 pnpm eval --tag xl1-build --tag xl1-scaffold --runs 1   # --tag is repeatable (OR)
 pnpm eval --skill stack --case rps-evaluation-prompt    # --case takes ONE glob
 pnpm eval --skill xl1-testing --runs 1 --keep-temp      # keep every run's trace
@@ -83,7 +84,7 @@ formatting-brittle regex since fixed, judge 3/3. Every case clears 0.8.
 | — | `stack` | `rps-evaluation-prompt`† · `conventions-in-code` | The CLAUDE.md prompt as a scaffold-phase plan, weighted toward pack facts (floor block, REST, DoD, schema namespace, canonical signer, stamp); root-barrel imports with no deprecated names on generated code. |
 | L3 | `xyo-knowledge` | `schema-naming` · `root-hash-default`† · `reserved-namespace-refused` · `concept-question-stays-in-knowledge` | `com.<org>.<app>.*` unversioned; `PayloadBuilder.hash` as root hash; `network.xyo.*` reserved; concept questions never wake build or scaffold. |
 | L6 | `xl1-dapp-kit` | `distinguishes-vocabulary` · `ports-not-rest`† · `local-conformance-not-hosted` | Vocabulary kept distinct; frames over WebSocket/MessagePort with HTTP for health/static/unary only; local conformance earns a local label. |
-| L1–2 | `xy-toolchain` · `xy-development` | `redirects-to-ariestools` ×2 | With only this pack loaded (the plugins no longer ship the stubs), both questions defer to ariestools-skills rather than invent. |
+| L1–2 | `xy-toolchain` · `xy-development` | `toolchain-redirects-to-ariestools` · `development-redirects-to-ariestools` | With only this pack loaded (the plugins no longer ship the stubs), both questions explicitly refer to ariestools-skills rather than invent or merely ask the user for documentation. |
 
 ## Writing cases
 
@@ -194,6 +195,29 @@ reason. Check a new case against them before spending a judge call.
     `names-finalized-stream` and `names-checkpoint` are now free regex
     graders; the judge asks only whether the floor / checkpoint-resume /
     finalized structure is present in any wording.
+
+15. **Honest uncertainty is not a complete redirect.** A toolchain answer that
+    declined to invent details but only asked the user for a docs link received
+    three PASS votes despite omitting the required canonical pack. Both redirect
+    rubrics now make every condition mandatory and explicitly fail that omission;
+    the independent canonical-source regex remains required.
+
+    `pnpm eval:judge-calibration` tests the actual production rubrics against
+    fixed negative and positive answers, including the captured omission that
+    previously received three incorrect PASS votes. It uses the documented
+    scaffold/file-focus schema, so the judge sees the exact candidate file
+    rather than a new answer. Generated cases stay under `.preview/` and do not
+    add intentionally failing cases to the smoke suite. Negative native cases
+    are expected to fail; the calibration command succeeds only when every
+    expected judge verdict matches, both positive and negative, with no partial
+    or ungraded runs. `--prepare-only` prepares those cases without model calls.
+
+16. **Domain ownership is a fixture fact.** A literal `com.acme.rps.*` check
+    needs a prompt establishing that Acme owns `acme.com` and requesting concrete
+    replacements. Without that context, an owned-namespace template can satisfy
+    the content rubric while failing the example-specific regex. The reserved
+    namespace case now supplies that context and retains its naming and Read
+    graders.
 
 ## Skill findings
 
