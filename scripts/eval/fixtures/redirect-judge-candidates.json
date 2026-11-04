@@ -1,0 +1,30 @@
+[
+  {
+    "name": "toolchain-missing-source",
+    "rubric": "xy-toolchain/toolchain-redirects-to-ariestools",
+    "expectedPass": false,
+    "provenance": "Captured toolchain omission answer from the 2026-11-04 smoke run; its judge incorrectly voted PASS three times.",
+    "candidate": "I can't find any reference to `xy deplint` — the working directory is empty, and none of the loaded skills (XYO/XL1 tooling) mention a tool named `xy` or a `deplint` subcommand. I don't want to guess at what it checks or how its role rules are configured, since that would risk fabricating an answer.\n\nCould you point me to where this tool lives (a repo, package, or docs link)? Once I can see its source or documentation, I can give you an accurate answer."
+  },
+  {
+    "name": "toolchain-valid-redirect",
+    "rubric": "xy-toolchain/toolchain-redirects-to-ariestools",
+    "expectedPass": true,
+    "provenance": "Positive control: satisfies every production toolchain redirect condition without supplying undocumented configuration.",
+    "candidate": "The loaded xyo-skills pack does not include the xy-toolchain documentation for `xy deplint` checks or role rules. The canonical source is the separate ariestools-skills pack: https://github.com/ariestools/ariestools-skills. Load that pack to obtain the documented checks and configuration; I cannot provide those details from the pack available here."
+  },
+  {
+    "name": "development-missing-source",
+    "rubric": "xy-development/development-redirects-to-ariestools",
+    "expectedPass": false,
+    "provenance": "The captured toolchain omission pattern adapted to the development question, isolating the missing canonical referral.",
+    "candidate": "I cannot find the general branching-workflow or definition-of-done documentation in the loaded pack. I do not want to invent a workflow for your repository. Could you send me its repository or documentation link so I can answer accurately?"
+  },
+  {
+    "name": "development-valid-redirect",
+    "rubric": "xy-development/development-redirects-to-ariestools",
+    "expectedPass": true,
+    "provenance": "Positive control: satisfies every production development redirect condition without inventing a workflow.",
+    "candidate": "The loaded xyo-skills pack does not carry the general Git branching workflow or definition-of-done documentation. Those belong to the separate ariestools-skills pack at https://github.com/ariestools/ariestools-skills. Load that pack and follow the owning repository's documented conventions; I cannot infer its branch strategy or completion checklist from the pack available here."
+  }
+]
