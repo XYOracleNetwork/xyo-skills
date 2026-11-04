@@ -2,6 +2,14 @@
 
 Read when placing a dApp on Node, browser, Vercel, Cloudflare, or mixed targets.
 
+## Delivery convention
+
+Follow the shared [deployment conventions](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/deployment.md): `<environment>[-<component>]-<target>[-<build-mode>]`. `beta-vercel` / `prod-vercel` select Vercel source builds; `beta-vercel-prebuilt` / `prod-vercel-prebuilt` select CI-built Vercel Build Output uploads. Reserve `-vercel-image` for an implemented CI-built OCI-image route. A Dockerfile built by Vercel still uses `-vercel`. Use `-fly` / `-render` for those targets; preserve existing `-homelab` fleet behavior during a Vercel simplification.
+
+The routine prerelease path is push → one builder → automatic deployment → URL/status. Development and protocol conformance verification remain meaningful, but are not a reason to add full qualification, manual promotion, reviewer or receipt gates to every deployment. Preserve the admitted runtime's protocol/effect/custody policies; an optional deployment CLI or conformance workflow is not an obligatory frontend release orchestrator. Adopt the naming convention when migrating an existing route; retaining a nonconforming name because migration is disruptive requires explicit user approval.
+
+Prefer stable, additive contracts and clients that tolerate temporarily unavailable capabilities so target updates need not be simultaneous. See [dApp architecture principles](../xl1-patterns/architecture-principles.md#deployment-compatibility). Keep a convenient combined deployment together; do not split it merely to demonstrate independence.
+
 ## Hosts
 
 | Host | Package | Notes |
@@ -33,6 +41,6 @@ Examples of fail-closed policy (the full matrix is in the Yellow Paper, which is
 
 ## Anti-patterns
 
-- “Deploy the Vite app to Vercel” as a substitute for target composition + locks + artifact admission.
+- Deploying a bare frontend as a substitute for the application's admitted protocol runtime, effect policy or custody boundary. Ordinary website delivery does not itself require a new target-composition or artifact-admission ceremony.
 - Putting protocol identity into provider project names.
 - Browser host silently accepting write profiles.

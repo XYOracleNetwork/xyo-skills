@@ -40,6 +40,8 @@ This is **Layer 7** of the XYO skill stack: `xy-development` (1) → `xy-toolcha
 
 **REQUIRED before reporting any XL1 dApp work as complete.** This skill owns the dApp completion gate. Not optional, not "if you have time" — walk it explicitly and call out pass/fail per relevant section in your completion summary. The checklist enumerates the rules and anti-patterns documented across the skill stack (gateway usage, datalake setup, wallet integration, SDK-first compliance, payload design, indexer floor block, provider architecture, display conventions, commit-reveal correctness, settlement authorities, multi-party co-signing, architecture principles, dApp Kit, headless verification). Sections marked "(if applicable)" can be skipped only when truly out of scope — state which and why. It is Gate 2 of a three-gate completion gate; Gate 1 (the generic DoD from `xy-development`) always applies, and Gate 3 (`PRD.md` acceptance criteria) applies when a `PRD.md` exists.
 
+**Deployment-only scope.** The completion checklist verifies application/protocol implementation; do not rerun the entire checklist or a credentialed chain ceremony for each deployment of already verified source. For naming or delivery changes, verify the affected route and report its actual outcome under the shared [deployment conventions](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/deployment.md). A prerelease frontend deployment need not wait for unrelated `main` CI or fleet qualification. Preserve existing protocol/effect gates when the change actually affects them, and keep local, hosted and live-chain evidence distinct.
+
 ## ⛔ Testnet-only by default
 
 All flows here target **testnets** (`sequence`, or a `local` chain) unless a human

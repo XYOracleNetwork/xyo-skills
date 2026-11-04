@@ -11,6 +11,12 @@ The [dApp Definition of Done](../xl1-testing/dapp-checklist.md#architecture-prin
 
 **Maturity.** Principles 1–7 are owner direction. The elaboration, tables and examples were distilled from the Crypto Cards dApp and are still under review; the [open questions](#open-questions) are unsettled. Where a mechanism below depends on XL1 behavior that is not yet confirmed, the text says so.
 
+## Deployment compatibility
+
+Frontend, backend and worker updates should tolerate the peer versions that remain active during rollout and rollback. Old browser tabs, queued work and cached clients survive a coordinated release. Prefer additive API/data changes, optional fields, sensible unavailable states and safe retries at the actual effect boundary. A website's build SHA need not equal every worker's SHA when their protocol contracts remain compatible.
+
+Use explicit capability or protocol-version negotiation only for an actual incompatibility. A combined deployment can stay combined; compatibility does not require additional services. Coordinate a destructive migration, incompatible signed-protocol transition or exclusive-resource change at its affected boundary, rather than making every website deployment wait for a fleet rollout. Preserve accepted schema, hashing, finality, custody and signing rules; frontend fallback must never reinterpret incompatible protocol evidence as valid. Shared naming and delivery behavior live in [deployment conventions](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/deployment.md).
+
 ## The model
 
 An XL1 dApp is a protocol, not a website. Its state is a deterministic function
