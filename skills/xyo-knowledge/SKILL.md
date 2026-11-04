@@ -2,7 +2,7 @@
 name: xyo-knowledge
 description: XYO Protocol 2.0 domain knowledge. Covers payloads, bound witnesses, schemas, the module system (archivist, diviner, witness, sentinel, node), accounts, wallets, and protocol best practices. Use before reviewing or approving XYO payload schema names and namespaces, as well as when building on XYO or working with @xyo-network packages. Also routes general XYO repository Git workflows and definition-of-done questions, and xy CLI/toolchain questions such as xy deplint role rules, to the companion ariestools-skills pack.
 metadata:
-  version: 1.1.42 # x-release-please-version
+  version: 1.1.43 # x-release-please-version
   layer: 3
 ---
 

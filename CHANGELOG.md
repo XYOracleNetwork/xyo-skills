@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.43](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.42...v1.1.43) (2026-11-04)
+
+
+### Bug Fixes
+
+* **skills:** publish routing and behavioral eval repairs ([d082253](https://github.com/XYOracleNetwork/xyo-skills/commit/d08225310468730a0cd45eee31d8f7c8d528aff0))
+* **skills:** repair companion routing and behavioral evals ([#130](https://github.com/XYOracleNetwork/xyo-skills/issues/130)) ([866bad8](https://github.com/XYOracleNetwork/xyo-skills/commit/866bad87889086cb1a7b75e53c04029a1a26d6e6))
+
 ## [1.1.42](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.41...v1.1.42) (2026-11-04)
 
 
