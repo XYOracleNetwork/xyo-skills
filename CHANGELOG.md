@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.42](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.41...v1.1.42) (2026-11-04)
+
+
+### Bug Fixes
+
+* **release:** repair credential setup and wait for sync checks ([#126](https://github.com/XYOracleNetwork/xyo-skills/issues/126)) ([4a08727](https://github.com/XYOracleNetwork/xyo-skills/commit/4a087277826cb09b54b4ac9d26baf53efca18a14))
+* **release:** restore native release automation ([9815ae7](https://github.com/XYOracleNetwork/xyo-skills/commit/9815ae79a632d6b20f82bce2bd1d3c9a714a2514))
+
 ## [1.1.41](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.40...v1.1.41) (2026-11-04)
 
 
