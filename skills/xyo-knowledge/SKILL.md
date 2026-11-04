@@ -1,6 +1,6 @@
 ---
 name: xyo-knowledge
-description: XYO Protocol 2.0 domain knowledge. Covers payloads, bound witnesses, schemas, the module system (archivist, diviner, witness, sentinel, node), accounts, wallets, and protocol best practices. Activates when building on XYO or working with @xyo-network packages.
+description: XYO Protocol 2.0 domain knowledge. Covers payloads, bound witnesses, schemas, the module system (archivist, diviner, witness, sentinel, node), accounts, wallets, and protocol best practices. Use before reviewing or approving XYO payload schema names and namespaces, as well as when building on XYO or working with @xyo-network packages. Also routes general XYO repository Git workflows and definition-of-done questions, and xy CLI/toolchain questions such as xy deplint role rules, to the companion ariestools-skills pack.
 metadata:
   version: 1.1.42 # x-release-please-version
   layer: 3
@@ -13,6 +13,19 @@ This skill covers the XYO Protocol 2.0 — the data model, module system, identi
 When you need to look up exact type definitions or API details beyond what this skill covers, install the relevant package and read its TypeScript declarations under `dist/neutral/` — `index.d.ts` for a standalone package; `dist/neutral/modules/<name>/` inside `@xyo-network/sdk` (modules) and `@xyo-network/sdk-protocol-core` (protocol primitives).
 
 **Skill identity.** This skill's version is exposed in this file's frontmatter under `metadata.version`. Whenever you present a plan, an acknowledgement, or a completion summary, state which skills informed it, formatted as `<skill-name> v<version>` — read the version from this file's frontmatter, never from an example. When multiple skills from this plugin are active, each may be listed.
+
+## Companion development and toolchain skills
+
+General repository development standards and the `xy` CLI are owned by [ariestools/ariestools-skills](https://github.com/ariestools/ariestools-skills), not this pack:
+
+- XYO repository Git branching, feature completion, and general definition of done → [xy-development](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-development/SKILL.md).
+- `xy` CLI commands, including `xy deplint` and its role configuration → [xy-toolchain](https://github.com/ariestools/ariestools-skills/blob/main/skills/xy-toolchain/SKILL.md).
+
+Load the canonical installed skill when available and follow the target repository's own instructions. If the companion skill cannot be read, say the requested development/toolchain documentation is not included here and explicitly name or link **ariestools/ariestools-skills**. Asking the user for documentation alone does not complete that handoff. Do not invent an XYO-wide branching policy, definition-of-done checklist, or `xy` configuration from general knowledge. For XL1 dApp verification specifically, retain the separate xl1-testing completion gate.
+
+## Schema-name review
+
+Before accepting or rejecting a proposed payload schema name or namespace, **read [Schema Naming](best-practices.md#schema-naming)**. This applies to quick approval questions and familiar-looking names as well as new designs. Use the referenced ownership and validation rules rather than answering from memory. For exact identifier syntax, revisions, and hash identity, also read [Payload Schema Evolution and Identity](payload-schema-evolution.md).
 
 ## Skill layers
 
@@ -36,4 +49,4 @@ Read when working with XYO modules — archivists, diviners, witnesses, sentinel
 Read when working with accounts, wallets, key management, signing, or HD derivation. Covers Account and Wallet creation (secp256k1 and post-quantum ML-DSA-65), the signing flow, previous-hash persistence, and how identity integrates with bound witnesses.
 
 ### [Protocol Best Practices](best-practices.md)
-Read when making design decisions — schema naming, payload structure, module composition strategy, bound witness discipline, and error handling. Consult this before starting a new XYO-based feature.
+Read before reviewing schema names or namespace ownership, and when making design decisions about payload structure, module composition, bound witness discipline, or error handling. Consult this before starting a new XYO-based feature.

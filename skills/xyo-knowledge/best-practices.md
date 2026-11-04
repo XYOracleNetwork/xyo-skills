@@ -93,7 +93,9 @@ Read [Payload Schema Evolution and Identity](payload-schema-evolution.md) for th
 | 3. Application schemas | `com.<your-org>.<app>.*` | The application author | `com.acme.auction.bid`, `com.partner.market.position` |
 | 4. Documentation examples | `com.example.*` | Tutorials, skill examples, scaffolds | `com.example.rps.move`, `com.example.market.commit` |
 
-**`network.xyo.*` is reserved.** Application authors MUST NOT publish schemas under `network.xyo.*` — the namespace belongs to XYO Foundation and identifies primitives the protocol itself defines. Authoring there silently squats a slot that XYO Foundation may later claim, and trains downstream tooling to trust your payload shape as protocol-canonical.
+**`network.xyo.*` is reserved.** Application authors MUST NOT publish schemas under `network.xyo.*` — the namespace belongs to XYO Foundation and identifies primitives the protocol itself defines. Authoring there can collide with a present or future Foundation schema.
+
+A schema name alone does not authenticate its author, grant authorization, or establish payload validity. Namespace reservation is an ownership convention, not evidence that a registry, validator, diviner, or archivist automatically trusts that prefix. Verify provenance and apply the relevant validation and authorization policy separately; see [identifier ownership](payload-schema-evolution.md#identifier-stable-ascii-and-owned) and the [trust boundary on reads](#trust-boundary-on-reads).
 
 `com.example.*` is reserved by RFC 2606 for example/placeholder use, which makes it the right namespace for docs and scaffold templates — readers see `com.example.*` and know to replace it with their own reverse-DNS namespace before shipping.
 
