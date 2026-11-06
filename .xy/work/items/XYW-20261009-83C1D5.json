@@ -1,0 +1,55 @@
+{
+  "acceptanceCriteria": [
+    "authenticated-wake-delivery.md's Maturity line no longer says 0.1.0 or restricted npm. It describes Event Kit as publicly published, prerelease 2.x with Node 26+, without hard-coding a patch version that will drift. It keeps the non-qualification caveats.",
+    "The Maturity line and the upstream cross-references name D-006 and D-007 with their current status. The skill briefly states that every wake, filter, subscription and receiver route binds an explicit deliveryMode ('best-effort' | 'durable').",
+    "The Packages table lists the current published event-kit packages (adding provider and cli at minimum) or links to event-kit's AGENTS.md package list.",
+    "statement-graph.md 'Used by' either drops Immortalizer or marks it as pinned to a legacy (claim.v1/revoke.v1, schemas ~0.2.5) fold.",
+    "statement-graph.md (and, by cross-link, payload-schema-evolution.md) gives one explicit, sanctioned approach for revising a claimed vocabulary object's structure or meaning without `$version` or a `.vN` suffix. It also says how views and lexicons select semantics, consistent with the xl1-statement-graph WHITEPAPER wording.",
+    "authenticated-wake-delivery.md:62 links to that revision guidance for grant and revocation objects.",
+    "node scripts/validate-skills.mjs skills passes."
+  ],
+  "anchors": [
+    {
+      "kind": "file",
+      "line": 12,
+      "path": "skills/xl1-patterns/authenticated-wake-delivery.md"
+    }
+  ],
+  "area": "skills/xl1-patterns",
+  "createdAt": "2026-10-09T00:33:43.009Z",
+  "description": "Three follow-ups to the Layer 5 xl1-patterns Statement Graph rewrite in PR #107 (branch feature/statement-graph-fold4). That PR deliberately left them out. Line numbers below are for the PR branch; main and develop carry the same text unless noted. Found during the xl1-statement-graph 2026-10-06 code review follow-up.\n\n1. Event Kit maturity is stale: skills/xl1-patterns/authenticated-wake-delivery.md:12 and :122\n- Line 12 says \"`@xyo-network/event-kit-*` **0.1.0** is published, restricted npm\" and \"D-002 through D-005 are accepted\". Line 122 lists only D-002..D-005 as upstream decisions.\n- Current Event Kit (XYOracleNetwork/event-kit main):\n  - every package is 2.2.0 with `publishConfig.access: public`, LGPL-3.0-only and `engines.node >=26`, and npm `latest` is 2.2.0;\n  - docs/decisions now has D-006 \"Source-aware wake delivery\" (accepted implementation direction, qualification gates remain) and D-007 \"Explicit Best Effort and Durable delivery modes\" (selected contract, release and hosted gates remain);\n  - the wake envelope now requires `deliveryMode` ('best-effort' | 'durable'), `source`, `fromPosition`/`toPosition` and `filterHash` (packages/schemas/src/wakeEnvelope.ts:18-29).\n- The Packages table (lines 68-79) omits `event-kit-provider`, `event-kit-cli`, `event-kit-vitest-config` and `event-kit-example`.\n- The grant and revocation table (lines 57-58) is still accurate.\n- Why it matters: the file is vendored into many XYOracleNetwork repos. An agent reading it will treat Event Kit as a restricted 0.1 prototype and will not know about delivery modes or source-aware wakes.\n\n2. statement-graph.md:13 \"Used by\" lists Immortalizer\n- Immortalizer pins `@xyo-network/xl1-statement-graph-schemas ~0.2.5` (packages/protocol/package.json:27).\n- It imports the legacy `ClaimSchema`/`RevokeSchema` two-verb grammar (packages/protocol/src/replay.ts:4). Its conformance fixtures use `network.xyo.statement.claim.v1` and `revoke.v1`.\n- Its README says the pilot performs no Statement Graph publication.\n- The other listed users (LifeHash, Webble, Edge Node, Event Kit) are on 0.5.x.\n- Listing Immortalizer points agents at a pre-subject, claim/revoke-era consumer. That contradicts the skill's own anti-pattern row against dual-reading `claim.v1`/`revoke.v1`.\n- Fix: remove it, or mark it explicitly as on a legacy fold until it upgrades.\n\n3. No guidance on revising a claimed vocabulary object\n- statement-graph.md:48 says objects claimed through Statement Graph cannot carry `$` client metadata. The SG SDK writer throws on them. The section says not to plan a vocabulary revision around `$version`, but it gives no alternative.\n- skills/xyo-knowledge/payload-schema-evolution.md:17-19 forbids structural `.vN` suffixes and says the structure revision belongs in `$version`.\n- authenticated-wake-delivery.md:62 repeats the restriction for Event Kit grant and revocation objects.\n- The Statement Graph white paper (WHITEPAPER.md:31, :574, :772, :847) says broader meaning requires \"a new statement-object schema version\", without saying how that version is expressed.\n- Taken together, the skills leave a product author with no sanctioned way to evolve a claimed object's structure or meaning. An agent is likely to reach for a `.v2` suffix or for `$version`, and both are wrong.\n- Fix: document the supported approach. Candidates:\n  - a new descriptive schema name for a new kind;\n  - a data-hash-bound body field when the revision must be authenticated;\n  - additive changes only where the closure policy allows;\n  - or say plainly that no in-place revision exists until the SG data-hash contract changes.\n- Also say how views and lexicons select semantics. They pin lexicon documents per schema, and they never let an unbound field choose weaker rules.\n\nDependencies: land these after PR #107 merges, or as a follow-up commit on that branch. Item 3 should match whatever rule the xl1-statement-graph maintainers adopt for vocabulary versioning. It does not depend on any xl1-statement-graph package release. After the owner releases xyo-skills, consumers re-pin with `pnpm xy skills update`.",
+  "id": "XYW-20261009-83C1D5",
+  "priority": {
+    "confidence": 3,
+    "effort": 3,
+    "impact": 3,
+    "risk": 3,
+    "urgency": 2
+  },
+  "status": "open",
+  "stores": {
+    "github": {
+      "createdByXyWork": true,
+      "number": 108,
+      "url": "https://github.com/XYOracleNetwork/xyo-skills/issues/108"
+    }
+  },
+  "tags": [
+    "docs-drift",
+    "event-kit",
+    "schema-versioning",
+    "skills",
+    "statement-graph",
+    "xl1-patterns"
+  ],
+  "title": "Fix stale Event Kit maturity and SG 'Used by'; add guidance for revising claimed objects",
+  "type": "todo",
+  "updatedAt": "2026-10-09T00:33:46.767Z",
+  "verification": [
+    "git grep -n -E '0\\.1\\.0|restricted npm|D-002 through D-005' -- skills/xl1-patterns/authenticated-wake-delivery.md returns nothing",
+    "git grep -n -E 'D-006|D-007|deliveryMode' -- skills/xl1-patterns/authenticated-wake-delivery.md returns matches",
+    "git grep -n -i immortalizer -- skills/xl1-patterns/statement-graph.md returns nothing, or only a line that marks it legacy",
+    "Read statement-graph.md's Existing hash contract section and confirm it names a positive revision approach and links from payload-schema-evolution.md's protocol-exceptions section",
+    "node scripts/validate-skills.mjs skills"
+  ]
+}
