@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
 
@@ -112,18 +112,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          # Reads volta.node (falling back to engines.node) from the root
-          # package.json, so CI follows the pinned Node version — bump the pin
-          # and CI follows.
+          # Reads devEngines.runtime from the root package.json.
           node-version-file: "package.json"
 
       # Node 25+ no longer bundles corepack. With no `version` input this
-      # installs the pnpm pinned by the root package.json `packageManager`
-      # field. It runs after setup-node because pnpm 12's install script
+      # installs a pnpm that satisfies devEngines.packageManager.
+      # It runs after setup-node because pnpm 12's install script
       # needs `node` on PATH.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6.1.0
 
       - name: Install workspace deps
         run: pnpm install --frozen-lockfile
