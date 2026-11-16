@@ -137,6 +137,63 @@ const grantedAccounts = permissions
 
 This is exactly what `useGrantedAccounts` — and through it `useConnectAccount` / `ConnectAccountsStack` — does internally, so you rarely write it by hand. When the goal is to **connect to an account**, requesting the permission is what obtains the address; do **not** reach into the gateway signer (`gateway.signer.address()`) to drive the connect flow, as that bypasses the wallet's permission grant. Reading the signer address *after* the accounts grant exists (e.g. to display the active signer through `xyoSigner_address`, which that grant already covers) is fine — that's what it's for.
 
+### Sign-in with an XL1 account (`xyoSigner_signJwt`)
+
+To prove that a user controls an XL1 address, for example to link it to an off-chain account or open a server session, ask the wallet for a **detached JWT**, not a signed transaction. `xyoSigner_signJwt` is a signing *call*, not a permission. Request `xyoWallet_getAccounts` first, as for any connected dApp; the wallet then shows its own approval prompt for each sign-in.
+
+The token is an ES256K JWT produced by `Account.signJwt` (`createJwt` in `@xyo-network/sdk`). It is signed **detached**: it does not read or advance the account's bound-witness previous-hash chain, costs no gas, and writes nothing to the chain. `xyoSigner_sign` is the wrong tool for this: wallets route it to a transaction screen.
+
+**Client.** The browser gateway's signer exposes `signJwt` when the wallet supports it. JSON-RPC clients expose the method optimistically, so treat a method-not-found error as "this wallet cannot sign in":
+
+```tsx
+import type { SignJwtOptions, SignJwtResult } from '@xyo-network/sdk'
+import { useProvidedGateway } from '@xyo-network/xl1-react-client-sdk'
+
+const supportsSignIn = (signer: object): signer is { signJwt(o: SignJwtOptions): Promise<SignJwtResult> } =>
+  'signJwt' in signer && typeof signer.signJwt === 'function'
+
+const { defaultGateway } = useProvidedGateway()
+const signer = defaultGateway && 'signer' in defaultGateway ? defaultGateway.signer : undefined
+if (!signer || !supportsSignIn(signer)) throw new Error('This wallet does not support XL1 sign-in')
+
+// Options come from your server, bound to a single-use session.
+const { token } = await signer.signJwt({
+  audience: 'https://app.example/api/verify', // must be on this page's origin
+  ttl: 300,                                  // seconds; ask for the shortest that works
+  schema: 'network.xyo.auth.signin',
+  claims: { sessionId, nonce, scope: 'payload:read' },
+})
+await fetch('/api/verify', { method: 'POST', body: JSON.stringify({ sessionId, token }) })
+```
+
+Over RPC the params are `[XyoJwtSignerOptions]`, which is `SignJwtOptions` without `now`: a page cannot set the signer's clock. The result is `{ token, header, payload }`; send only `token` to the server and re-derive everything else from it.
+
+**Server.** `Account.verifyJwt(token, { audience })` checks the signature against `header.pub`, the time claims, the audience, and that `kid` matches `iss`. **It does not check anything application-specific.** The relying party must also check:
+
+- `payload.iss` (and `header.kid`) equals the address the user claims, normalized: lowercase, no `0x`.
+- `payload.schema` is the schema you asked for.
+- `payload.origin` equals `new URL(audience).origin`. Wallets pin `origin` to the page that asked; `createJwt` itself does not add it. Requiring it stops a token minted on another site from being replayed against yours.
+- The session claims (`sessionId`, `nonce`) match a live, **single-use** session, and `exp - iat` is no longer than the `ttl` you requested.
+
+```ts
+import { Account } from '@xyo-network/sdk'
+
+const now = Math.floor(Date.now() / 1000)
+const result = await Account.verifyJwt(token, { audience, now })
+if (!result.ok) throw new Error(`Invalid sign-in: ${result.reasons.join(', ')}`)
+const { header, payload } = result
+const me = claimedAddress.replace(/^0x/i, '').toLowerCase()
+if (header.alg !== 'ES256K' || header.kid !== me || payload.iss !== me
+  || payload.schema !== 'network.xyo.auth.signin'
+  || payload.origin !== new URL(audience).origin
+  || payload.nonce !== session.nonce || payload.exp - payload.iat > 300) {
+  throw new Error('Sign-in does not match this session')
+}
+await consumeSession(session.id) // single use: a replayed token must fail
+```
+
+**Wallet constraints seen in practice.** The XL1 browser wallet (1.24) rejects a sign-in whose `claims.scope` is not on its data-scope allowlist; `payload:read` is accepted. Wallets may also refuse requests that set reserved claims (`iss`, `aud`, `iat`, `exp`, `origin`), that set `exp` or `now` instead of `ttl`, or whose audience is on a different origin from the requesting page. Keep requests to `audience`, `ttl`, `schema` and your own session claims.
+
 ### Anti-patterns
 
 | Anti-pattern | Why it fails | Do this instead |
@@ -148,6 +205,8 @@ This is exactly what `useGrantedAccounts` — and through it `useConnectAccount`
 | Using the signer address to **establish a connection** (`gateway.signer.address()` as the connect flow) | Bypasses the wallet's permission grant — you get an address the user never authorized the dApp to see, and it drifts from what `useGrantedAccounts()` reports | To connect, request `xyoWallet_getAccounts` and read the addresses from the grant (`useGrantedAccounts`, or `findCaveat` on `restrictReturnedAccounts`), or just render `ConnectAccountsStack`. Reading the signer *after* the grant exists is fine. |
 | Reimplementing the connect-accounts flow by calling the permission RPC directly | Duplicates `ConnectAccountsStack`'s lifecycle handling (detection, timeout, error, post-connection display) and tends to drift | Render `<ConnectAccountsStack />` and lift the accounts via `onAccountsChanged` |
 | Lifting the address with `onAccountConnected` or reading `useConnectAccount().address` | Compatibility surfaces: they report only the first granted account, and `onAccountConnected` is never called on revoke, so the lifted address goes stale | `onAccountsChanged(accounts)` (or `useGrantedAccounts`) — keep the chosen account while it is granted, clear it on `[]` |
+| Proving address ownership with `xyoSigner_sign` or a throwaway transaction | Wallets route `xyoSigner_sign` to a transaction screen; a transaction costs gas, advances the account's chain, and is public | Request a detached sign-in JWT with `xyoSigner_signJwt` and verify it server-side (see [Sign-in with an XL1 account](#sign-in-with-an-xl1-account-xyosigner_signjwt)) |
+| Trusting `Account.verifyJwt(...).ok` alone | It checks signature, time and audience only, not who should have signed, for which session, or from which site | Also check `iss`/`kid`, `schema`, `origin`, the session nonce and single use |
 | Treating "I need datalake data in the dApp" as "I need a wallet permission" | Conflates two independent things — the wallet's permission system is for account access; datalake access is plain HTTP | Use the dApp's own `RestDataLakeRunner` / `RestDataLakeViewer` against the public datalake endpoint |
 
 ---
