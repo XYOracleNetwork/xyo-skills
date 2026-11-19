@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.44](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.43...v1.1.44) (2026-11-19)
+
+
+### Features
+
+* emit devEngines in scaffolded manifests, fix the pnpm floor ([6bdbfbf](https://github.com/XYOracleNetwork/xyo-skills/commit/6bdbfbf154d8b56c355b1297f376d467e8842c7c))
+* **xl1-scaffold:** emit devEngines in generated manifests ([1097ba1](https://github.com/XYOracleNetwork/xyo-skills/commit/1097ba1aaad50b5d25e9c9c9c25a246f1a012bdd))
+* **xl1-scaffold:** emit devEngines in generated manifests ([62989da](https://github.com/XYOracleNetwork/xyo-skills/commit/62989daf7ed34c1ce7e7722e3e4075793dfa353c))
+
+
+### Bug Fixes
+
+* raise the devEngines pnpm floor to the locked version ([d6782e5](https://github.com/XYOracleNetwork/xyo-skills/commit/d6782e570259012b5be7577e4f33348829bd9bcc))
+
 ## [1.1.43](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.42...v1.1.43) (2026-11-04)
 
 
