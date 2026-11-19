@@ -2,7 +2,9 @@ import {
   describe, expect, it,
 } from 'vitest'
 
-import { buildPackageJson, NODE_ENGINE_RANGE } from './package-json.js'
+import {
+  buildPackageJson, NODE_DEV_ENGINE_RANGE, NODE_ENGINE_RANGE,
+} from './package-json.js'
 import {
   nodeTemplate, reactTemplate, xl1MonorepoTemplate, xl1ServiceTemplate, xl1SharedTemplate,
 } from './presets/index.js'
@@ -51,6 +53,31 @@ describe('buildPackageJson', () => {
     expect(build(xl1SharedTemplate, true)).not.toHaveProperty('packageManager')
     expect(build(nodeTemplate, false).packageManager).toBe('pnpm@12.10.1')
     expect(build(xl1MonorepoTemplate, false).packageManager).toBe('pnpm@12.10.1')
+  })
+
+  it('omits devEngines for workspace members only', () => {
+    expect(build(xl1SharedTemplate, true)).not.toHaveProperty('devEngines')
+    for (const template of [reactTemplate, nodeTemplate, xl1ServiceTemplate, xl1MonorepoTemplate]) {
+      expect(build(template, false)).toHaveProperty('devEngines')
+    }
+  })
+
+  // Regression: a looser floor such as `>=12.0.0` lets an older pnpm already on
+  // the machine satisfy the range; that pnpm then rewrites the locked
+  // packageManagerDependencies and `pnpm install --frozen-lockfile` fails.
+  it('floors devEngines pnpm at the exact resolved version, capped at the next major', () => {
+    expect(build(nodeTemplate, false).devEngines).toEqual({
+      runtime: {
+        name: 'node', onFail: 'error', version: NODE_DEV_ENGINE_RANGE,
+      },
+      packageManager: {
+        name: 'pnpm', onFail: 'error', version: '>=12.10.1 <13.0.0',
+      },
+    })
+  })
+
+  it('pins the devEngines Node range to the major engines allows', () => {
+    expect(NODE_DEV_ENGINE_RANGE).toBe('>=26.0.0 <27.0.0')
   })
 
   // npm and pnpm do not inherit `engines` from a workspace root, and
