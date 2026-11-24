@@ -179,6 +179,16 @@ The sync loop iterates **forward** from `lastProcessedBlock + 1` to head. This i
 
 **Backfill from head as a pre-warm pattern.** When standing up a long-history unbounded indexer (the inscription substrate against a deep chain, an XL1 transfer ledger), waiting for a single forward walk from genesis to reach head can be unacceptable. A valid alternative: a forward sync handles new blocks from a recent snapshot point, while a background backfill walks *downward* from that snapshot toward `floorBlock`. The two writes converge when the backfill reaches the floor. Steady-state operation is always forward.
 
+**On Mainnet and Sequence, backfill through the payloads index first.** The
+published payloads index names every block that carries your schemas, from
+genesis up to its watermark. A cold start can therefore replay forward over
+only those blocks, instead of reading every block from the floor. It then hands
+off to the finalized stream after the watermark block, and steady state stays
+forward and in order. Keep the full forward walk available
+as the correctness check for a reference indexer. See
+[Chain Data Indexing — Protocol § Strategy 1](chain-data-indexing-protocol.md#strategy-1-global-block-walk-forward-iteration)
+and [Published Indexes](../xl1-knowledge/indexes.md).
+
 This is complementary to floor block, not an alternative. The floor decides *which* blocks are in scope; backfill decides *how* to traverse the in-scope range when its size makes a single forward pass unworkable. A bounded dApp's floor is its captured `INDEXER_FLOOR_BLOCK` and the in-scope range is usually small enough that backfill isn't worth the complexity. Substrate-shaped indexers (where `floorBlock = 0` is permanent) are the typical place backfill earns its complexity.
 
 ---
@@ -331,6 +341,13 @@ console.log('a tx in the block references it:',
   txs.some(tx => tx.payload_hashes.includes(appPayloadHash)))  // → true
 console.log('datalake returns app payload:', fromDatalake.length > 0)  // → true
 ```
+
+On Mainnet and Sequence, the published payloads index gives an independent third
+view. `locators(appSchema, asXL1BlockRange([blockOfTx, blockOfTx], true))` (see
+[Published Indexes](../xl1-knowledge/indexes.md#payloads-index--find-payloads-by-schema))
+should name the transaction as the carrier, with `appPayloadHash` at its
+`payloadIndex`, once the index watermark passes `blockOfTx`. If it does, the
+chain holds the payload and the fault is in the indexer.
 
 If a transaction in the block references the hash and the datalake returns the application payload, but `block[1]` does not contain it, the indexer is built around the assumption that gateway reads transparently hydrate off-chain payloads — they do not; neither block reads nor `viewer.block.payloadsByHash` consult a datalake (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). The fix is the two-step pattern from [Chain Data Indexing — Protocol § Via Block Walk](chain-data-indexing-protocol.md#via-block-walk--schema-discovery-from-the-chain): scan each `TransactionBoundWitness.payload_schemas[]` for matching schemas, gather the parallel `payload_hashes[]`, then fetch the bodies with `datalakeViewer.get(hashes)`. If the datalake returns nothing for the hash, the body never reached the endpoint the indexer reads — point the submit path's datalake writes and the indexer's `datalakeViewer` at the same datalake.
 

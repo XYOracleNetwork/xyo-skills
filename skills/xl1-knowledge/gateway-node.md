@@ -187,6 +187,12 @@ calls. Signing works the same way as on the builder — supply exactly one of
 `signerAccount`, `signerFactory`, or `signerTransport`. There is no `signer`
 key: a pre-built signer instance is never injected.
 
+To read REST-backed viewers that the gateway does not put on
+`connection.viewer`, build the locator itself with `getRestGatewayLocator(...)`
+(xl1-sdk 5.10.6 or later). It takes the same config, and you ask it for
+`XyoGatewayMoniker` and, for example, `PayloadIndexViewerMoniker`, the
+published payloads index. See [Published Indexes](indexes.md).
+
 ---
 
 ## Caching

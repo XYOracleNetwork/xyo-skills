@@ -338,9 +338,32 @@ const moves = (await datalakeViewer.get(moveHashes)).filter(isMovePayload)
 
 `transaction.byHash` gives you the transaction context and its on-chain payloads, but not the off-chain payloads it references: no `connection.viewer` read fetches from a datalake (see [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow)). Take their hashes from `payload_hashes[]` — the parallel `payload_schemas[]` says which is which — and read the bodies from your datalake by hash. Block-level reads work the same way; see below.
 
+### Via the Payloads Index — Schema Lookup Without a Block Walk
+
+On **Mainnet and Sequence**, start here. The published payloads index already
+maps every schema, application schemas included, to the block, carrier,
+`payloadIndex` and signers of each payload. One `locators(schema, range)` call
+over thousands of blocks replaces the per-block scan below.
+
+The construction recipe, the trust rules and the freshness checks are in
+[Published Indexes — Payloads Index](../xl1-knowledge/indexes.md#payloads-index--find-payloads-by-schema).
+The shape is always the same:
+
+1. Read `watermark()` and clamp your range to `watermark.block`.
+2. Call `locators(MoveSchema, range)`, then `flattenPayloadLocators(MoveSchema, carriers)`.
+3. Fetch the bodies with `datalakeViewer.get(locators.map(locator => locator.hash))`, then filter with `isMovePayload`.
+4. Cover blocks after the watermark with the block walk below, or with a `FinalizedBlockStream` that starts after the watermark block.
+
+The index locates payloads and the datalake holds their bodies, exactly as in
+the walk. For state that moves value, confirm each carrier in its block. That
+**index-guided walk** reads only the blocks the index names (see
+[Strategy 1](#strategy-1-global-block-walk-forward-iteration)).
+
 ### Via Block Walk — Schema Discovery From the Chain
 
-When you need to find all payloads of a given type regardless of which transaction included them, walk the chain and use a two-step pattern: each block read returns the on-chain `TransactionBoundWitness` instances, and you fetch the referenced off-chain payloads by hash in a follow-up call.
+When there is no published payloads index (a local chain), or to cover blocks
+past the index watermark, find all payloads of a given type by walking the chain
+with a two-step pattern: each block read returns the on-chain `TransactionBoundWitness` instances, and you fetch the referenced off-chain payloads by hash in a follow-up call.
 
 `viewer.block.blockByNumber(n)` returns the block's **on-chain payloads only** — `BlockBoundWitness`, `TransactionBoundWitness` instances, `transfer`, `time`. The off-chain payloads referenced in each `TransactionBoundWitness.payload_hashes[]` are **not** included, even with a datalake configured. See [Gateway — What `block.blockByNumber` returns](../xl1-knowledge/gateway.md#what-blockblockbynumber-and-friends-returns--hydration-is-shallow) for why.
 
@@ -653,6 +676,7 @@ Once data is anchored on chain, indexers and consumers need to read it. Four str
 
 | Need | Strategy |
 |---|---|
+| Every payload of a schema over a range, on Mainnet or Sequence | **Payloads index**. See [Via the Payloads Index](#via-the-payloads-index--schema-lookup-without-a-block-walk). It also drives the index-guided form of Strategy 1 |
 | Global state for a protocol (ledger, supply, ownership map) | **Strategy 1** — Global block walk |
 | dApp showing "my X" (my inscriptions, my XRC-20 balance, my transfers) | **Strategy 3** — Per-address side-index, populated during global walk |
 | Audit XL1 movements for an address (transfers in/out) | **Strategy 2** — `accountBalanceHistory` |
@@ -663,6 +687,17 @@ Once data is anchored on chain, indexers and consumers need to read it. Four str
 **Natural direction: forward.** Required — state derivation depends on in-order replay.
 
 The reference indexer pattern. Iterate every finalized block after `lastProcessed`, in order, and dispatch each block's payloads through application handlers. Drive it with the `FinalizedBlockStream` cold iterator rather than hand-polling the head: `stream.blocks({ after: lastProcessedHash })` replays from your checkpoint hash, then follows the finalized head. It needs an explicit `after` seed on cold start — with no `after` it starts at the current head and skips your history (see [Chain Data Indexing — Service § Finalized block stream](chain-data-indexing-service.md#finalized-block-stream)). A loop that polls `viewer.finalization.headNumber()` and reads `blockByNumber` up to it remains correct when you already own that loop. Full coverage, deterministic state derivation across competing indexers. See [Inscription Substrate § Replay loop](inscription-substrate.md#replay-loop) for a worked example.
+
+**Index-guided walk.** On Mainnet and Sequence, the published payloads index
+lists, in canonical order, every block that carries your schemas. Ask it for
+`locators(schema, [floorBlock, watermark.block])` for each schema you handle.
+Then read and apply only those blocks, in block order, and follow the finalized
+stream from the watermark onward. The replay order and the result are the same
+as a full walk, because the blocks the index skips carry nothing your handlers
+read. If the index ever omitted a payload, the state would diverge from the
+chain. So a reference indexer keeps the full walk as its correctness check, and
+uses the guided walk to backfill quickly. See
+[Published Indexes — Trust](../xl1-knowledge/indexes.md#trust).
 
 **When to use.** Any indexer that derives global state. Required for ledger correctness, ownership maps, supply tracking. The chain's authoritative indexing model.
 
@@ -775,7 +810,8 @@ Both arrive at the same minter address. The substrate's reference indexer prefer
 | Indexing your dApp's own schemas? | **Bounded** — capture `INDEXER_FLOOR_BLOCK` during development, iterate from there. See [Floor Block](#floor-block) |
 | Indexing pre-existing schemas (transfers, substrate, older protocols)? | **Unbounded** — set `INDEXER_FLOOR_BLOCK=0`, iterate from genesis. Substrate-shaped protocols additionally require ordered replay and a permanently-zero floor |
 | Transaction context needed? | Use `connection.viewer.transaction.*` — gives you signer addresses, block number, fees |
-| Just need payloads by type? | Two-step walk: `viewer.block.blockByNumber()` returns on-chain `TransactionBoundWitness` instances; scan their `payload_schemas[]` for your schema, gather the parallel `payload_hashes[]`, then fetch them from your datalake via `createRestDataLakeViewer(endpoint).get(hashes)`. No gateway read hydrates off-chain payloads — see [Via Block Walk](#via-block-walk--schema-discovery-from-the-chain) |
+| Just need payloads by type, on Mainnet or Sequence? | The payloads index: `locators(schema, range)` up to its watermark, then fetch the bodies from your datalake by hash. See [Via the Payloads Index](#via-the-payloads-index--schema-lookup-without-a-block-walk) |
+| Just need payloads by type, on a local chain or past the index watermark? | Two-step walk: `viewer.block.blockByNumber()` returns on-chain `TransactionBoundWitness` instances; scan their `payload_schemas[]` for your schema, gather the parallel `payload_hashes[]`, then fetch them from your datalake via `createRestDataLakeViewer(endpoint).get(hashes)`. No gateway read hydrates off-chain payloads — see [Via Block Walk](#via-block-walk--schema-discovery-from-the-chain) |
 | Need a specific payload? | Off-chain body: `RestDataLakeViewer.get(hashes)` against the datalake it was written to. On-chain payload: `connection.viewer.block.payloadsByHash(hashes)` (the gateway's own store) — see [Via Payload Hash](#via-payload-hash--direct-lookup) |
 | Real-time updates with transient OK? | Hand-poll `connection.viewer.block.currentBlockNumber()` on an interval (ephemeral UI feeds) |
 | Real-time updates that drive durable state? | `FinalizedBlockStream` — `finalizedBlockStreamFromGateway(gateway)`, then `stream.blocks({ after })` from your checkpoint hash, seeded explicitly on cold start ([Service § Finalized block stream](chain-data-indexing-service.md#finalized-block-stream)). Never derive state from unfinalized blocks |

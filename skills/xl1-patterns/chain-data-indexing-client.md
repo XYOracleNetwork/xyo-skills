@@ -100,6 +100,15 @@ The hook above is wrong-shaped for most browser views. UIs typically want "the l
 
 The right shape: walk **backward** from `currentBlockNumber()`, accumulate matches, stop when you have N. See [Chain Data Indexing — Protocol § Direction of Iteration](chain-data-indexing-protocol.md#direction-of-iteration) for why.
 
+On Mainnet and Sequence, the published payloads index answers the same question
+without reading blocks. Ask `locators(schema, range)` for widening windows that
+end at the index watermark, keep the last N locators, and fetch their bodies
+from the datalake. Walk only the few blocks past the watermark. See
+[Published Indexes](../xl1-knowledge/indexes.md#payloads-index--find-payloads-by-schema).
+The index is keyed by schema, not by address. For "my last N", filter the
+locators by `signers`, then confirm `from` on the transaction before showing a
+result as the user's own.
+
 For a bounded dApp (one querying its own self-authored schemas — see [Floor Block](chain-data-indexing-protocol.md#floor-block)), the walk also bounds at the floor. Without it, a UI for a connected wallet that has zero matching payloads runs an unbounded scan toward genesis — slow, RPC-quota-burning, and at risk of rendering pre-deployment matches that cannot be this dApp's data. The same `INDEXER_FLOOR_BLOCK` the service indexer reads from `.env` is exposed to the browser via Vite as `VITE_INDEXER_FLOOR_BLOCK`.
 
 `fetchRecent` below is a recipe you write, not an SDK export:

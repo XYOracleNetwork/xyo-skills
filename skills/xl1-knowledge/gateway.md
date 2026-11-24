@@ -109,6 +109,10 @@ buckets from that root (`restGatewayConfigFromEndpoint`); mempool submission
 still goes to the Gateway RPC URL. See
 [Browser Gateway — REST over RPC](gateway-browser.md#rest-over-rpc) and, for
 Node, [Node Gateway — REST/S3 gateway](gateway-node.md#rests3-gateway--reading-from-the-static-layout).
+The `indexes.` bucket also carries the payloads, slash and license families,
+which a REST gateway does not expose on `connection.viewer`. Read them as
+described in [Published Indexes](indexes.md). Use the payloads index whenever
+you would otherwise walk blocks to find payloads of a schema.
 
 † The local datalake URL is what the SDK's `NetworkDataLakeUrls` constant
 carries, but a plain `xl1 start` **does not serve it** — the local `api` actor
@@ -396,6 +400,9 @@ depend on it.
 `if (viewer.stakeTotals)` check before calling. Other viewer types in the
 protocol (IndexViewer, ChainStateViewer, Sync, EvmChain) back the gateway's REST
 and EVM data paths and are not exposed as `connection.viewer.*` accessors.
+`PayloadIndexViewer` (payload locators by schema) is not a `connection.viewer`
+accessor either. Resolve it from `getRestGatewayLocator(...)` (xl1-sdk 5.10.6 or
+later), as shown in [Published Indexes — Payloads Index](indexes.md#payloads-index--find-payloads-by-schema).
 
 ---
 

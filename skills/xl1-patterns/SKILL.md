@@ -44,7 +44,7 @@ Read when a dApp needs to request permissions from the XL1 browser wallet beyond
 The first pattern in the layer to follow the protocol/client/service split. Read the protocol file first; then the role file matching what you're building.
 
 #### [Chain Data Indexing — Protocol](chain-data-indexing-protocol.md)
-Conceptual rules for retrieving, filtering, and watching application-specific chain data — schemas, anchoring choices (Path A/B/C), `Destination as Protocol` (sentinel addresses), the four scan strategies, and finalized-vs-latest semantics. Environment-agnostic; both clients and services rely on it.
+Conceptual rules for retrieving, filtering, and watching application-specific chain data — schemas, anchoring choices (Path A/B/C), `Destination as Protocol` (sentinel addresses), schema lookup through the published payloads index on Mainnet and Sequence (in place of a block walk), the four scan strategies, and finalized-vs-latest semantics. Environment-agnostic; both clients and services rely on it.
 
 #### [Chain Data Indexing — Client](chain-data-indexing-client.md)
 Browser-side reads — but **only for ephemeral, single-user, trivial cases**. A `useChainData` hook recipe (your own code, not an SDK export) for polled reads, capability detection in components, and a sharp boundary on what does and does not belong in the browser. Anything multi-user, durable, or reorg-sensitive needs the service file instead.

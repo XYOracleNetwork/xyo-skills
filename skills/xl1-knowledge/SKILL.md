@@ -1,6 +1,6 @@
 ---
 name: xl1-knowledge
-description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), website integration via @xyo-network/xl1-browser-system and the REST-over-RPC transport rule, identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, integrating XL1 into a website, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
+description: XL1 blockchain development (XYO Layer One). Covers the XL1 chain, datalakes, gateway (generic, browser, and Node — including FinalizedBlockStream), published indexes (payload locators by schema, slash, producer licenses), website integration via @xyo-network/xl1-browser-system and the REST-over-RPC transport rule, identity, and pointers to application substrates (Statement Graph, dapp-kit). Activates when building on XL1, integrating XL1 into a website, working with @xyo-network/xl1-* packages, or developing blockchain-backed applications.
 metadata:
   version: 1.1.43 # x-release-please-version
   layer: 4
@@ -56,6 +56,14 @@ Read when integrating XL1 into any website — React dApps, plain pages, workers
 
 ### [Node Gateway](gateway-node.md)
 Read when constructing a gateway in any non-browser context — backend services, indexers, CLIs, scheduled jobs, tests, and headless verification of dApps. Covers the canonical `GatewayBuilder` entry point (read-only and write-capable), owned gateway sessions (`buildSession()` / `buildRunnerSession()` and `stop()` for clean shutdown), the seed-phrase signer pattern, the lazy-promise caching pattern, and the `basicRemoteViewerLocator` escape hatch.
+
+### [Published Indexes](indexes.md)
+Read before walking blocks on Mainnet or Sequence to find data. Covers the index bucket (`indexes.mainnet.xyo.space`, `indexes.sequence.xyo.space`), each family's head and freshness, and how to read each family:
+- the **payloads index**: every payload of a schema, located by block, carrier and signers, through `getRestGatewayLocator` or `createRestPayloadIndexViewer` (xl1-sdk 5.10.6 or later);
+- the **slash index**: offenses per producer;
+- the **license index**: the producer license ledger, through `RestLicenseViewer`.
+
+Also covers the trust rules for using an index as a speed layer.
 
 ### [Finalized block stream](gateway.md#finalized-block-stream)
 Read when an indexer or service needs ordered finalized delivery (`FinalizedBlockStream` / `finalizedBlockStreamFromGateway`); prefer it over the deprecated `headUpdated`. A section of [Gateway](gateway.md).
