@@ -400,8 +400,9 @@ depend on it.
 `if (viewer.stakeTotals)` check before calling. Other viewer types in the
 protocol (IndexViewer, ChainStateViewer, Sync, EvmChain) back the gateway's REST
 and EVM data paths and are not exposed as `connection.viewer.*` accessors.
-`PayloadIndexViewer` (payload locators by schema) is neither exposed nor bound by
-`getRestGateway`. Build it as shown in [Published Indexes — Payloads Index](indexes.md#payloads-index--find-payloads-by-schema).
+`PayloadIndexViewer` (payload locators by schema) is not a `connection.viewer`
+accessor either. Resolve it from `getRestGatewayLocator(...)` (xl1-sdk 5.10.6 or
+later), as shown in [Published Indexes — Payloads Index](indexes.md#payloads-index--find-payloads-by-schema).
 
 ---
 

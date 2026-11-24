@@ -59,7 +59,7 @@ Read when constructing a gateway in any non-browser context — backend services
 
 ### [Published Indexes](indexes.md)
 Read before walking blocks on Mainnet or Sequence to find data. Covers the index bucket (`indexes.mainnet.xyo.space`, `indexes.sequence.xyo.space`), each family's head and freshness, and how to read each family:
-- the **payloads index**: every payload of a schema, located by block, carrier and signers, through `RestPayloadIndexViewer`, which `getRestGateway` does not bind;
+- the **payloads index**: every payload of a schema, located by block, carrier and signers, through `getRestGatewayLocator` or `createRestPayloadIndexViewer` (xl1-sdk 5.10.6 or later);
 - the **slash index**: offenses per producer;
 - the **license index**: the producer license ledger, through `RestLicenseViewer`.
 

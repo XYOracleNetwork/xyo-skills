@@ -25,7 +25,7 @@ use the block walk in
 | Family | Head object | Answers | Read with |
 |--------|-------------|---------|-----------|
 | Main index | `head.json` | Block, schema, balance and transfer summaries, finalized stake events, step rewards | `connection.viewer.*` on a REST gateway (`getRestGateway` binds it for you) |
-| Payloads | `payloads/head.json` | Where every payload of a schema is: block, carrier, signers, payload hash | `RestPayloadIndexViewer` (`@xyo-network/xl1-sdk` 5.9.0 or later). **Not** bound by `getRestGateway` |
+| Payloads | `payloads/head.json` | Where every payload of a schema is: block, carrier, signers, payload hash | `PayloadIndexViewer` from `getRestGatewayLocator(...)`, or `createRestPayloadIndexViewer(indexUrl)` (`@xyo-network/xl1-sdk` 5.10.6 or later). It is not on `connection.viewer` |
 | Slash | `slash/v1/head.json` | Finalized slash requests, commitments, challenges and adjudications, grouped per offense and per accused producer | No SDK reader: path builders and Zod guards from `@xyo-network/xl1-sdk` |
 | License | `license/v1/head.json` | The producer license ledger: offerings and licenses, by id, owner and operator | `RestLicenseViewer` (`@xyo-network/chain-sdk/license`) |
 
@@ -46,7 +46,7 @@ treat "not there yet" as "does not exist":
 
 | Family | Head field | Normal distance behind the finalized head |
 |--------|------------|-------------------------------------------|
-| Payloads | `block` (plus `frames`, the completed frame count per step level) | Up to about 7 blocks: it publishes whole 7-block frames |
+| Payloads | `block` (plus `frames`, the completed frame count per step level) | Usually under 10 blocks: it publishes whole 7-block frames, plus the time a pass takes |
 | Slash | `height` | 0–1 blocks |
 | License | `height` (plus `snapshot`, the content address of the ledger snapshot) | 0–1 blocks |
 
@@ -86,37 +86,32 @@ your Zod guards, because the schema key is only what the carrier declared.
 
 ### Recipe
 
-`getRestGateway` and `basicRestViewerLocator` do not register this reader. Asking
-them for `PayloadIndexViewer` fails with `MissingCapabilityError: … (no
-candidates registered)`. Build a small locator that names the reader as its only
-candidate:
+With `@xyo-network/xl1-sdk` 5.10.6 or later, the REST gateway's locator binds
+`PayloadIndexViewer` to the network's index bucket. `getRestGatewayLocator`
+takes the same config as `getRestGateway` and returns that locator, so one
+call gives you both the gateway and the index. When you need only the index,
+for example in a React dApp that already gets its gateway from
+`InPageGatewaysProvider`, use `createRestPayloadIndexViewer(indexUrl)`:
 
 ```ts
-import type { PayloadIndexViewer } from '@xyo-network/xl1-sdk'
+import type { PayloadIndexViewer, XyoGateway } from '@xyo-network/xl1-sdk'
 import {
   asXL1BlockRange,
+  createRestPayloadIndexViewer,
   flattenPayloadLocators,
-  locatorFromAdaptedConfig,
+  getRestGatewayLocator,
   PayloadIndexViewerMoniker,
-  providerCandidateFromClass,
+  XyoGatewayMoniker,
 } from '@xyo-network/xl1-sdk'
-import { RestPayloadIndexViewer } from '@xyo-network/xl1-sdk/rest-block-viewer'
 
-// indexUrl: https://indexes.mainnet.xyo.space or https://indexes.sequence.xyo.space
-export async function createPayloadIndexViewer(indexUrl: string): Promise<PayloadIndexViewer> {
-  const locator = locatorFromAdaptedConfig({
-    candidates: [providerCandidateFromClass(RestPayloadIndexViewer)],
-    config: {
-      connections: { 'rest-index': { baseUrl: indexUrl, type: 'rest' } },
-      name: 'payload-index-reader',
-      providerBindings: { PayloadIndexViewer: { connection: 'rest-index' } },
-    },
-    context: { caches: {}, singletons: {} },
-  })
-  return await locator.getInstance<PayloadIndexViewer>(PayloadIndexViewerMoniker)
-}
+// A gateway and the payloads index from one locator (same config as getRestGateway)
+const locator = await getRestGatewayLocator('https://sequence.xyo.space')
+const gateway = await locator.getInstance<XyoGateway>(XyoGatewayMoniker)
+const payloadIndex = await locator.getInstance<PayloadIndexViewer>(PayloadIndexViewerMoniker)
 
-const payloadIndex = await createPayloadIndexViewer(INDEX_URL)
+// Or the index alone, from the index bucket URL
+const indexOnly = await createRestPayloadIndexViewer('https://indexes.sequence.xyo.space')
+
 const watermark = await payloadIndex.watermark()
 if (!watermark) throw new Error('The payloads index has not published yet')
 
@@ -132,6 +127,15 @@ const moves = (await datalakeViewer.get(locators.map(locator => locator.hash))).
 
 Construct the reader once and reuse it. It caches frame summaries and pages,
 which never change, and re-reads only the watermark.
+
+**On xl1-sdk 5.9.0 to 5.10.5**, neither helper exists, and the REST gateway
+cannot resolve `PayloadIndexViewer`. Asking it fails with
+`MissingCapabilityError: … (no candidates registered)`. Upgrade if you can.
+Otherwise call `locatorFromAdaptedConfig` and pass
+`providerCandidateFromClass(RestPayloadIndexViewer)` as its only candidate. Import
+the class from `@xyo-network/xl1-sdk/rest-block-viewer`. Bind
+`PayloadIndexViewer` to a `rest` connection whose `baseUrl` is the index bucket.
+The License Index recipe below has the same shape.
 
 For anything after `watermark.block`, read the chain directly: walk
 `blockByNumber`, or follow a
@@ -230,7 +234,9 @@ consequences derives its verdict from the finalized chain.
 
 The license family republishes the producer license ledger, that is the
 offerings and the licenses issued against them, as content-addressed snapshots.
-`RestLicenseViewer` reads them:
+`RestLicenseViewer` reads them. It lives in `@xyo-network/chain-sdk`, which
+the REST gateway's locator does not register, so name it as the only
+candidate of a small locator:
 
 ```ts
 import type { XyoAddress } from '@xyo-network/sdk'
@@ -268,7 +274,8 @@ for wallets, explorers, marketplaces and operator tools.
 
 - **Walking every block on Mainnet or Sequence to find payloads of one schema.** Ask the payloads index, then walk only the tail past its watermark.
 - **Fetching `payloads/*.json` by hand.** You skip the hash checks and the inline, paged and delegated entry logic. Use `RestPayloadIndexViewer`.
-- **Asking `getRestGateway`'s locator for `PayloadIndexViewer`.** It is not registered there, so build the dedicated locator.
+- **Hand-building a payloads locator on xl1-sdk 5.10.6 or later.** Use `getRestGatewayLocator` or `createRestPayloadIndexViewer`.
+- **Looking for `PayloadIndexViewer` on `gateway.connection.viewer`.** It is not there. Resolve it from the locator.
 - **Reading past a family's head, or treating its lag as absence.** Clamp to the head, and fill the gap from the chain.
 - **Taking `signers[0]` as the author.** Read `from` from the transaction.
 - **Treating a missing `accused` object as a clean record** without checking the slash head height.
