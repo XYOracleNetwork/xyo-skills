@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.45](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.44...v1.1.45) (2026-11-25)
+
+
+### Features
+
+* document the published payloads, slash and license indexes ([c0352a0](https://github.com/XYOracleNetwork/xyo-skills/commit/c0352a0ddb221090c37f135278bd5b170b6adf3b))
+
 ## [1.1.44](https://github.com/XYOracleNetwork/xyo-skills/compare/v1.1.43...v1.1.44) (2026-11-19)
 
 
