@@ -8,7 +8,7 @@ This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, 
 
 | Layer | Skill | Covers | Source |
 |-------|-------|--------|--------|
-| 10 | `xyo-sub-protocol` | Normative XYO sub-protocol repository structure (root `WHITEPAPER.md` and `HISTORY.md`, package allow/deny). Sits beside the dApp cascade | this repo |
+| 10 | `xyo-sub-protocol` | One root `WHITEPAPER.md` and a worked example for every sub-protocol (Chronicle), with package boundaries for implemented protocols (Statement Graph) | this repo |
 | 9 | `xl1-build` | Planning wizard — refines a vague build request into a concrete dApp spec | this repo |
 | 8 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo; dapp-kit runtime route) | this repo |
 | 7 | `xl1-testing` | dApp Definition of Done gate, local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI | this repo |

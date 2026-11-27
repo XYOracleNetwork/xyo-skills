@@ -1,124 +1,63 @@
 ---
 name: xyo-sub-protocol
 description: >-
-  Structures a repository that proposes and implements a normative XYO
-  sub-protocol on XL1. Use when creating or reviewing an XYO sub-protocol,
-  an XL1 protocol repo structure, or the statement graph layout: one root
-  spec at WHITEPAPER.md and history at HISTORY.md, both at the repo root, a
-  README package allow/deny map, AGENTS.md protocol invariants, and the
-  schemas, protocol, sdk, and testing packages. docs/ is outside that
-  skeleton. The reference example is xl1-statement-graph; LifeHash is the
-  example of a protocol that references a sub-protocol.
+  Use when drafting, reviewing, or implementing shared wire and verification
+  rules for an XYO sub-protocol on XL1. Covers the single WHITEPAPER.md pattern,
+  a worked example, and implementation package boundaries. Chronicle illustrates
+  a specification-only repository and Statement Graph an implemented protocol.
 metadata:
   version: 1.1.45 # x-release-please-version
   layer: 10
 ---
 
-# Normative XYO sub-protocol
+# XYO sub-protocols on XL1
 
 **Skill identity.** Report as `xyo-sub-protocol v<version>` from this file's `metadata.version`.
 
-Use this skill when a repository's job is a normative XYO sub-protocol on XL1: a closed grammar, pure rules, and a writer/replay SDK that other protocols and deployments consume. The reference implementation is [xl1-statement-graph](https://github.com/XYOracleNetwork/xl1-statement-graph). [LifeHash](https://github.com/XYOracleNetwork/lifehash) is the example of a protocol that references a sub-protocol.
+Use this skill when two producers or readers need to agree on the meaning of the same XYO or XL1 evidence. If the repository consumes an existing protocol to build an application, keep its vocabulary, views, storage and deployment decisions with that application. [LifeHash](https://github.com/XYOracleNetwork/lifehash) is a consumer of Statement Graph.
 
 ## Skill layers
 
-This is a specialist for protocol repositories. It sits beside the dApp cascade (layers 5–9), which builds products on top of a sub-protocol that already exists.
-
-- **Builds on:** [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) for payloads, schemas, and bound witnesses; [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) for XL1 blocks, gateways, and datalakes; `xy-toolchain` and `xy-development` from [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2)
+- **Builds on:** [xyo-knowledge](../xyo-knowledge/SKILL.md) (3) for payloads, hashes and Bound Witnesses, [xl1-knowledge](../xl1-knowledge/SKILL.md) (4) for XL1 transactions, blocks and finality, and [ariestools-skills](https://github.com/ariestools/ariestools-skills) (1–2) for development and toolchain conventions.
 - **Hands off to:** none
 
-Application features that use an existing sub-protocol, including Statement Graph relationship claims, continue in [xl1-patterns](../xl1-patterns/SKILL.md). A new product repository continues in [xl1-scaffold](../xl1-scaffold/SKILL.md). Headless verification continues in [xl1-testing](../xl1-testing/SKILL.md).
+For an application using existing protocol rules, see [xl1-patterns](../xl1-patterns/SKILL.md). For headless tests of a running implementation, see [xl1-testing](../xl1-testing/SKILL.md).
 
-## One spec
+## What every sub-protocol needs
 
-Keep one normative spec at `WHITEPAPER.md` in the repo root.
+Put the current normative specification in one root `WHITEPAPER.md`. A reader should be able to derive the result of the worked example using just the paper, the upstream rules it names and any grammar it explicitly incorporates. Use these questions to write or review it.
 
-Leave it as one document. Do not split it into `papers/` to mimic a product repo. Product repositories use `papers/` because they have a thesis, an implementation spec, and a business paper. LifeHash keeps white, yellow, and green papers there (plus a light paper). dapp-kit keeps its papers under `papers/` as well. A sub-protocol's spec is the single root document.
+| Question | What the paper must settle |
+|---|---|
+| What can a reader conclude? | Identify the roles, the result each can produce or verify, the trust assumptions and the claims the evidence leaves open. |
+| Which bytes carry that meaning? | Define the sub-protocol's wire objects and identifiers. Name the upstream rules for hashing, signing and XL1 inclusion that it relies on. Identify what becomes public, what is merely referenced and where a reader obtains the evidence. |
+| How do two readers agree? | Specify the inputs, including any expectations supplied by the caller. Give the checks, ordering where it matters, and observable outputs for valid, missing and contradictory evidence. Make the result reproducible for the same inputs. |
+| How would someone check conformance? | Name the revision and role being checked. Walk one concrete input through to its expected result. Change one input or remove one piece of evidence and say exactly which conclusion changes. Label modeled inputs and state what has actually been exercised. |
 
-Keep the protocol history at `HISTORY.md` in the repo root. It is the decision record. It records rulings. It does not replace the spec.
+Keep a small root map. `README.md` gives the status, reading order, files that exist and commands that work. `HISTORY.md` records decisions and superseded designs. `AGENTS.md` points contributors to the governing rules and checks. If the repo uses `CLAUDE.md`, point it to `AGENTS.md`. Keep normative rules in the paper or in the grammar it incorporates, with one authority for each rule.
 
-`docs/` is outside the skeleton. It holds documents the skeleton does not define or control: code reviews, action plans, gate-profile notes, and anything similar. The spec and the history stay at the repo root.
+A draft can ship a portable schema in `schemas/` and example data in `examples/` when they make the paper checkable. A short example can live entirely in the paper. When consolidating existing papers, preserve and label the originals as history. A specification-only request can end here. Add packages when implementation starts and leave roadmaps, PRDs and business papers to the products that need them.
 
-The root skeleton is `README.md`, `WHITEPAPER.md`, `HISTORY.md`, and `AGENTS.md`. `CLAUDE.md` stays a one-line pointer to `AGENTS.md`.
+## Two examples of the same pattern
 
-## README and AGENTS.md
+**Parallax Chronicle — specification only.** XL1 carries an operator transaction referencing the root hash of a private commitment. The reader verifies disclosed bodies and signed links against that commitment. Chronicle owns its private wire grammar and inherits XYO's Bound Witness format. In the worked disclosure one planner record is produced and one is declared withheld. Remove block 102 from the modeled chain view and the two endpoint inclusions can still be checked, while accounting for every operator transaction in the interval becomes incomplete. The signatures are real and finality is modeled. This is a worked example in a draft with no verifier package. [White paper §6](https://github.com/XYOracleNetwork/chronicle/blob/4b0302a93f32cc88d94e420a00d32247c1546115/WHITEPAPER.md#6-one-worked-disclosure) · [Disclosure and expected observations](https://github.com/XYOracleNetwork/chronicle/blob/4b0302a93f32cc88d94e420a00d32247c1546115/examples/disclosure.json)
 
-The README is the reader-facing contract: reading order, what each package is allowed and not allowed to contain, the monorepo shape, and the toolchain. Keep the license and any normative-decision summary the repo already shows readers. Do not paste the invariant list into the README.
+**XL1 Statement Graph — implemented.** A transaction elevates the Claim hash, and the reader must obtain the matching Claim body from that same finalized block. A missing or mismatched carrier stops the scan even if a datalake has a copy. The chain-admitted Claim grammar belongs to `@xyo-network/xl1-protocol` and is re-exported by Statement Graph. Statement Graph owns the rules that turn accepted claims into graph records. Its fold fixtures give expected records and rejection outcomes. For example, a valid single-hash Claim materializes one record. If a Claim names several object hashes and one is absent from the transaction, the entire Claim fails the co-commit rule. [Protocol and package map](https://github.com/XYOracleNetwork/xl1-statement-graph/blob/89441665d1a277182f7b5a777a810d92ad60b7ce/README.md) · [Fold vectors](https://github.com/XYOracleNetwork/xl1-statement-graph/blob/89441665d1a277182f7b5a777a810d92ad60b7ce/packages/schemas/fixtures/fold.json)
 
-`AGENTS.md` holds protocol invariants and links to the README for layout, allow/deny, and toolchain. `CLAUDE.md` stays a one-line pointer to `AGENTS.md`.
+To choose the grammar's owner, ask what XL1 itself must recognize. If a new XL1 admission rule requires block producers to carry a particular payload type, define its admission grammar upstream. If a transaction only references a privately defined object by hash, its format stays with the protocol that defines it.
 
-Reading order for a sub-protocol repo:
+## When there is an implementation
 
-1. The root spec, `WHITEPAPER.md`.
-2. The decision record, `HISTORY.md`, when one exists.
-3. Packages, in this order: normative code, reference chain access, optional runtime.
-4. What lives in another repository: object bodies in the caller's datalake, deployment frames, and a referencing protocol's own payloads and index.
+Let the code's responsibilities determine the package map. Statement Graph illustrates these boundaries in TypeScript. Introduce each surface when there is code or a consumer for it.
 
-## Packages
+| Surface | What belongs there |
+|---|---|
+| `schemas` | Shareable wire types, parsers and fixtures. Re-export upstream-owned grammar. A draft JSON schema can become an input to this package. |
+| `protocol` | Pure verification or state transitions over explicit inputs. Chronicle would verify a disclosure here. Statement Graph folds claims. Keep chain and storage I/O at the boundary. |
+| `sdk` | Writers and readers that obtain or submit evidence through caller-supplied interfaces. Statement Graph uses finalized replay and checkpoints because it reconstructs a graph across blocks. |
+| `testing` | Dev-only fakes, fixture builders and scenarios when implementations or adapters need to reuse them. A worked example can become an executable vector by asserting the paper's expected outcome against the code. |
+| Optional runtime | Statement Graph's `engine` and `engine-actor` support local sequencing and hosting. Add a runtime only for a concrete execution model. Product indexes, deployed datalakes and application views belong with their consumers. |
 
-Describe packages as they are. If the code already does something, the allow list includes it. Do not invent a cleaner boundary and then imply the code should move.
+Map actual package responsibilities and exclusions in the README. Document the commands the implementation uses. For example, Statement Graph refreshes pinned fixtures through its refresh script, runs its regular tests in Node and Chromium, and invokes its dev-chain suite separately.
 
-### Required
-
-A new sub-protocol copies these four. The Statement Graph packages are the reference shape.
-
-| Package | Allowed | Not allowed |
-|---|---|---|
-| `schemas` | Grammar, record shapes, the replay contract, conformance fixtures, and guards. Re-export a block-carried payload's NSID and fields from the package that owns them. | The fold. Chain, gateway, datalake, or archivist I/O. A second declaration of an NSID owned upstream. Product vocabulary. |
-| `protocol` | Identities, acceptance gates, the normative fold, and pure helpers (including vocabulary-neutral view helpers when the caller supplies the extractor). Content hashing. | Chain, gateway, datalake, or archivist I/O. A concrete block viewer or body store. Product views or a schema-specific fold branch. |
-| `sdk` | The verified writer and finalized replay over structural interfaces (`FinalizedBlockViewer`, `BodyStore`, `StatementBroadcaster`, or the equivalent). Checkpoint and resume. Decoding a finalized block's payload shape. | A hard-wired gateway client, datalake client, or archivist implementation. A product index. |
-| `testing` | Dev-only fakes, including an in-memory datalake fake, fixture builders, fault injection, and one acceptance scenario whose substrate is a parameter. | A production chain adapter, gateway, datalake deployment, or archivist. Product vocabulary. |
-
-The reference `sdk` calls a caller-supplied body store for object and auxiliary bodies. Elevated payloads that must be proven from a finalized block are verified from that block. A datalake copy is not a fallback for those carriers.
-
-The reference `testing` package also ships a fixture stack and a scenario runner whose caller supplies the action vocabulary. Those are test support. They are not a production adapter.
-
-### Optional runtime
-
-`engine` and `engine-actor` in the reference repo are that substrate's runtime: backing-neutral clocks, lossless state, a mutation sink, incremental application, a viewer, and an actor-hosted local sequence with an insert-first writer. A new sub-protocol does not need them.
-
-A consumer protocol often stops at its own `schemas`, `protocol`, and `sdk`, plus its own indexer. LifeHash does this. It depends on Statement Graph's schemas and protocol, and it publishes LifeHash `schemas`, `protocol`, `sdk`, and `indexer` next to its product packages.
-
-An archivist inside an optional local runtime, when one exists, is the trusted local sequence (or a caller-supplied store the host is explicitly allowed to reuse as a body-store seam). It is not a license to ship an off-chain object datalake.
-
-### Outside the protocol repo
-
-These belong to the deployment, or to the protocol that references this one:
-
-- Product vocabulary and product views.
-- A datalake or archivist implementation.
-- A product index.
-- Generic frames and other deployment composition (in the reference ecosystem, the XL1 Edge-Node Protocol in `xl1-edge-node-api`).
-
-Object bodies stay in the caller's datalake. The sub-protocol repo defines how a caller addresses them. It does not operate the lake.
-
-## Chain admission
-
-When a payload must be carried inside a finalized XL1 block, its grammar is owned by `@xyo-network/xl1-protocol`. The sub-protocol re-exports that grammar. It does not redeclare the NSID.
-
-Statement Graph does this for the Claim. `ClaimSchema` and the Claim field grammar are re-exported from `@xyo-network/xl1-protocol`. A new block-carried payload is added in xl1-protocol first, then re-exported.
-
-Payloads that are not chain-admitted — referenced objects, product records, index rows — keep their grammar in the repository that owns that meaning.
-
-## Toolchain
-
-- pnpm workspace. ESM only. One shared version across the repo's packages. Read it from `packages/*/package.json`. Consumers pin a minor and adopt the next minor explicitly. A tilde range includes later patches on that minor and does not include the next minor.
-- `xy` from the repository root (`pnpm xy build` compiles, then runs publint, deplint, and lint).
-- One root `vitest.config.ts`. No per-package Vitest config. Specs live under `src/**/spec/`: `spec/` runs in Node and real Chromium, `spec/node/` is Node only, and `spec/browser/` is Chromium only.
-- Conformance fixtures change only through the repo's refresh script. A hash pin that fails on an unscripted fixture edit is the intended check.
-- The owner publishes. An agent session prepares the release and hands over the command.
-- A local dev-chain test, when the repo has one, stays opt-in. Standard test scripts and CI select the `node` and `browser` projects. A bare `vitest run`, or `pnpm xy test`, can select every project and boot a chain. Document that footgun next to the harness.
-
-## Reference layout
-
-[xl1-statement-graph](https://github.com/XYOracleNetwork/xl1-statement-graph):
-
-- `WHITEPAPER.md` — the spec, at the repo root
-- `HISTORY.md` — the protocol history and decision record, at the repo root
-- `README.md` — reading order, package allow/deny, monorepo and toolchain
-- `AGENTS.md` — protocol invariants, with layout pointed at the README
-- `docs/` — outside the skeleton: code reviews, action plans, gate-profile notes, and anything similar
-- `packages/schemas`, `packages/protocol`, `packages/sdk`, `packages/testing` — the pattern to copy
-- `packages/engine`, `packages/engine-actor` — this substrate's runtime
-
-[LifeHash](https://github.com/XYOracleNetwork/lifehash) references that sub-protocol, keeps its own payloads and index, and keeps its thesis, implementation spec, and business paper under `papers/`.
+Test the guarantees the paper makes. For a reader that promises resumable replay, compare a full scan with a resumed scan over the same evidence, including the availability of optional bodies if that affects the result. Passing one implementation's vectors supports a claim about that implementation. An interoperability claim needs separately written implementations to agree on the same evidence. A live-chain claim needs observations from the identified network.
