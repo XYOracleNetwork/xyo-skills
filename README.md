@@ -4,10 +4,11 @@ XL1 / XYO development skills for AI coding assistants. The same skill content is
 
 ## What's Included
 
-This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, `xy-toolchain`) are **not** authored here — install them from [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). Temporary redirect stubs under those names remain in this tree so older Skills.sh installs and deep links still resolve; they are not documentation. Only Skills.sh, which installs from this repo, can pick them up — the Claude Code and Codex plugins ship the seven XYO / XL1 skills without them.
+This pack owns the **XYO / XL1 domain layers**. Layers 1–2 (`xy-development`, `xy-toolchain`) are **not** authored here — install them from [`ariestools/ariestools-skills`](https://github.com/ariestools/ariestools-skills). Temporary redirect stubs under those names remain in this tree so older Skills.sh installs and deep links still resolve; they are not documentation. Only Skills.sh, which installs from this repo, can pick them up — the Claude Code and Codex plugins ship the eight XYO / XL1 skills without them.
 
 | Layer | Skill | Covers | Source |
 |-------|-------|--------|--------|
+| 10 | `xyo-sub-protocol` | Normative XYO sub-protocol repository structure (root `WHITEPAPER.md` and `HISTORY.md`, package allow/deny). Sits beside the dApp cascade | this repo |
 | 9 | `xl1-build` | Planning wizard — refines a vague build request into a concrete dApp spec | this repo |
 | 8 | `xl1-scaffold` | Bootstrap new XL1 apps (React dApp, xl1-service backend, Node service, monorepo; dapp-kit runtime route) | this repo |
 | 7 | `xl1-testing` | dApp Definition of Done gate, local dev-chain, headless testnet verification, browser-mode tests, unattended wallet CLI | this repo |
@@ -142,7 +143,7 @@ Run from the root of your project. Skills are written into your agent's project-
 
 ```shell
 # XYO / XL1 domain layers: name the skills, never the whole pack
-npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build -y
+npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build --skill xyo-sub-protocol -y
 # Base layers (required companion): install last
 npx skills add ariestools/ariestools-skills --skill '*' -y
 ```
@@ -151,14 +152,14 @@ npx skills add ariestools/ariestools-skills --skill '*' -y
 
 Avoid `--all`. It is shorthand for `--skill '*' --agent '*' -y`, so it selects the whole pack and installs into every agent Skills.sh supports. Without `-a`, Skills.sh targets the agents it detects and falls back to all agents only when it detects none; name the agents with `-a` to be sure, for example `-a claude-code codex`.
 
-In XY/XYO repos that already use `@ariestools/toolchain`, prefer `pnpm xy skills defaults`. It installs both sources and names the seven XYO skills above, so the stubs are never selected.
+In XY/XYO repos that already use `@ariestools/toolchain`, prefer `pnpm xy skills defaults`. It installs both sources and names the XYO skills in its default set, so the stubs are never selected. Name `xyo-sub-protocol` from the install lists above until a toolchain release adds it to that set.
 
 #### Global install
 
 Installs into your home directory (e.g. `~/.claude/skills/`) so the skills are available across every project on your machine.
 
 ```shell
-npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build -g -y
+npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build --skill xyo-sub-protocol -g -y
 npx skills add ariestools/ariestools-skills --skill '*' -g -y
 ```
 
@@ -167,7 +168,7 @@ npx skills add ariestools/ariestools-skills --skill '*' -g -y
 - **Windows:** Skills.sh defaults to symlinking, which on Windows requires either Developer Mode or running your terminal as Administrator. The easier fix is to add `--copy`, which copies files instead. Keep the same order:
 
   ```shell
-  npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build --copy -y
+  npx skills add XYOracleNetwork/xyo-skills --skill xyo-knowledge --skill xl1-knowledge --skill xl1-patterns --skill xl1-testing --skill xl1-dapp-kit --skill xl1-scaffold --skill xl1-build --skill xyo-sub-protocol --copy -y
   npx skills add ariestools/ariestools-skills --skill "*" --copy -y
   ```
 

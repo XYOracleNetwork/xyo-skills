@@ -23,7 +23,7 @@ The Claude Code and Codex marketplaces want incompatible repository layouts, so 
 The render pipeline lives at `scripts/marketplace-sync/`:
 
 - **`metadata.json`** — single canonical, marketplace-agnostic plugin metadata. Contains version, description, keywords, author, category, brand assets, capabilities. Edit this when changing what's advertised in any marketplace.
-- **`build-claude.mjs`** — reads `metadata.json` and emits the Claude marketplace tree (`.claude-plugin/{marketplace,plugin}.json` + `skills/` + `assets/` + `LICENSE`). `skills/` is the seven real skills: redirect stubs are excluded.
+- **`build-claude.mjs`** — reads `metadata.json` and emits the Claude marketplace tree (`.claude-plugin/{marketplace,plugin}.json` + `skills/` + `assets/` + `LICENSE`). `skills/` is the eight real skills: redirect stubs are excluded.
 - **`build-codex.mjs`** — same, for Codex. Codex nests the plugin payload under `plugins/xyo-skills/`, so the tree is `.agents/plugins/marketplace.json` + `plugins/xyo-skills/.codex-plugin/plugin.json` + `plugins/xyo-skills/{skills,assets}/` + `LICENSE`.
 - **`lib.mjs`** — shared CLI / output / copy plumbing, including the redirect-stub filter: any skill whose `SKILL.md` frontmatter has `metadata.status: redirect` or `metadata.internal: true` is left out of both trees (stub detection is shared with the validator via `scripts/skill-layers.mjs`).
 
@@ -39,6 +39,7 @@ pnpm sync:codex  --out .preview/codex    # inspect the would-be Codex tree
 Skills use progressive loading — each `SKILL.md` is a lightweight router that directs you to read sub-files on demand based on context. Layers cascade top-down:
 
 ```
+Layer 10: xyo-sub-protocol/ — Normative sub-protocol repository structure (root WHITEPAPER.md and HISTORY.md). Sits beside layers 5–9
 Layer 9: xl1-build/        — Planning wizard: vague build request → concrete dApp spec
 Layer 8: xl1-scaffold/     — Bootstrap new XL1 apps (React dApp, xl1-service, Node service, monorepo)
 Layer 7: xl1-testing/      — Local dev-chain, headless testnet verification, browser-mode tests, dApp Definition of Done (dapp-checklist.md)
@@ -50,9 +51,9 @@ Layer 2: xy-toolchain/     — REDIRECT → ariestools/ariestools-skills (do not
 Layer 1: xy-development/   — REDIRECT → ariestools/ariestools-skills (do not edit body docs here)
 ```
 
-When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers, plus the architecture principles for multi-party dApps. When adopting `@xyo-network/dapp-kit*`, also load Layer 6. Before calling a dApp done, walk Layer 7's dApp Definition of Done (`skills/xl1-testing/dapp-checklist.md`). When working on XL1 infrastructure or need reference docs, start with Layer 4.
+When building application features on XL1, start with Layer 5's SKILL.md — it provides recipe-style patterns that compose primitives from all lower layers, plus the architecture principles for multi-party dApps. When adopting `@xyo-network/dapp-kit*`, also load Layer 6. Before calling a dApp done, walk Layer 7's dApp Definition of Done (`skills/xl1-testing/dapp-checklist.md`). When working on XL1 infrastructure or need reference docs, start with Layer 4. When creating or reviewing a normative XYO sub-protocol repository, read Layer 10 (`skills/xyo-sub-protocol/SKILL.md`).
 
-**Layering is enforced, not just documented.** Each `SKILL.md` declares its layer as `metadata.layer` (the line after `version:`), and every non-stub router has a `## Skill layers` section with a `- **Builds on:**` bullet (relative links to lower-layer routers only, `../<skill>/SKILL.md`; layers 1–2 via the https://github.com/ariestools/ariestools-skills URL) and a `- **Hands off to:**` bullet (higher-layer routers only; `none` for xl1-build). Lower layers hand off upward; they do not depend on higher layers.
+**Layering is enforced, not just documented.** Each `SKILL.md` declares its layer as `metadata.layer` (the line after `version:`), and every non-stub router has a `## Skill layers` section with a `- **Builds on:**` bullet (relative links to lower-layer routers only, `../<skill>/SKILL.md`; layers 1–2 via the https://github.com/ariestools/ariestools-skills URL) and a `- **Hands off to:**` bullet (higher-layer routers only; `none` for xl1-build and for xyo-sub-protocol, which sits beside the cascade). Lower layers hand off upward; they do not depend on higher layers.
 
 **Do not expand `skills/xy-development` or `skills/xy-toolchain` in this repo.** They are redirect stubs (`metadata.status: redirect`, `metadata.internal: true`); edit and release those skills in ariestools-skills. They ship to Skills.sh only, and no relative link may point into them — link the ariestools-skills URL instead. `scripts/validate-skills.mjs` enforces the stub allowlist and the no-stub-links rule.
 
@@ -93,7 +94,7 @@ Upward links in body text (a lower layer linking a higher one, outside `## Skill
 - Don't bump versions by hand — release-please owns those files. Anchored at `b1bc7eb`; older `feat:`/`fix:` commits are not rolled forward.
 
 **CI:**
-- `validate-plugins.yml` (push/PR to `main`/`develop`) — runs both renderers into tmp dirs and validates the generated manifests pass marketplace structural assertions; asserts neither tree contains `evals/` or a redirect stub (`skills/xy-development`, `skills/xy-toolchain`) and both contain the seven real skills; re-runs the skill validator on each rendered `skills/` tree so no link dangles into an excluded stub. Also verifies the scaffold runtime in `skills/xl1-scaffold/` is in sync with its TS source.
+- `validate-plugins.yml` (push/PR to `main`/`develop`) — runs both renderers into tmp dirs and validates the generated manifests pass marketplace structural assertions; asserts neither tree contains `evals/` or a redirect stub (`skills/xy-development`, `skills/xy-toolchain`) and both contain the eight real skills; re-runs the skill validator on each rendered `skills/` tree so no link dangles into an excluded stub. Also verifies the scaffold runtime in `skills/xl1-scaffold/` is in sync with its TS source.
 - `validate-skills.yml` (PRs touching `skills/**` or `scripts/*.mjs`) — runs the script unit tests (`node --test scripts/*.test.mjs`) and `node scripts/validate-skills.mjs skills`.
 - `release-please.yml` (push to `main`) — opens/merges release PRs. When release-please tags a release, the follow-up `sync-marketplaces` job renders and pushes to `xyo-claude-plugin` and `xyo-codex-plugin` (matrix; `fail-fast: false`).
 - `lint-pr-title.yml`, `sync-main-to-develop.yml` — see **Releases** above.
