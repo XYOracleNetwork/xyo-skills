@@ -82,7 +82,7 @@ jobs:
           # `internal: true`. This pins that, so a stub cannot leak back into
           # the mirrors and shadow the canonical skill, and checks that the
           # filter did not take a real skill with it.
-          expected="xyo-knowledge xl1-knowledge xl1-patterns xl1-dapp-kit xl1-testing xl1-scaffold xl1-build"
+          expected="xyo-knowledge xl1-knowledge xl1-patterns xl1-dapp-kit xl1-testing xl1-scaffold xl1-build xyo-sub-protocol"
           for skills in /tmp/render/claude/skills /tmp/render/codex/plugins/xyo-skills/skills; do
             for stub in xy-development xy-toolchain; do
               if [ -e "$skills/$stub" ]; then
