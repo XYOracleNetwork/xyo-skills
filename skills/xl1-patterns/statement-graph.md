@@ -4,6 +4,8 @@ Read this pattern when your application needs a **replayable, source-attributed 
 
 This is an **application-layer substrate**, not part of core XL1 consensus. Peer of [Inscription Substrate](inscription-substrate.md): inscriptions own transferable content artifacts; Statement Graph records signed assertions about objects.
 
+Repository structure for a normative XYO sub-protocol is [xyo-sub-protocol](../xyo-sub-protocol/SKILL.md): root `WHITEPAPER.md` and `HISTORY.md`, the README package allow/deny map, and `docs/` outside that skeleton. Statement Graph is that skill's reference example. The decision record is root `HISTORY.md` in `XYOracleNetwork/xl1-statement-graph`.
+
 **Builds on:**
 - [Chain Data Indexing](chain-data-indexing-protocol.md) — finalized-only replay, two-step reads (schemas on the chain, bodies by hash)
 - [Finalized block streams](../xl1-knowledge/gateway.md#finalized-block-stream) — ordered gap-aware delivery for indexers
@@ -268,4 +270,5 @@ Actor hosts (`-engine-actor`):
 
 - [Authenticated Wake Delivery](authenticated-wake-delivery.md) — Event Kit grants on this substrate
 - [XL1 dApp Kit](../xl1-dapp-kit/SKILL.md) — hosts that consume wakes / projections
-- Upstream docs: `XYOracleNetwork/xl1-statement-graph` (`WHITEPAPER.md`, `docs/PROTOCOL_REDESIGN.md`, `docs/REPLAY_CONTRACT_GATE_PROFILE.md`, and the engine, engine-actor, protocol and SDK package READMEs)
+- [xyo-sub-protocol](../xyo-sub-protocol/SKILL.md) — normative XYO sub-protocol repository structure (root spec and decision record, package allow/deny, what stays outside the repo)
+- Upstream docs: `XYOracleNetwork/xl1-statement-graph` (`WHITEPAPER.md`, root `HISTORY.md`, `docs/REPLAY_CONTRACT_GATE_PROFILE.md`, and the engine, engine-actor, protocol and SDK package READMEs)
